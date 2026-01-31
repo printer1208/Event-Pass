@@ -4,7 +4,7 @@ import {
   XCircle, Search, Trash2, ScanLine, Camera, 
   ArrowRight, UserPlus, LogOut, Globe, Mail,
   Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
-  Cloud, RefreshCw
+  Cloud, Zap
 } from 'lucide-react';
 
 // --- Firebase 模組 ---
@@ -15,7 +15,7 @@ import {
 } from "firebase/firestore";
 
 // =================================================================
-// ✅ 已整合您的 Firebase 設定
+// ✅ Firebase Config
 // =================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyDUZeeaWvQZJORdDv4PdAHQK-SqXFIDsy4",
@@ -28,8 +28,13 @@ const firebaseConfig = {
 };
 
 // 初始化 Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+let db;
+try {
+  const app = initializeApp(firebaseConfig);
+  db = getFirestore(app);
+} catch (error) {
+  console.error("Firebase 初始化失敗:", error);
+}
 
 const ADMIN_PASSWORD = "admin"; 
 
@@ -38,44 +43,44 @@ const translations = {
     title: "Tesla Annual Dinner",
     sub: "",
     guestMode: "參加者登記",
-    guestDesc: "請不要重覆登記",
-    adminMode: "工作人員後台",
-    adminDesc: "",
-    login: "系統登入",
-    pwdPlace: "輸入後台密碼",
-    enter: "進入系統",
+    guestDesc: "Guest Registration",
+    adminMode: "工作人員入口",
+    adminDesc: "Staff Only",
+    login: "Staff Login",
+    pwdPlace: "請輸入後台密碼",
+    enter: "登入系統",
     wrongPwd: "密碼錯誤",
-    regTitle: "活動登記",
-    regSub: "",
-    name: "姓名",
-    phone: "電話號碼",
-    email: "電子郵件",
-    generateBtn: "送出登記",
+    regTitle: "賓客登記",
+    regSub: "Welcome to Tesla Event",
+    name: "姓名 (Name)",
+    phone: "電話 (Mobile)",
+    email: "電子郵件 (Email)",
+    generateBtn: "確認登記 / Submit",
     back: "返回",
     yourCode: "您的入場憑證",
-    showToStaff: "請出示此碼掃描簽到!",
-    next: "完成",
+    showToStaff: "資料已同步！請截圖並出示給工作人員掃描",
+    next: "完成 (Finish)",
     scan: "極速掃描",
     draw: "幸運轉盤",
-    list: "名單",
+    list: "賓客名單",
     total: "總人數",
     arrived: "已到場",
-    scanCam: "啟動連續掃描",
+    scanCam: "啟動掃描鏡頭",
     stopCam: "停止掃描",
     manual: "手動輸入 ID",
-    success: "簽到成功 (雲端同步)",
-    duplicate: "注意：已簽到過",
+    success: "簽到成功 (Verified)",
+    duplicate: "重複：此人已入場",
     error: "無效代碼",
     regSuccess: "登記成功",
     notFound: "查無此人",
-    errPhone: "錯誤：此電話號碼已存在！",
-    errEmail: "錯誤：此 Email 已存在！",
+    errPhone: "錯誤：此電話號碼已存在",
+    errEmail: "錯誤：此 Email 已存在",
     errIncomplete: "請填寫所有必填欄位",
-    drawBtn: "開始轉動 (空白鍵)",
-    spinning: "好運轉動中...",
-    winner: "✨ 恭喜中獎 ✨",
+    drawBtn: "啟動轉盤 (Space)",
+    spinning: "加速中...",
+    winner: "✨ GRAND PRIZE ✨",
     claim: "確認領獎 (Enter)",
-    needMore: "需要至少 2 位已簽到者",
+    needMore: "等待更多賓客入場...",
     export: "導出名單",
     checkin: "簽到",
     cancel: "取消",
@@ -86,50 +91,49 @@ const translations = {
     title: "Tesla Annual Dinner",
     sub: "",
     guestMode: "Guest Registration",
-    guestDesc: "",
-    adminMode: "Admin Dashboard",
-    adminDesc: "Multi-device Sync",
-    login: "Admin Login",
+    guestDesc: "For Attendees",
+    adminMode: "Staff Portal",
+    adminDesc: "For Event Team",
+    login: "Staff Login",
     pwdPlace: "Password",
     enter: "Login",
     wrongPwd: "Wrong Password",
     regTitle: "Registration",
-    regSub: "Data uploads to cloud instantly",
+    regSub: "Welcome to Tesla Event",
     name: "Full Name",
     phone: "Phone Number",
     email: "Email Address",
-    company: "Company (Optional)",
-    generateBtn: "Submit",
+    generateBtn: "Submit Registration",
     back: "Back",
-    yourCode: "Your Entry Pass",
-    showToStaff: "Synced! Show QR to check-in",
-    next: "Next Person",
-    scan: "Speed Scan",
+    yourCode: "Entry Pass",
+    showToStaff: "Synced! Please screenshot & show to staff.",
+    next: "Finish",
+    scan: "Scanner",
     draw: "Lucky Draw",
-    list: "Cloud List",
+    list: "Guest List",
     total: "Total",
     arrived: "Arrived",
-    scanCam: "Start Speed Scan",
-    stopCam: "Stop Scan",
+    scanCam: "Start Camera",
+    stopCam: "Stop Camera",
     manual: "Manual Input",
-    success: "Synced & Checked-in",
+    success: "Verified & Checked-in",
     duplicate: "Already Checked-in",
     error: "Invalid Code",
     regSuccess: "Registration Successful",
     notFound: "Not Found",
-    errPhone: "Error: Phone already exists!",
-    errEmail: "Error: Email already exists!",
+    errPhone: "Phone already exists",
+    errEmail: "Email already exists",
     errIncomplete: "Fill all fields",
     drawBtn: "Spin (Space)",
-    spinning: "Spinning...",
-    winner: "✨ WINNER ✨",
+    spinning: "Accelerating...",
+    winner: "✨ GRAND PRIZE ✨",
     claim: "Confirm (Enter)",
-    needMore: "Need 2+ checked-in guests",
+    needMore: "Waiting for guests...",
     export: "Export CSV",
     checkin: "Check-in",
     cancel: "Cancel",
     logout: "Logout",
-    cloudStatus: "Cloud Connected"
+    cloudStatus: "Connected"
   }
 };
 
@@ -144,7 +148,7 @@ const Confetti = () => {
     const c = canvasRef.current;
     const ctx = c.getContext('2d');
     c.width = window.innerWidth; c.height = window.innerHeight;
-    const p = Array.from({length:300}).map(()=>({x:Math.random()*c.width, y:Math.random()*c.height,c:['#FFD700', '#FF4500', '#00BFFF', '#32CD32', '#FF69B4', '#FFFFFF'][Math.floor(Math.random()*6)],s:Math.random()*8+2,d:Math.random()*5}));
+    const p = Array.from({length:200}).map(()=>({x:Math.random()*c.width, y:Math.random()*c.height,c:['#E82127','#FFFFFF','#808080'][Math.floor(Math.random()*3)],s:Math.random()*8+2,d:Math.random()*5}));
     const draw = () => { ctx.clearRect(0,0,c.width,c.height); p.forEach(i=>{i.y+=i.s;i.x+=Math.sin(i.d);if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}ctx.fillStyle=i.c;ctx.beginPath();ctx.arc(i.x,i.y,i.s/2,0,Math.PI*2);ctx.fill();}); requestAnimationFrame(draw); };
     draw();
   }, []);
@@ -154,15 +158,22 @@ const Confetti = () => {
 // --- 獨立頁面 ---
 
 const LoginView = ({ t, onLogin, onBack }) => (
-  <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 bg-[url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80')] bg-cover bg-center">
-    <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md"></div>
-    <div className="relative bg-white/10 border border-white/20 p-8 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in zoom-in">
-      <button onClick={onBack} className="text-white/60 hover:text-white mb-6 flex items-center transition-colors"><ChevronLeft size={20}/> {t.sub}</button>
-      <h2 className="text-3xl font-bold text-white mb-2">{t.login}</h2>
-      <div className="flex items-center gap-2 mb-6 text-emerald-400 text-xs font-mono"><Cloud size={14}/> {t.cloudStatus}</div>
+  <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4 relative overflow-hidden">
+    {/* 背景特效 */}
+    <div className="absolute top-[-20%] left-[-20%] w-[600px] h-[600px] bg-red-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+    <div className="absolute bottom-[-20%] right-[-20%] w-[600px] h-[600px] bg-white/5 rounded-full blur-[120px] pointer-events-none"></div>
+
+    <div className="relative bg-black/40 border border-white/10 p-10 rounded-3xl w-full max-w-sm backdrop-blur-2xl shadow-2xl animate-in zoom-in duration-500">
+      <button onClick={onBack} className="text-white/50 hover:text-white mb-8 flex items-center transition-colors text-sm uppercase tracking-widest"><ChevronLeft size={16} className="mr-1"/> {t.back}</button>
+      
+      <div className="text-center mb-8">
+        <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">{t.login}</h2>
+        <div className="flex justify-center items-center gap-2 text-emerald-500 text-xs font-mono tracking-wider"><Cloud size={12}/> {t.cloudStatus}</div>
+      </div>
+
       <form onSubmit={e=>{e.preventDefault(); if(e.target[0].value===ADMIN_PASSWORD)onLogin(); else alert(t.wrongPwd);}}>
-        <input type="password" autoFocus placeholder={t.pwdPlace} className="w-full bg-slate-800/50 border border-white/10 text-white p-4 rounded-xl mb-4 focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-center tracking-widest"/>
-        <button className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95">{t.enter}</button>
+        <input type="password" autoFocus placeholder={t.pwdPlace} className="w-full bg-white/5 border border-white/10 text-white p-4 rounded-xl mb-6 focus:ring-1 focus:ring-red-500 focus:border-red-500 outline-none transition-all text-center tracking-[0.3em] placeholder:tracking-normal placeholder:text-white/20"/>
+        <button className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-900/30 transition-all active:scale-95 uppercase tracking-widest text-sm">{t.enter}</button>
       </form>
     </div>
   </div>
@@ -182,13 +193,12 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
     const cleanPhone = normalizePhone(form.phone);
     const cleanEmail = normalizeEmail(form.email);
     
-    // 1. 本地快速檢查 (基於已同步的列表)
     const dup = checkDuplicate(cleanPhone, cleanEmail);
     if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; }
     if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; }
 
     try {
-        // 2. 寫入 Firebase
+        if (!db) throw new Error("Firebase not initialized");
         const docRef = await addDoc(collection(db, "attendees"), {
             name: form.name,
             phone: cleanPhone,
@@ -198,46 +208,66 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
             checkInTime: null,
             createdAt: new Date().toISOString()
         });
-        
-        setNewId(docRef.id); // 使用 Firebase 生成的 ID
+        setNewId(docRef.id);
         setStep(2);
     } catch (error) {
         console.error("Error adding document: ", error);
-        setErr("Upload Failed. Check network.");
+        setErr("Network Error. Please try again.");
     }
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden border border-slate-200">
-        <div className="bg-gradient-to-r from-blue-600 to-cyan-600 p-6 text-white text-center relative">
-          <button onClick={onBack} className="absolute left-6 top-6 text-white/80 hover:text-white z-10"><ChevronLeft/></button>
-          <h2 className="text-2xl font-bold mt-2">{t.regTitle}</h2>
-          <div className="flex justify-center items-center gap-1 text-blue-100 text-sm mt-1 opacity-90"><Cloud size={14}/> {t.regSub}</div>
+    <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* 背景裝飾 */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-800/50 via-neutral-950 to-neutral-950 pointer-events-none"></div>
+      
+      <div className="relative bg-neutral-900/80 border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl">
+        <div className="bg-red-600 p-8 text-white text-center relative">
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/20"></div>
+          <button onClick={onBack} className="absolute left-6 top-6 text-white/70 hover:text-white z-10"><ChevronLeft/></button>
+          <div className="relative z-10">
+            <h2 className="text-2xl font-bold tracking-wide">{t.regTitle}</h2>
+            <p className="text-white/80 text-xs mt-2 uppercase tracking-widest">{t.regSub}</p>
+          </div>
         </div>
+        
         <div className="p-8">
           {step === 1 ? (
             <form onSubmit={handleSubmit} className="space-y-5">
-              {err && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center border border-red-100 animate-pulse"><AlertTriangle size={16} className="mr-2"/>{err}</div>}
+              {err && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm flex items-center animate-pulse"><AlertTriangle size={16} className="mr-2"/>{err}</div>}
+              
               <div className="space-y-4">
-                <div className="relative"><User className="absolute top-3.5 left-3.5 text-slate-400" size={18}/><input required className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder={t.name + " *"} value={form.name} onChange={e=>{setErr('');setForm({...form,name:e.target.value})}} /></div>
-                <div className="relative"><Phone className="absolute top-3.5 left-3.5 text-slate-400" size={18}/><input required type="tel" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder={t.phone + " *"} value={form.phone} onChange={e=>{setErr('');setForm({...form,phone:e.target.value})}} /></div>
-                <div className="relative"><Mail className="absolute top-3.5 left-3.5 text-slate-400" size={18}/><input required type="email" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder={t.email + " *"} value={form.email} onChange={e=>{setErr('');setForm({...form,email:e.target.value})}} /></div>
-                <input className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder={t.company} value={form.company} onChange={e=>setForm({...form,company:e.target.value})} />
+                {['name', 'phone', 'email'].map((field) => (
+                    <div key={field} className="relative group">
+                        <div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">
+                            {field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}
+                        </div>
+                        <input 
+                            required 
+                            type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'}
+                            className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" 
+                            placeholder={t[field]} 
+                            value={form[field]} 
+                            onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} 
+                        />
+                    </div>
+                ))}
               </div>
-              <button disabled={loading} className="w-full bg-slate-900 text-white p-4 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg active:scale-95 mt-4 flex justify-center items-center disabled:opacity-70">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
+
+              <button disabled={loading} className="w-full bg-white text-red-600 hover:bg-gray-100 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">
+                  {loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}
+              </button>
             </form>
           ) : (
-            <div className="text-center animate-in zoom-in">
-              <div className="bg-white p-4 border-2 border-dashed border-blue-200 rounded-2xl inline-block mb-6 shadow-sm relative">
-                {/* 雲端版：只需傳送 ID */}
+            <div className="text-center animate-in zoom-in duration-300">
+              <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)] relative">
                 <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({id: newId}))}`} alt="QR" className="w-48 h-48 object-contain"/>
-                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1"><Cloud size={10}/> CLOUD SAVED</div>
+                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full shadow-lg flex items-center gap-1 font-bold tracking-wider"><Cloud size={10}/> SAVED</div>
               </div>
-              <h3 className="text-2xl font-bold text-slate-800 mb-2">{form.name}</h3>
-              <p className="text-slate-500 text-sm mb-8">{t.showToStaff}</p>
-              <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:''})}} className="w-full bg-blue-50 text-blue-600 p-4 rounded-xl font-bold hover:bg-blue-100 transition-colors">{t.next}</button>
+              <h3 className="text-2xl font-bold text-white mb-2">{form.name}</h3>
+              <p className="text-white/50 text-sm mb-8 leading-relaxed">{t.showToStaff}</p>
+              <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:''})}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm">{t.next}</button>
             </div>
           )}
         </div>
@@ -263,7 +293,6 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
     else { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, ctx.currentTime); gain.gain.setValueAtTime(0.3, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime+0.2); osc.start(); osc.stop(ctx.currentTime+0.2); }
   };
 
-  // Firebase 雲端掃描處理
   const handleScan = useCallback(async (text) => {
     const now = Date.now();
     if (now - lastScanTimeRef.current < 1500) return;
@@ -280,9 +309,7 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
           setTimeout(() => setScanRes(null), 2000);
       };
 
-      // 1. 在雲端資料中尋找 (attendees 已經是即時同步的)
       let targetId = data.id || data;
-      // 兼容舊格式
       if (!targetId && data.type === 'new_reg') {
           const cleanP = normalizePhone(data.phone);
           const p = attendees.find(x => x.phone === cleanP);
@@ -296,18 +323,15 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
       } else if (person.checkedIn) {
           processResult('duplicate', t.duplicate, person);
       } else {
-          // 2. 更新雲端資料庫
+          if (!db) return;
           const personRef = doc(db, "attendees", person.id);
           await updateDoc(personRef, {
               checkedIn: true,
               checkInTime: new Date().toISOString()
           });
-          // 不需要手動 setAttendees，onSnapshot 會自動更新畫面
           processResult('success', t.success, person);
       }
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
   }, [attendees, t]);
 
   useEffect(() => {
@@ -318,23 +342,16 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
     return () => { if(s) try{s.clear()}catch(e){} };
   }, [isScan, tab, handleScan]);
 
-  // 更新簽到狀態 (Firebase)
   const toggleCheckIn = async (person) => {
+      if (!db) return;
       const personRef = doc(db, "attendees", person.id);
-      await updateDoc(personRef, {
-          checkedIn: !person.checkedIn,
-          checkInTime: !person.checkedIn ? new Date().toISOString() : null
-      });
+      await updateDoc(personRef, { checkedIn: !person.checkedIn, checkInTime: !person.checkedIn ? new Date().toISOString() : null });
   };
 
-  // 刪除資料 (Firebase)
   const deletePerson = async (id) => {
-      if(confirm('Delete this user?')) {
-          await deleteDoc(doc(db, "attendees", id));
-      }
+      if(confirm('Delete user?')) { if (!db) return; await deleteDoc(doc(db, "attendees", id)); }
   };
 
-  // 抽獎邏輯 (Firebase)
   const Wheel = ({ list }) => {
     const [rot, setRot] = useState(0);
     const [spin, setSpin] = useState(false);
@@ -346,33 +363,30 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
       const angle = 360/list.length;
       setRot(rot+1800+(360-winIdx*angle)+(Math.random()-0.5)*angle*0.8);
       
-      // 動畫結束後
       setTimeout(async () => {
           setSpin(false);
           const winner = list[winIdx];
           setWinner(winner);
-          
-          // 寫入中獎紀錄到 Firebase
-          await addDoc(collection(db, "winners"), {
-              attendeeId: winner.id,
-              name: winner.name,
-              phone: winner.phone,
-              wonAt: new Date().toISOString()
-          });
+          if (!db) return;
+          await addDoc(collection(db, "winners"), { attendeeId: winner.id, name: winner.name, phone: winner.phone, wonAt: new Date().toISOString() });
       }, 4500);
     };
 
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <div className="relative w-[300px] h-[300px] lg:w-[500px] lg:h-[500px] rounded-full border-[12px] border-amber-400 shadow-[0_0_50px_rgba(251,191,36,0.4)] overflow-hidden bg-white transition-all duration-500 box-content">
-          <div className="absolute inset-0 rounded-full border-4 border-dashed border-white/50 pointer-events-none z-10 opacity-50"></div>
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 z-20 w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[40px] border-t-red-600 drop-shadow-xl filter"></div>
+        {/* Tesla 風格轉盤 */}
+        <div className="relative w-[300px] h-[300px] lg:w-[500px] lg:h-[500px] rounded-full border-[8px] border-white/20 shadow-[0_0_50px_rgba(232,33,39,0.3)] overflow-hidden bg-neutral-900 transition-all duration-500 box-content">
+          <div className="absolute inset-0 rounded-full border-4 border-dashed border-white/10 pointer-events-none z-10"></div>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 z-20 w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[40px] border-t-red-600 drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]"></div>
           <svg width="100%" height="100%" viewBox="0 0 300 300" style={{transform:`rotate(${rot}deg)`, transition: spin?'transform 4.5s cubic-bezier(0.2,0.8,0.2,1)':'none'}}>
-            {list.map((p,i)=>{ const a=360/list.length;const s=i*a,e=(i+1)*a;const x1=150+150*Math.cos((s-90)*Math.PI/180),y1=150+150*Math.sin((s-90)*Math.PI/180);const x2=150+150*Math.cos((e-90)*Math.PI/180),y2=150+150*Math.sin((e-90)*Math.PI/180);const c=['#FF4136','#FF851B','#FFDC00','#2ECC40','#0074D9','#B10DC9'];return <path key={i} d={`M 150 150 L ${x1} ${y1} A 150 150 0 ${e-s<=180?0:1} 1 ${x2} ${y2} Z`} fill={c[i%6]} stroke="#fff" strokeWidth="2"/> })}
+            {list.map((p,i)=>{ const a=360/list.length;const s=i*a,e=(i+1)*a;const x1=150+150*Math.cos((s-90)*Math.PI/180),y1=150+150*Math.sin((s-90)*Math.PI/180);const x2=150+150*Math.cos((e-90)*Math.PI/180),y2=150+150*Math.sin((e-90)*Math.PI/180);
+            // 黑紅銀配色
+            const c=['#E82127', '#171717', '#404040', '#E82127', '#171717', '#A3A3A3'];
+            return <path key={i} d={`M 150 150 L ${x1} ${y1} A 150 150 0 ${e-s<=180?0:1} 1 ${x2} ${y2} Z`} fill={c[i%6]} stroke="#000" strokeWidth="1"/> })}
           </svg>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-gradient-to-br from-amber-300 to-amber-600 rounded-full shadow-lg flex items-center justify-center border-4 border-white"><Trophy size={24} className="text-white"/></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-neutral-900 rounded-full shadow-lg flex items-center justify-center border-4 border-white/20"><Zap size={32} className="text-red-500 fill-current"/></div>
         </div>
-        <button disabled={spin} onClick={run} className="mt-10 bg-gradient-to-r from-slate-900 to-slate-800 text-white px-12 py-4 rounded-full font-bold text-2xl shadow-2xl hover:scale-105 transition-transform disabled:opacity-50 border border-slate-700">{spin?t.spinning:t.drawBtn}</button>
+        <button disabled={spin} onClick={run} className="mt-12 bg-white text-black px-12 py-4 rounded-full font-bold text-xl shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:bg-gray-200 hover:scale-105 transition-all disabled:opacity-50 border border-white tracking-widest uppercase">{spin?t.spinning:t.drawBtn}</button>
       </div>
     );
   };
@@ -380,61 +394,73 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
   const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
-      <header className="bg-white shadow-sm px-6 py-4 flex justify-between items-center sticky top-0 z-20">
-        <div className="flex items-center gap-3 text-slate-800 font-bold text-xl"><QrCode className="text-amber-500"/> {t.adminMode}</div>
-        <button onClick={onLogout} className="text-slate-400 hover:text-red-500 text-sm flex items-center gap-2"><LogOut size={16}/> {t.logout}</button>
+    <div className="min-h-screen bg-neutral-950 flex flex-col font-sans text-white">
+      <header className="bg-neutral-900/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+        <div className="flex items-center gap-3 font-bold text-xl"><div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center text-white"><QrCode size={18}/></div> {t.adminMode}</div>
+        <button onClick={onLogout} className="text-white/50 hover:text-red-500 text-sm flex items-center gap-2 transition-colors"><LogOut size={16}/> {t.logout}</button>
       </header>
 
-      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
-        <div className="flex justify-center mb-8 bg-white p-1 rounded-2xl shadow-sm w-fit mx-auto border border-slate-100">
+      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col items-center">
+        <div className="flex justify-center mb-8 bg-white/5 p-1 rounded-2xl shadow-lg border border-white/10 w-fit backdrop-blur-sm">
           {[ {id:'scan',icon:ScanLine,l:t.scan}, {id:'draw',icon:Trophy,l:t.draw}, {id:'list',icon:Users,l:t.list} ].map(i=> (
-            <button key={i.id} onClick={()=>{setTab(i.id);setIsScan(false);setScanRes(null)}} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${tab===i.id?'bg-slate-900 text-white shadow-md':'text-slate-500 hover:bg-slate-50'}`}><i.icon size={18}/> {i.l}</button>
+            <button key={i.id} onClick={()=>{setTab(i.id);setIsScan(false);setScanRes(null)}} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all text-sm tracking-wide ${tab===i.id?'bg-red-600 text-white shadow-md':'text-white/50 hover:bg-white/10 hover:text-white'}`}><i.icon size={16}/> {i.l}</button>
           ))}
         </div>
 
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 min-h-[600px] overflow-hidden relative">
+        <div className="bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl w-full min-h-[600px] overflow-hidden relative flex flex-col items-center justify-center">
           {tab === 'scan' && (
-            <div className="h-full flex flex-col items-center justify-center p-8 min-h-[600px]">
+            <div className="h-full w-full flex flex-col items-center justify-center p-8">
               {isScan ? (
-                <div className="bg-black rounded-3xl overflow-hidden relative w-full max-w-lg shadow-2xl border-4 border-slate-900">
+                <div className="bg-black rounded-3xl overflow-hidden relative w-full max-w-lg shadow-2xl border border-white/20">
                   <div id="reader" className="w-full"></div>
                   {scanRes && (
-                    <div className={`absolute inset-0 flex flex-col items-center justify-center backdrop-blur-md transition-all duration-300 ${scanRes.type==='success'?'bg-emerald-500/80':scanRes.type==='duplicate'?'bg-amber-500/80':'bg-red-500/80'}`}>
-                        <div className="bg-white p-6 rounded-full shadow-lg mb-4 animate-bounce">
-                            {scanRes.type==='success' ? <CheckCircle size={48} className="text-emerald-600"/> : scanRes.type==='duplicate' ? <AlertTriangle size={48} className="text-amber-600"/> : <XCircle size={48} className="text-red-600"/>}
+                    <div className={`absolute inset-0 flex flex-col items-center justify-center backdrop-blur-md transition-all duration-300 ${scanRes.type==='success'?'bg-emerald-600/90':scanRes.type==='duplicate'?'bg-amber-600/90':'bg-red-600/90'}`}>
+                        <div className="bg-white text-black p-6 rounded-full shadow-lg mb-4 animate-bounce">
+                            {scanRes.type==='success' ? <CheckCircle size={48}/> : scanRes.type==='duplicate' ? <AlertTriangle size={48}/> : <XCircle size={48}/>}
                         </div>
-                        <h3 className="text-3xl font-black text-white mb-2 drop-shadow-md text-center px-4">{scanRes.msg}</h3>
-                        {scanRes.p && <p className="text-white/90 text-xl font-bold">{scanRes.p.name}</p>}
+                        <h3 className="text-3xl font-black text-white mb-2 drop-shadow-md text-center px-4 tracking-widest">{scanRes.msg}</h3>
+                        {scanRes.p && <p className="text-white text-xl font-bold border-b-2 border-white pb-1">{scanRes.p.name}</p>}
                     </div>
                   )}
-                  <button onClick={()=>setIsScan(false)} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/20 hover:bg-red-500 hover:text-white text-white backdrop-blur px-6 py-2 rounded-full text-sm transition-colors z-20">{t.stopCam}</button>
+                  <button onClick={()=>setIsScan(false)} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 hover:bg-red-600 text-white border border-white/30 backdrop-blur px-6 py-2 rounded-full text-sm transition-all z-20">{t.stopCam}</button>
                 </div>
               ) : (
-                <button onClick={()=>setIsScan(true)} className="group flex flex-col items-center justify-center w-full max-w-md h-64 border-2 border-dashed border-slate-300 rounded-3xl hover:bg-emerald-50 hover:border-emerald-300 transition-all cursor-pointer">
-                  <div className="bg-emerald-100 text-emerald-600 w-20 h-20 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform"><Camera size={40}/></div>
-                  <span className="font-bold text-slate-500 group-hover:text-emerald-600">{t.scanCam}</span>
+                <button onClick={()=>setIsScan(true)} className="group flex flex-col items-center justify-center w-full max-w-md h-64 border-2 border-dashed border-white/20 rounded-3xl hover:bg-white/5 hover:border-red-500/50 transition-all cursor-pointer">
+                  <div className="bg-white/10 text-white w-20 h-20 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-red-600 transition-all"><Camera size={40}/></div>
+                  <span className="font-bold text-white/50 group-hover:text-white transition-colors">{t.scanCam}</span>
                 </button>
               )}
             </div>
           )}
 
           {tab === 'draw' && (
-            <div className="h-full flex flex-col items-center justify-center p-8 min-h-[600px]">
-              {eligible.length < 2 ? <div className="text-center text-slate-400"><Trophy size={64} className="mx-auto mb-4 opacity-20"/><p>{t.needMore}</p></div> : <Wheel list={eligible} />}
+            <div className="h-full w-full flex flex-col items-center justify-center p-8">
+              {eligible.length < 2 ? <div className="text-center text-white/30"><Trophy size={80} className="mx-auto mb-6 opacity-20"/><p className="text-xl">{t.needMore}</p></div> : <Wheel list={eligible} />}
             </div>
           )}
 
           {tab === 'list' && (
-            <div className="h-full flex flex-col">
-              <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
-                <div className="font-bold text-slate-600 flex items-center gap-2"><Cloud size={16} className="text-blue-500"/> {t.total}: {attendees.length} | <span className="text-emerald-600">{t.arrived}: {attendees.filter(x=>x.checkedIn).length}</span></div>
-                <button onClick={()=>{const csv="Name,Phone,Email,Status\n"+attendees.map(p=>`${p.name},${p.phone},${p.email},${p.checkedIn?'Checked':'Pending'}`).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:'text/csv'}));a.download="list.csv";a.click();}} className="text-xs font-bold bg-white border px-3 py-2 rounded-lg hover:bg-slate-50 flex items-center gap-2"><Download size={14}/> CSV</button>
+            <div className="h-full w-full flex flex-col">
+              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/20">
+                <div className="font-bold text-white flex items-center gap-3"><span className="text-white/50 text-sm font-normal">{t.total}: {attendees.length}</span> <span className="w-[1px] h-4 bg-white/20"></span> <span className="text-emerald-400">{t.arrived}: {attendees.filter(x=>x.checkedIn).length}</span></div>
+                <button onClick={()=>{const csv="Name,Phone,Email,Status\n"+attendees.map(p=>`${p.name},${p.phone},${p.email},${p.checkedIn?'Checked':'Pending'}`).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:'text/csv'}));a.download="list.csv";a.click();}} className="text-xs font-bold bg-white/10 border border-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/20 flex items-center gap-2 transition-colors"><Download size={14}/> CSV</button>
               </div>
-              <div className="flex-1 overflow-y-auto p-2">
+              <div className="flex-1 overflow-y-auto p-4">
                 <table className="w-full text-left border-collapse">
-                  <thead className="text-xs text-slate-400 uppercase bg-slate-50 sticky top-0"><tr><th className="p-3 pl-4">{t.name}</th><th className="p-3">{t.phone}</th><th className="p-3">{t.email}</th><th className="p-3 text-right">{t.checkin}</th></tr></thead>
-                  <tbody className="divide-y divide-slate-100">{attendees.map(p=>(<tr key={p.id} className="hover:bg-slate-50"><td className="p-3 pl-4 font-bold text-slate-700">{p.name}</td><td className="p-3 text-slate-500 text-sm font-mono">{p.phone}</td><td className="p-3 text-slate-500 text-sm">{p.email}</td><td className="p-3 text-right"><button onClick={()=>toggleCheckIn(p)} className={`px-4 py-1 rounded-full text-xs font-bold border ${p.checkedIn?'bg-emerald-50 text-emerald-600 border-emerald-200':'bg-white text-slate-400 border-slate-200'}`}>{p.checkedIn?t.checkin:t.cancel}</button><button onClick={()=>deletePerson(p.id)} className="ml-2 p-2 text-slate-300 hover:text-red-500"><Trash2 size={14}/></button></td></tr>))}</tbody>
+                  <thead className="text-xs text-white/40 uppercase tracking-widest border-b border-white/10"><tr><th className="p-4 pl-6">{t.name}</th><th className="p-4">{t.phone}</th><th className="p-4">{t.email}</th><th className="p-4 text-right">{t.checkin}</th></tr></thead>
+                  <tbody className="divide-y divide-white/5">
+                    {attendees.map(p=>(
+                      <tr key={p.id} className="hover:bg-white/5 transition-colors group">
+                        <td className="p-4 pl-6 font-bold text-white">{p.name}</td>
+                        <td className="p-4 text-white/60 text-sm font-mono">{p.phone}</td>
+                        <td className="p-4 text-white/60 text-sm">{p.email}</td>
+                        <td className="p-4 text-right flex justify-end gap-2">
+                          <button onClick={()=>toggleCheckIn(p)} className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${p.checkedIn?'bg-emerald-500/20 text-emerald-400 border-emerald-500/50':'bg-white/5 text-white/40 border-white/10 hover:bg-white/10 hover:text-white'}`}>{p.checkedIn?t.checkin:t.cancel}</button>
+                          <button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={16}/></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
                 </table>
               </div>
             </div>
@@ -443,15 +469,17 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
       </main>
 
       {winner && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 animate-in fade-in backdrop-blur-md">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 animate-in fade-in duration-500 backdrop-blur-xl">
           <Confetti />
-          <div className="relative text-center w-full max-w-5xl mx-auto px-4 animate-in zoom-in duration-500">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-amber-500/30 to-transparent blur-[100px] pointer-events-none"></div>
-            <Trophy className="mx-auto text-yellow-400 mb-8 drop-shadow-[0_0_30px_rgba(250,204,21,0.8)] animate-bounce" size={140} />
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 uppercase tracking-[0.5em] text-shadow-lg opacity-80">{t.winner}</h2>
-            <h1 className="text-7xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 via-yellow-400 to-yellow-600 mb-6 drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)] scale-110">{winner.name}</h1>
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 inline-block px-10 py-4 rounded-full mb-12"><p className="text-3xl text-white/90 font-mono tracking-widest">{winner.phone}</p></div>
-            <div><button autoFocus onClick={()=>setWinner(null)} className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white px-16 py-6 rounded-full font-bold text-3xl shadow-[0_0_50px_rgba(245,158,11,0.5)] transition-transform hover:scale-105 active:scale-95 border-2 border-white/30">{t.claim}</button></div>
+          <div className="relative text-center w-full max-w-5xl mx-auto px-4 animate-in zoom-in-50 duration-500 flex flex-col items-center">
+            {/* 聚光燈效果 */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-red-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+            
+            <Trophy className="text-yellow-400 mb-8 drop-shadow-[0_0_50px_rgba(250,204,21,0.6)] animate-bounce" size={120} />
+            <h2 className="text-2xl md:text-3xl font-bold text-white/60 mb-4 uppercase tracking-[0.5em]">{t.winner}</h2>
+            <h1 className="text-6xl md:text-9xl font-black text-white mb-8 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] scale-110">{winner.name}</h1>
+            <div className="bg-white/10 border border-white/20 backdrop-blur-md px-10 py-4 rounded-full mb-12"><p className="text-2xl text-white font-mono tracking-widest">{winner.phone}</p></div>
+            <button autoFocus onClick={()=>setWinner(null)} className="bg-white text-black hover:bg-gray-200 px-16 py-5 rounded-full font-bold text-2xl shadow-[0_0_50px_rgba(255,255,255,0.3)] transition-transform hover:scale-105 active:scale-95 uppercase tracking-widest">{t.claim}</button>
           </div>
         </div>
       )}
@@ -465,23 +493,11 @@ export default function App() {
   const [attendees, setAttendees] = useState([]);
   const [drawHistory, setDrawHistory] = useState([]);
 
-  // --- Firebase 即時監聽 (Realtime Listeners) ---
   useEffect(() => {
     if (!db) return;
-    
-    // 1. 監聽參加者名單 (按時間排序)
     const q = query(collection(db, "attendees"), orderBy("createdAt", "desc"));
-    const unsubAttendees = onSnapshot(q, (snapshot) => {
-        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setAttendees(list);
-    });
-
-    // 2. 監聽中獎名單
-    const unsubWinners = onSnapshot(collection(db, "winners"), (snapshot) => {
-        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setDrawHistory(list);
-    });
-
+    const unsubAttendees = onSnapshot(q, (snapshot) => { setAttendees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
+    const unsubWinners = onSnapshot(collection(db, "winners"), (snapshot) => { setDrawHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
     return () => { unsubAttendees(); unsubWinners(); };
   }, []);
 
@@ -491,23 +507,37 @@ export default function App() {
     return null;
   };
 
-  // onRegister 傳遞給 GuestView 來寫入 Firebase
-  const handleGuestRegister = async (newPerson) => {
-      // 這裡實際上是由 GuestView 內部的 addDoc 完成的，這裡只是佔位或做額外處理
-  };
-
   if(view === 'landing') return (
-    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-black"></div>
-      <button onClick={()=>setLang(l=>l==='zh'?'en':'zh')} className="absolute top-6 right-6 text-white/50 hover:text-white flex items-center gap-2 border border-white/10 px-4 py-2 rounded-full transition-all z-10"><Globe size={16}/> {lang.toUpperCase()}</button>
-      <div className="z-10 text-center mb-16"><div className="inline-flex p-6 bg-white/5 rounded-[2rem] mb-8 border border-white/10 backdrop-blur shadow-[0_0_50px_rgba(79,70,229,0.3)]"><QrCode size={64} className="text-indigo-400"/></div><h1 className="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-white/40 mb-6 tracking-tight">{t.title}</h1><p className="text-indigo-300/80 text-xl font-light tracking-widest uppercase">{t.sub}</p></div>
-      <div className="grid md:grid-cols-2 gap-8 w-full max-w-5xl z-10 px-4">
-        <button onClick={()=>setView('guest')} className="group relative overflow-hidden bg-gradient-to-br from-blue-600 to-blue-800 p-10 rounded-[2.5rem] text-left transition-all hover:scale-[1.02] shadow-2xl border border-white/10"><div className="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-30 transition-opacity"><UserPlus size={120} className="text-white"/></div><h3 className="text-3xl font-bold text-white mb-2">{t.guestMode}</h3><p className="text-blue-100 text-lg opacity-80">{t.guestDesc}</p><div className="mt-12 flex items-center text-white font-bold text-lg group-hover:translate-x-2 transition-transform bg-white/20 w-fit px-6 py-2 rounded-full backdrop-blur-sm">{t.enter} <ArrowRight size={20} className="ml-2"/></div></button>
-        <button onClick={()=>setView('login')} className="group relative overflow-hidden bg-gradient-to-br from-slate-800 to-slate-900 p-10 rounded-[2.5rem] text-left transition-all hover:scale-[1.02] border border-white/10 shadow-2xl"><div className="absolute top-0 right-0 p-8 opacity-20 group-hover:opacity-30 transition-opacity text-white"><Lock size={120}/></div><h3 className="text-3xl font-bold text-white mb-2">{t.adminMode}</h3><p className="text-slate-400 text-lg">{t.adminDesc}</p><div className="mt-12 flex items-center text-white font-bold text-lg group-hover:translate-x-2 transition-transform bg-white/10 w-fit px-6 py-2 rounded-full backdrop-blur-sm">{t.enter} <ArrowRight size={20} className="ml-2"/></div></button>
+    <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-800 via-neutral-950 to-neutral-950 pointer-events-none"></div>
+      
+      <button onClick={()=>setLang(l=>l==='zh'?'en':'zh')} className="absolute top-6 right-6 text-white/50 hover:text-white flex items-center gap-2 border border-white/10 px-4 py-2 rounded-full transition-all z-10 text-xs font-mono"><Globe size={14}/> {lang.toUpperCase()}</button>
+      
+      <div className="z-10 text-center mb-16 flex flex-col items-center">
+        <div className="w-24 h-24 bg-gradient-to-br from-red-600 to-red-800 rounded-3xl flex items-center justify-center shadow-[0_0_60px_rgba(220,38,38,0.4)] mb-8 animate-in zoom-in duration-700">
+            <QrCode size={48} className="text-white"/>
+        </div>
+        <h1 className="text-5xl md:text-8xl font-black text-white mb-4 tracking-tighter drop-shadow-2xl">{t.title}</h1>
+        <p className="text-white/40 text-xl font-light tracking-[0.3em] uppercase">{t.sub}</p>
+      </div>
+
+      <div className="grid md:grid-cols-2 gap-8 w-full max-w-4xl z-10 px-4">
+        <button onClick={()=>setView('guest')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-10 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity"><UserPlus size={120} className="text-white"/></div>
+            <h3 className="text-3xl font-bold text-white mb-2">{t.guestMode}</h3>
+            <p className="text-white/50 text-lg">{t.guestDesc}</p>
+            <div className="mt-12 flex items-center text-black font-bold text-lg group-hover:translate-x-2 transition-transform bg-white w-fit px-6 py-2 rounded-full">{t.enter} <ArrowRight size={20} className="ml-2"/></div>
+        </button>
+        <button onClick={()=>setView('login')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-10 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity"><Lock size={120} className="text-white"/></div>
+            <h3 className="text-3xl font-bold text-white mb-2">{t.adminMode}</h3>
+            <p className="text-white/50 text-lg">{t.adminDesc}</p>
+            <div className="mt-12 flex items-center text-white font-bold text-lg group-hover:translate-x-2 transition-transform bg-red-600 w-fit px-6 py-2 rounded-full">{t.enter} <ArrowRight size={20} className="ml-2"/></div>
+        </button>
       </div>
     </div>
   );
-  if(view === 'guest') return <GuestView t={t} onBack={()=>setView('landing')} onRegister={handleGuestRegister} checkDuplicate={checkDuplicate} />;
+  if(view === 'guest') return <GuestView t={t} onBack={()=>setView('landing')} checkDuplicate={checkDuplicate} />;
   if(view === 'login') return <LoginView t={t} onLogin={()=>setView('admin')} onBack={()=>setView('landing')} />;
   if(view === 'admin') return <AdminDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} setAttendees={setAttendees} drawHistory={drawHistory} setDrawHistory={setDrawHistory} />;
 }
