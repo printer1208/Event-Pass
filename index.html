@@ -6,11 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Tesla Annual Dinner</title>
     
-    <!-- 🔥 關鍵：直接從網路載入樣式引擎 (Tailwind CDN) -->
+    <!-- 🔥 關鍵：直接引入 Tailwind 樣式庫，保證有顏色 -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 🔥 關鍵：強制設定黑底設定 (CSS) -->
     <style>
+      /* 強制覆蓋的 CSS，確保背景全黑 */
       html, body {
         background-color: #000000 !important;
         color: white !important;

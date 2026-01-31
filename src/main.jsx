@@ -1,7 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
-import './index.css'  // 🔥 這一行最重要！沒有它就沒有顏色
+// 這裡不需要 import index.css 了，因為我們用了上面的 CDN
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
