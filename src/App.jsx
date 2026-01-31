@@ -14,7 +14,7 @@ import {
   doc, onSnapshot, query, orderBy, deleteDoc 
 } from "firebase/firestore";
 
-// ✅ Firebase Config
+// ✅ Firebase Config (您的設定)
 const firebaseConfig = {
   apiKey: "AIzaSyDUZeeaWvQZJORdDv4PdAHQK-SqXFIDsy4",
   authDomain: "eventpass-77522.firebaseapp.com",
@@ -33,10 +33,10 @@ try {
   console.error("Firebase Init Error:", error);
 }
 
-// 🔑 設定後台密碼
+// 🔑 後台密碼 (請務必記住是 admin)
 const ADMIN_PASSWORD = "admin"; 
 
-// --- 🔥 強制樣式注入器 (確保黑底) ---
+// --- 🔥 強制樣式注入器 ---
 const StyleInjector = () => {
   useEffect(() => {
     document.body.style.backgroundColor = "#000000";
@@ -56,7 +56,7 @@ const StyleInjector = () => {
 const translations = {
   zh: {
     title: "Tesla Annual Dinner",
-    sub: "",
+    sub: "2025 穩定版",
     guestMode: "參加者登記",
     guestDesc: "Guest Registration",
     adminMode: "工作人員入口",
@@ -114,7 +114,7 @@ const translations = {
   },
   en: {
     title: "Tesla Annual Dinner",
-    sub: "",
+    sub: "2025 Stable",
     guestMode: "Guest Registration",
     guestDesc: "For Attendees",
     adminMode: "Staff Portal",
@@ -250,20 +250,25 @@ const WheelComponent = ({ list, t, onDrawEnd }) => {
     );
 };
 
-// 🔥 Login View (修復輸入問題)
+// 🔥 Login View (已修復無法點擊問題)
 const LoginView = ({ t, onLogin, onBack }) => {
     const [pwd, setPwd] = useState('');
     const handleSubmit = (e) => {
         e.preventDefault();
-        if(pwd === ADMIN_PASSWORD) onLogin();
-        else { alert(t.wrongPwd); setPwd(''); }
+        // 嚴格比對密碼
+        if (pwd.trim() === ADMIN_PASSWORD) {
+            onLogin();
+        } else {
+            alert(t.wrongPwd);
+            setPwd('');
+        }
     };
 
     return (
       <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
         <div className="absolute top-[-20%] left-[-20%] w-[600px] h-[600px] bg-red-700/30 rounded-full blur-[120px] pointer-events-none"></div>
         <div className="absolute bottom-[-20%] right-[-20%] w-[600px] h-[600px] bg-neutral-800/30 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="relative bg-neutral-900/60 border border-white/10 p-10 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in duration-500">
+        <div className="relative bg-neutral-900/80 border border-white/20 p-10 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in duration-500 z-50">
           <button onClick={onBack} className="text-white/50 hover:text-white mb-8 flex items-center transition-colors text-sm uppercase tracking-widest"><ChevronLeft size={16} className="mr-1"/> {t.back}</button>
           <div className="text-center mb-8"><h2 className="text-3xl font-bold text-white mb-2 tracking-tight">{t.login}</h2></div>
           <form onSubmit={handleSubmit}>
@@ -271,19 +276,21 @@ const LoginView = ({ t, onLogin, onBack }) => {
                 type="password" 
                 autoFocus 
                 value={pwd}
-                onChange={e => setPwd(e.target.value)}
+                onChange={(e) => setPwd(e.target.value)}
                 placeholder={t.pwdPlace} 
                 className="w-full bg-white/5 border border-white/10 text-white p-4 rounded-xl mb-6 focus:ring-1 focus:ring-red-600 focus:border-red-600 outline-none transition-all text-center tracking-[0.3em] placeholder:tracking-normal placeholder:text-white/20"
             />
-            <button type="submit" className="w-full bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-900/40 transition-all active:scale-95 uppercase tracking-widest text-sm">{t.enter}</button>
+            <button type="submit" className="w-full bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-900/40 transition-all active:scale-95 uppercase tracking-widest text-sm">
+                {t.enter}
+            </button>
           </form>
-          <p className="text-center text-white/20 text-xs mt-4">Default: {ADMIN_PASSWORD}</p>
+          {/* 已移除密碼提示 */}
         </div>
       </div>
     );
 };
 
-// ... (GuestView 保持不變，省略) ...
+// ... (GuestView)
 const GuestView = ({ t, onBack, checkDuplicate }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({name:'',phone:'',email:'',company:''});
@@ -398,24 +405,19 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
   );
 };
 
-
-// ... (ProjectorView, AdminDashboard, App 主程式保持 V33 邏輯，整合如下) ...
-
+// ... (ProjectorView, AdminDashboard, App 主程式保持不變，下方為完整整合) ...
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize }) => {
     const [winner, setWinner] = useState(null);
     const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
-
     useEffect(() => {
         const handleKey = (e) => { if (winner && e.key === 'Enter') setWinner(null); };
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
     }, [winner]);
-
     const handleDrawEnd = async (winner) => {
         setWinner(winner);
         if (db) await addDoc(collection(db, "winners"), { attendeeId: winner.id, name: winner.name, phone: winner.phone, photo: winner.photo, prize: currentPrize || "Lucky Draw", wonAt: new Date().toISOString() });
     };
-
     const ConfettiInner = () => {
         const canvasRef = useRef(null);
         useEffect(() => {
@@ -426,7 +428,6 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize }) => {
         }, []);
         return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
     };
-
     return (
         <div className="min-h-screen bg-black text-white relative overflow-hidden flex flex-col items-center justify-center">
             <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black pointer-events-none"></div>
@@ -463,6 +464,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize }) => {
                     <div className="relative text-center w-full max-w-5xl px-4 animate-in zoom-in-50 duration-500 flex flex-col items-center">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-red-600/20 rounded-full blur-[120px] pointer-events-none"></div>
                         <h3 className="text-4xl font-bold text-yellow-400 mb-6 tracking-widest uppercase animate-pulse">{currentPrize || "WINNER"}</h3>
+                        <Trophy className="text-yellow-400 mb-8 drop-shadow-[0_0_50px_rgba(250,204,21,0.6)] animate-bounce" size={120} />
                         {winner.photo && <img src={winner.photo} className="w-80 h-80 rounded-full border-[10px] border-yellow-400 object-cover shadow-[0_0_50px_rgba(234,179,8,0.5)] mb-8 animate-in zoom-in duration-700"/>}
                         <h1 className="text-7xl md:text-9xl font-black text-white mb-8 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] scale-110">{winner.name}</h1>
                         <p className="text-white/30 text-sm mt-8">Press ENTER to continue</p>
@@ -523,8 +525,6 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
 
   const toggleCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: !person.checkedIn, checkInTime: !person.checkedIn ? new Date().toISOString() : null }); };
   const deletePerson = async (id) => { if(confirm('Delete user?') && db) await deleteDoc(doc(db, "attendees", id)); };
-
-  const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
 
   return (
     <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
@@ -628,6 +628,8 @@ export default function App() {
     if(attendees.some(x => normalizeEmail(x.email) === normalizeEmail(e))) return 'email';
     return null;
   };
+
+  const handleLoginSuccess = (targetView) => setView(targetView);
 
   if(view === 'landing') return (
     <div className="min-h-[100dvh] bg-neutral-950 flex flex-col items-center justify-center p-6 relative overflow-hidden text-white">
