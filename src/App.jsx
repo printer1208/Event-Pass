@@ -155,10 +155,10 @@ const Confetti = () => {
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
 };
 
-// --- 獨立頁面 ---
+// --- 獨立頁面 (全部強制置中 justify-center) ---
 
 const LoginView = ({ t, onLogin, onBack }) => (
-  <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4 relative overflow-hidden">
+  <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
     {/* 背景特效 */}
     <div className="absolute top-[-20%] left-[-20%] w-[600px] h-[600px] bg-red-600/20 rounded-full blur-[120px] pointer-events-none"></div>
     <div className="absolute bottom-[-20%] right-[-20%] w-[600px] h-[600px] bg-white/5 rounded-full blur-[120px] pointer-events-none"></div>
@@ -218,7 +218,7 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* 背景裝飾 */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-800/50 via-neutral-950 to-neutral-950 pointer-events-none"></div>
       
