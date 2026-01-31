@@ -148,7 +148,6 @@ const translations = {
   }
 };
 
-// --- 工具 ---
 const normalizePhone = (p) => String(p).replace(/[^0-9]/g, '');
 const normalizeEmail = (e) => String(e).trim().toLowerCase();
 
@@ -175,21 +174,6 @@ const compressImage = (source, isFile = true) => {
     });
 };
 
-// --- 組件 ---
-const Confetti = () => {
-  const canvasRef = useRef(null);
-  useEffect(() => {
-    const c = canvasRef.current;
-    const ctx = c.getContext('2d');
-    c.width = window.innerWidth; c.height = window.innerHeight;
-    const p = Array.from({length:200}).map(()=>({x:Math.random()*c.width, y:Math.random()*c.height,c:['#E82127','#FFFFFF','#808080'][Math.floor(Math.random()*3)],s:Math.random()*8+2,d:Math.random()*5}));
-    const draw = () => { ctx.clearRect(0,0,c.width,c.height); p.forEach(i=>{i.y+=i.s;i.x+=Math.sin(i.d);if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}ctx.fillStyle=i.c;ctx.beginPath();ctx.arc(i.x,i.y,i.s/2,0,Math.PI*2);ctx.fill();}); requestAnimationFrame(draw); };
-    draw();
-  }, []);
-  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
-};
-
-// 🔥 獨立抽獎輪盤組件
 const WheelComponent = ({ list, t, onDrawEnd }) => {
     const [rot, setRot] = useState(0);
     const [spin, setSpin] = useState(false);
@@ -212,34 +196,12 @@ const WheelComponent = ({ list, t, onDrawEnd }) => {
           <div className="absolute inset-0 rounded-full transition-transform duration-[4500ms] cubic-bezier(0.1, 0, 0.2, 1)" style={{ transform: `rotate(${rot}deg)` }}>
              {list.map((p, i) => {
                  const angle = (360 / list.length) * i;
-                 // 字體大小邏輯：人少字大，人多字小
-                 const fontSize = list.length > 30 ? 10 : list.length > 15 ? 12 : 14; 
                  return (
                      <div key={p.id} className="absolute top-1/2 left-1/2 w-12 h-12 -ml-6 -mt-6 rounded-full border-2 border-white shadow-lg overflow-hidden transform origin-center" style={{ transform: `rotate(${angle}deg) translate(0, -${WHEEL_RADIUS}px) rotate(-${angle}deg)` }}>
                          {p.photo ? <img src={p.photo} alt={p.name} className="w-full h-full object-cover"/> : <div className="w-full h-full bg-neutral-800 flex items-center justify-center text-[10px] font-bold text-white">{p.name.substring(0, 2).toUpperCase()}</div>}
                      </div>
                  );
              })}
-             
-             {/* 名字顯示環 (新增) */}
-             {list.map((p, i) => {
-                 const angle = (360 / list.length) * i;
-                 return (
-                     <div key={'name'+p.id} className="absolute top-1/2 left-1/2 text-white font-bold text-center origin-bottom"
-                          style={{
-                              height: WHEEL_RADIUS - 40,
-                              transform: `rotate(${angle}deg) translate(0, -${WHEEL_RADIUS/2}px)`,
-                              width: '20px',
-                              marginLeft: '-10px',
-                              marginTop: `-${WHEEL_RADIUS/2}px`,
-                              fontSize: '10px',
-                              opacity: 0.8
-                          }}>
-                        {/* 這裡不顯示名字以保持乾淨，名字已整合在頭像上或下方 */}
-                     </div>
-                 );
-             })}
-             
              <div className="absolute inset-0 border-4 border-dashed border-white/10 rounded-full m-12"></div>
           </div>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-neutral-900 rounded-full shadow-2xl flex items-center justify-center border-4 border-white/20 z-20">
@@ -253,7 +215,6 @@ const WheelComponent = ({ list, t, onDrawEnd }) => {
     );
 };
 
-// 🔥 Login View
 const LoginView = ({ t, onLogin, onBack }) => (
   <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
     <div className="absolute top-[-20%] left-[-20%] w-[600px] h-[600px] bg-red-700/30 rounded-full blur-[120px] pointer-events-none"></div>
@@ -269,7 +230,6 @@ const LoginView = ({ t, onLogin, onBack }) => (
   </div>
 );
 
-// 🔥 Guest View (Camera Fixed)
 const GuestView = ({ t, onBack, checkDuplicate }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({name:'',phone:'',email:'',company:''});
@@ -285,28 +245,17 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
   const startCamera = async () => {
       setErr('');
       try {
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-              video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } 
-          });
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } });
           setIsCameraOpen(true);
-          setTimeout(() => {
-              if (videoRef.current) {
-                  videoRef.current.srcObject = stream;
-                  videoRef.current.play().catch(e => console.log("Play error:", e));
-              }
-          }, 100);
-      } catch (e) {
-          console.error("Camera failed, fallback to input", e);
-          fileInputRef.current.click(); 
-      }
+          setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log(e)); } }, 100);
+      } catch (e) { fileInputRef.current.click(); }
   };
 
   const takePhoto = async () => {
       if(!videoRef.current) return;
       const canvas = document.createElement('canvas');
       const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight);
-      canvas.width = size;
-      canvas.height = size;
+      canvas.width = size; canvas.height = size;
       const ctx = canvas.getContext('2d');
       const xOffset = (videoRef.current.videoWidth - size) / 2;
       const yOffset = (videoRef.current.videoHeight - size) / 2;
@@ -321,32 +270,21 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
 
   const handleFileChange = async (e) => {
       const file = e.target.files[0];
-      if(file) {
-          const compressed = await compressImage(file, true);
-          setPhoto(compressed);
-          setErr('');
-      }
+      if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); }
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErr(''); 
+    e.preventDefault(); setErr(''); 
     if(!photo) { setErr(t.errPhoto); return; }
     setLoading(true);
-    const cleanPhone = normalizePhone(form.phone);
-    const cleanEmail = normalizeEmail(form.email);
+    const cleanPhone = normalizePhone(form.phone); const cleanEmail = normalizeEmail(form.email);
     const dup = checkDuplicate(cleanPhone, cleanEmail);
     if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; }
     if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; }
-
     try {
         if (!db) throw new Error("Firebase not initialized");
-        const docRef = await addDoc(collection(db, "attendees"), {
-            name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company,
-            photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString()
-        });
-        setNewId(docRef.id);
-        setStep(2);
+        const docRef = await addDoc(collection(db, "attendees"), { name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() });
+        setNewId(docRef.id); setStep(2);
     } catch (error) { console.error(error); setErr("Network Error."); }
     setLoading(false);
   };
@@ -364,7 +302,6 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
           {step === 1 ? (
             <form onSubmit={handleSubmit} className="space-y-5">
               {err && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm flex items-center animate-pulse"><AlertTriangle size={16} className="mr-2"/>{err}</div>}
-              
               <div className="flex flex-col items-center mb-6">
                   {isCameraOpen ? (
                       <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black border-2 border-red-500 shadow-2xl">
@@ -384,7 +321,6 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
                   )}
                   <input type="file" accept="image/*" capture="user" ref={fileInputRef} className="hidden" onChange={handleFileChange}/>
               </div>
-
               {!isCameraOpen && (
                   <div className="space-y-4">
                     {['name', 'phone', 'email'].map((field) => (
@@ -414,7 +350,123 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
   );
 };
 
-// 🔥 Projector View
+const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, setDrawHistory }) => {
+  const [tab, setTab] = useState('scan');
+  const [isScan, setIsScan] = useState(false);
+  const [scanRes, setScanRes] = useState(null);
+  const lastScanTimeRef = useRef(0);
+  const lastScannedCodeRef = useRef('');
+
+  const handleScan = useCallback(async (text) => {
+    const now = Date.now();
+    if (now - lastScanTimeRef.current < 1500) return;
+    if (text === lastScannedCodeRef.current && now - lastScanTimeRef.current < 5000) return;
+    try {
+      let data = JSON.parse(text);
+      lastScanTimeRef.current = now; lastScannedCodeRef.current = text;
+      const processResult = (resultType, msg, person) => { setScanRes({ type: resultType, msg, p: person }); setTimeout(() => setScanRes(null), 2000); };
+      let targetId = data.id || data;
+      if (!targetId && data.type === 'new_reg') {
+          const cleanP = normalizePhone(data.phone);
+          const p = attendees.find(x => x.phone === cleanP);
+          if (p) targetId = p.id;
+      }
+      const person = attendees.find(x => x.id === targetId);
+      if (!person) processResult('error', t.notFound, null);
+      else if (person.checkedIn) processResult('duplicate', t.duplicate, person);
+      else {
+          if (!db) return;
+          await updateDoc(doc(db, "attendees", person.id), { checkedIn: true, checkInTime: new Date().toISOString() });
+          processResult('success', t.success, person);
+      }
+    } catch (e) { console.error(e); }
+  }, [attendees, t]);
+
+  useEffect(() => {
+    if (!isScan || tab !== 'scan') return;
+    let s; const init = () => { if(!window.Html5QrcodeScanner)return; s=new window.Html5QrcodeScanner("reader",{fps:15,qrbox:{width:250,height:250},aspectRatio:1.0,showTorchButtonIfSupported:true},false); s.render(handleScan,()=>{}); };
+    if(window.Html5QrcodeScanner) init(); else { const sc = document.createElement('script'); sc.src = "https://unpkg.com/html5-qrcode"; sc.onload = init; document.body.appendChild(sc); }
+    return () => { if(s) try{s.clear()}catch(e){} };
+  }, [isScan, tab, handleScan]);
+
+  const toggleCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: !person.checkedIn, checkInTime: !person.checkedIn ? new Date().toISOString() : null }); };
+  const deletePerson = async (id) => { if(confirm('Delete user?') && db) await deleteDoc(doc(db, "attendees", id)); };
+
+  const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
+
+  return (
+    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
+      <header className="bg-neutral-900/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+        <div className="flex items-center gap-3 font-bold text-xl"><div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center text-white"><QrCode size={18}/></div> {t.adminMode}</div>
+        <button onClick={onLogout} className="text-white/50 hover:text-red-500 text-sm flex items-center gap-2 transition-colors"><LogOut size={16}/> {t.logout}</button>
+      </header>
+      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col items-center">
+        <div className="flex justify-center mb-8 bg-white/5 p-1 rounded-2xl shadow-lg border border-white/10 w-fit backdrop-blur-sm">
+          {[ {id:'scan',icon:ScanLine,l:t.scan}, {id:'draw',icon:Trophy,l:t.draw}, {id:'list',icon:Users,l:t.list} ].map(i=> (
+            <button key={i.id} onClick={()=>{setTab(i.id);setIsScan(false);setScanRes(null)}} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all text-sm tracking-wide ${tab===i.id?'bg-red-600 text-white shadow-md':'text-white/50 hover:bg-white/10 hover:text-white'}`}><i.icon size={16}/> {i.l}</button>
+          ))}
+        </div>
+        <div className="bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl w-full min-h-[600px] overflow-hidden relative flex flex-col items-center justify-center">
+          {tab === 'scan' && (
+            <div className="h-full w-full flex flex-col items-center justify-center p-8">
+              {isScan ? (
+                <div className="bg-black rounded-3xl overflow-hidden relative w-full max-w-lg shadow-2xl border border-white/20">
+                  <div id="reader" className="w-full"></div>
+                  {scanRes && (
+                    <div className={`absolute inset-0 flex flex-col items-center justify-center backdrop-blur-md transition-all duration-300 ${scanRes.type==='success'?'bg-emerald-600/90':scanRes.type==='duplicate'?'bg-amber-600/90':'bg-red-600/90'}`}>
+                        <div className="bg-white text-black p-6 rounded-full shadow-lg mb-4 animate-bounce">{scanRes.type==='success' ? <CheckCircle size={48}/> : scanRes.type==='duplicate' ? <AlertTriangle size={48}/> : <XCircle size={48}/>}</div>
+                        <h3 className="text-3xl font-black text-white mb-2 drop-shadow-md text-center px-4 tracking-widest">{scanRes.msg}</h3>
+                        {scanRes.p && <p className="text-white text-xl font-bold border-b-2 border-white pb-1">{scanRes.p.name}</p>}
+                    </div>
+                  )}
+                  <button onClick={()=>setIsScan(false)} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 hover:bg-red-600 text-white border border-white/30 backdrop-blur px-6 py-2 rounded-full text-sm transition-all z-20">{t.stopCam}</button>
+                </div>
+              ) : (
+                <button onClick={()=>setIsScan(true)} className="group flex flex-col items-center justify-center w-full max-w-md h-64 border-2 border-dashed border-white/20 rounded-3xl hover:bg-white/5 hover:border-red-500/50 transition-all cursor-pointer">
+                  <div className="bg-white/10 text-white w-20 h-20 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-red-600 transition-all"><Camera size={40}/></div>
+                  <span className="font-bold text-white/50 group-hover:text-white transition-colors">{t.scanCam}</span>
+                </button>
+              )}
+            </div>
+          )}
+          {tab === 'draw' && (
+            <div className="h-full w-full flex flex-col items-center justify-center p-8">
+              {eligible.length < 2 ? <div className="text-center text-white/30"><Trophy size={80} className="mx-auto mb-6 opacity-20"/><p className="text-xl">{t.needMore}</p></div> : <WheelComponent list={eligible} t={t} onDrawEnd={async (winner) => { if (db) await addDoc(collection(db, "winners"), { attendeeId: winner.id, name: winner.name, phone: winner.phone, photo: winner.photo, wonAt: new Date().toISOString() }); }} />}
+            </div>
+          )}
+          {tab === 'list' && (
+            <div className="h-full w-full flex flex-col">
+              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/20">
+                <div className="font-bold text-white flex items-center gap-3"><span className="text-white/50 text-sm font-normal">{t.total}: {attendees.length}</span> <span className="w-[1px] h-4 bg-white/20"></span> <span className="text-emerald-400">{t.arrived}: {attendees.filter(x=>x.checkedIn).length}</span></div>
+                <button onClick={()=>{const csv="Name,Phone,Email,Status\n"+attendees.map(p=>`${p.name},${p.phone},${p.email},${p.checkedIn?'Checked':'Pending'}`).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:'text/csv'}));a.download="list.csv";a.click();}} className="text-xs font-bold bg-white/10 border border-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/20 flex items-center gap-2 transition-colors"><Download size={14}/> CSV</button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                <table className="w-full text-left border-collapse">
+                  <thead className="text-xs text-white/40 uppercase tracking-widest border-b border-white/10"><tr><th className="p-4 pl-6">Avatar</th><th className="p-4">{t.name}</th><th className="p-4">{t.phone}</th><th className="p-4">{t.email}</th><th className="p-4 text-right">{t.checkin}</th></tr></thead>
+                  <tbody className="divide-y divide-white/5">
+                    {attendees.map(p=>(
+                      <tr key={p.id} className="hover:bg-white/5 transition-colors group">
+                        <td className="p-4 pl-6">{p.photo ? <img src={p.photo} alt="User" className="w-10 h-10 rounded-full object-cover border border-white/20"/> : <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"><User size={16}/></div>}</td>
+                        <td className="p-4 font-bold text-white">{p.name}</td>
+                        <td className="p-4 text-white/60 text-sm font-mono">{p.phone}</td>
+                        <td className="p-4 text-white/60 text-sm">{p.email}</td>
+                        <td className="p-4 text-right flex justify-end gap-2">
+                          <button onClick={()=>toggleCheckIn(p)} className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${p.checkedIn?'bg-emerald-500/20 text-emerald-400 border-emerald-500/50':'bg-white/5 text-white/40 border-white/10 hover:bg-white/10 hover:text-white'}`}>{p.checkedIn?t.checkin:t.cancel}</button>
+                          <button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={16}/></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+};
+
 const ProjectorView = ({ t, attendees, drawHistory, onBack }) => {
     const [winner, setWinner] = useState(null);
     const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
@@ -481,150 +533,6 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack }) => {
     );
 };
 
-// 🔥 Admin Dashboard
-const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, setDrawHistory }) => {
-  const [tab, setTab] = useState('scan');
-  const [isScan, setIsScan] = useState(false);
-  const [scanRes, setScanRes] = useState(null);
-  const lastScanTimeRef = useRef(0);
-  const lastScannedCodeRef = useRef('');
-
-  const handleScan = useCallback(async (text) => {
-    const now = Date.now();
-    if (now - lastScanTimeRef.current < 1500) return;
-    if (text === lastScannedCodeRef.current && now - lastScanTimeRef.current < 5000) return;
-    try {
-      let data = JSON.parse(text);
-      lastScanTimeRef.current = now; lastScannedCodeRef.current = text;
-      const processResult = (resultType, msg, person) => { setScanRes({ type: resultType, msg, p: person }); setTimeout(() => setScanRes(null), 2000); };
-      let targetId = data.id || data;
-      if (!targetId && data.type === 'new_reg') {
-          const cleanP = normalizePhone(data.phone);
-          const p = attendees.find(x => x.phone === cleanP);
-          if (p) targetId = p.id;
-      }
-      const person = attendees.find(x => x.id === targetId);
-      if (!person) processResult('error', t.notFound, null);
-      else if (person.checkedIn) processResult('duplicate', t.duplicate, person);
-      else {
-          if (!db) return;
-          await updateDoc(doc(db, "attendees", person.id), { checkedIn: true, checkInTime: new Date().toISOString() });
-          processResult('success', t.success, person);
-      }
-    } catch (e) { console.error(e); }
-  }, [attendees, t]);
-
-  useEffect(() => {
-    if (!isScan || tab !== 'scan') return;
-    let s; const init = () => { if(!window.Html5QrcodeScanner)return; s=new window.Html5QrcodeScanner("reader",{fps:15,qrbox:{width:250,height:250},aspectRatio:1.0,showTorchButtonIfSupported:true},false); s.render(handleScan,()=>{}); };
-    if(window.Html5QrcodeScanner) init(); else { const sc = document.createElement('script'); sc.src = "https://unpkg.com/html5-qrcode"; sc.onload = init; document.body.appendChild(sc); }
-    return () => { if(s) try{s.clear()}catch(e){} };
-  }, [isScan, tab, handleScan]);
-
-  const toggleCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: !person.checkedIn, checkInTime: !person.checkedIn ? new Date().toISOString() : null }); };
-  const deletePerson = async (id) => { if(confirm('Delete user?') && db) await deleteDoc(doc(db, "attendees", id)); };
-
-  const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
-
-  return (
-    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
-      <header className="bg-neutral-900/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-        <div className="flex items-center gap-3 font-bold text-xl"><div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center text-white"><QrCode size={18}/></div> {t.adminMode}</div>
-        <button onClick={onLogout} className="text-white/50 hover:text-red-500 text-sm flex items-center gap-2 transition-colors"><LogOut size={16}/> {t.logout}</button>
-      </header>
-      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col items-center">
-        <div className="flex justify-center mb-8 bg-white/5 p-1 rounded-2xl shadow-lg border border-white/10 w-fit backdrop-blur-sm">
-          {[ {id:'scan',icon:ScanLine,l:t.scan}, {id:'draw',icon:Trophy,l:t.draw}, {id:'list',icon:Users,l:t.list} ].map(i=> (
-            <button key={i.id} onClick={()=>{setTab(i.id);setIsScan(false);setScanRes(null)}} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all text-sm tracking-wide ${tab===i.id?'bg-red-600 text-white shadow-md':'text-white/50 hover:bg-white/10 hover:text-white'}`}><i.icon size={16}/> {i.l}</button>
-          ))}
-        </div>
-        <div className="bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl w-full min-h-[600px] overflow-hidden relative flex flex-col items-center justify-center">
-          {tab === 'scan' && (
-            <div className="h-full w-full flex flex-col items-center justify-center p-8">
-              {isScan ? (
-                <div className="bg-black rounded-3xl overflow-hidden relative w-full max-w-lg shadow-2xl border border-white/20">
-                  <div id="reader" className="w-full"></div>
-                  {scanRes && (
-                    <div className={`absolute inset-0 flex flex-col items-center justify-center backdrop-blur-md transition-all duration-300 ${scanRes.type==='success'?'bg-emerald-600/90':scanRes.type==='duplicate'?'bg-amber-600/90':'bg-red-600/90'}`}>
-                        <div className="bg-white text-black p-6 rounded-full shadow-lg mb-4 animate-bounce">
-                            {scanRes.type==='success' ? <CheckCircle size={48}/> : scanRes.type==='duplicate' ? <AlertTriangle size={48}/> : <XCircle size={48}/>}
-                        </div>
-                        <h3 className="text-3xl font-black text-white mb-2 drop-shadow-md text-center px-4 tracking-widest">{scanRes.msg}</h3>
-                        {scanRes.p && <p className="text-white text-xl font-bold border-b-2 border-white pb-1">{scanRes.p.name}</p>}
-                    </div>
-                  )}
-                  <button onClick={()=>setIsScan(false)} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 hover:bg-red-600 text-white border border-white/30 backdrop-blur px-6 py-2 rounded-full text-sm transition-all z-20">{t.stopCam}</button>
-                </div>
-              ) : (
-                <button onClick={()=>setIsScan(true)} className="group flex flex-col items-center justify-center w-full max-w-md h-64 border-2 border-dashed border-white/20 rounded-3xl hover:bg-white/5 hover:border-red-500/50 transition-all cursor-pointer">
-                  <div className="bg-white/10 text-white w-20 h-20 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 group-hover:bg-red-600 transition-all"><Camera size={40}/></div>
-                  <span className="font-bold text-white/50 group-hover:text-white transition-colors">{t.scanCam}</span>
-                </button>
-              )}
-            </div>
-          )}
-          {tab === 'draw' && (
-            <div className="h-full w-full flex flex-col items-center justify-center p-8">
-              {eligible.length < 2 ? <div className="text-center text-white/30"><Trophy size={80} className="mx-auto mb-6 opacity-20"/><p className="text-xl">{t.needMore}</p></div> : <WheelComponent list={eligible} t={t} onDrawEnd={async (winner) => {
-                   if (db) await addDoc(collection(db, "winners"), { attendeeId: winner.id, name: winner.name, phone: winner.phone, photo: winner.photo, wonAt: new Date().toISOString() });
-              }} />}
-              
-              {drawHistory.length > 0 && (
-                  <div className="mt-8 pt-6 border-t border-white/10 w-full max-w-4xl">
-                      <h4 className="text-sm font-bold text-white/40 uppercase mb-4 tracking-widest text-center flex items-center justify-center gap-2"><Trophy size={14}/> {t.winnersList}</h4>
-                      <div className="flex flex-wrap gap-3 justify-center">
-                          {drawHistory.map((h, i) => (
-                              <span key={h.id} className="bg-gradient-to-r from-yellow-600 to-yellow-800 text-white px-4 py-2 rounded-full text-sm font-bold border border-yellow-500/30 shadow-lg flex items-center gap-2 animate-in zoom-in">
-                                  {h.photo && <img src={h.photo} alt="av" className="w-6 h-6 rounded-full border border-white object-cover"/>}
-                                  {h.name}
-                              </span>
-                          ))}
-                      </div>
-                  </div>
-              )}
-            </div>
-          )}
-          {tab === 'list' && (
-            <div className="h-full w-full flex flex-col">
-              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/20">
-                <div className="font-bold text-white flex items-center gap-3"><span className="text-white/50 text-sm font-normal">{t.total}: {attendees.length}</span> <span className="w-[1px] h-4 bg-white/20"></span> <span className="text-emerald-400">{t.arrived}: {attendees.filter(x=>x.checkedIn).length}</span></div>
-                <button onClick={()=>{const csv="Name,Phone,Email,Status\n"+attendees.map(p=>`${p.name},${p.phone},${p.email},${p.checkedIn?'Checked':'Pending'}`).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:'text/csv'}));a.download="list.csv";a.click();}} className="text-xs font-bold bg-white/10 border border-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/20 flex items-center gap-2 transition-colors"><Download size={14}/> CSV</button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4">
-                <table className="w-full text-left border-collapse">
-                  <thead className="text-xs text-white/40 uppercase tracking-widest border-b border-white/10"><tr><th className="p-4 pl-6">Avatar</th><th className="p-4">{t.name}</th><th className="p-4">{t.phone}</th><th className="p-4">{t.email}</th><th className="p-4 text-right">{t.checkin}</th></tr></thead>
-                  <tbody className="divide-y divide-white/5">
-                    {attendees.map(p=>{
-                        const isWinner = drawHistory.some(h => h.attendeeId === p.id);
-                        return (
-                          <tr key={p.id} className={`transition-colors group ${isWinner ? 'bg-yellow-500/10' : 'hover:bg-white/5'}`}>
-                            <td className="p-4 pl-6">
-                                {p.photo ? <img src={p.photo} alt="User" className="w-10 h-10 rounded-full object-cover border border-white/20"/> : <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"><User size={16}/></div>}
-                            </td>
-                            <td className="p-4 font-bold text-white flex items-center gap-2">
-                                {p.name}
-                                {isWinner && <Trophy size={16} className="text-yellow-500 fill-current animate-pulse"/>}
-                            </td>
-                            <td className="p-4 text-white/60 text-sm font-mono">{p.phone}</td>
-                            <td className="p-4 text-white/60 text-sm">{p.email}</td>
-                            <td className="p-4 text-right flex justify-end gap-2">
-                              <button onClick={()=>toggleCheckIn(p)} className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${p.checkedIn?'bg-emerald-500/20 text-emerald-400 border-emerald-500/50':'bg-white/5 text-white/40 border-white/10 hover:bg-white/10 hover:text-white'}`}>{p.checkedIn?t.checkin:t.cancel}</button>
-                              <button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={16}/></button>
-                            </td>
-                          </tr>
-                        );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      </main>
-    </div>
-  );
-};
-
 export default function App() {
   const [lang, setLang] = useState('zh'); const t = translations[lang];
   const [view, setView] = useState('landing');
@@ -632,6 +540,10 @@ export default function App() {
   const [drawHistory, setDrawHistory] = useState([]);
 
   useEffect(() => {
+    // 💥 這裡加上一個強制黑底的 JS，作為第三重保險 💥
+    document.body.style.backgroundColor = "#000000";
+    document.body.style.color = "#ffffff";
+    
     if (!db) return;
     const q = query(collection(db, "attendees"), orderBy("createdAt", "desc"));
     const unsubAttendees = onSnapshot(q, (snapshot) => { setAttendees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
@@ -679,8 +591,8 @@ export default function App() {
     </div>
   );
   if(view === 'guest') return <GuestView t={t} onBack={()=>setView('landing')} checkDuplicate={checkDuplicate} />;
-  if(view === 'login_admin') return <LoginView t={t} onLogin={()=>setView('admin')} onBack={()=>setView('landing')} />;
-  if(view === 'login_projector') return <LoginView t={t} onLogin={()=>setView('projector')} onBack={()=>setView('landing')} />;
+  if(view === 'login_admin') return <LoginView t={t} onLogin={()=>handleLoginSuccess('admin')} onBack={()=>setView('landing')} />;
+  if(view === 'login_projector') return <LoginView t={t} onLogin={()=>handleLoginSuccess('projector')} onBack={()=>setView('landing')} />;
   if(view === 'admin') return <AdminDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} setAttendees={setAttendees} drawHistory={drawHistory} setDrawHistory={setDrawHistory} />;
   if(view === 'projector') return <ProjectorView t={t} onBack={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} />;
 }

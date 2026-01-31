@@ -3,18 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Tesla Annual Dinner</title>
     
-    <!-- 🔥【萬能救星】直接從網路載入 Tailwind 樣式引擎，無視本地錯誤 -->
+    <!-- 🔥 關鍵：直接從網路載入樣式引擎 (Tailwind CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 強制蓋過所有設定的黑底 -->
+    <!-- 🔥 關鍵：強制設定黑底設定 (CSS) -->
     <style>
-      body, html { 
-        background-color: #000000 !important; 
+      html, body {
+        background-color: #000000 !important;
         color: white !important;
         margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow-x: hidden;
+      }
+      #root {
+        width: 100%;
         height: 100%;
       }
     </style>
