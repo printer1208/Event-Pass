@@ -5,7 +5,7 @@ import {
   ArrowRight, UserPlus, LogOut, Globe, Mail,
   Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
   Cloud, Zap, Image as ImageIcon, MonitorPlay, Aperture, Gift,
-  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw
+  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid
 } from 'lucide-react';
 
 // --- Firebase 模組 ---
@@ -36,7 +36,7 @@ try {
 
 const ADMIN_PASSWORD = "admin"; 
 
-// --- Style Injector ---
+// --- 🔥 強制樣式注入器 ---
 const StyleInjector = () => {
   useEffect(() => {
     document.body.style.backgroundColor = "#000000";
@@ -55,31 +55,33 @@ const StyleInjector = () => {
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 最終場控版",
-    guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
+    title: "Tesla Annual Dinner", sub: "2025 完美場控版",
+    guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台 (抽獎)", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
-    regTitle: "賓客登記", regSub: "資料將即時同步至後台",
-    name: "姓名", phone: "電話", email: "Email",
+    regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
+    name: "姓名", phone: "電話", email: "電子郵件",
     photoBtn: "開啟相機 / 自拍", generateBtn: "確認登記",
     yourCode: "入場憑證", showToStaff: "請出示給工作人員掃描",
     next: "完成", scan: "極速掃描", draw: "抽獎控制", prizeList: "獎品管理",
     list: "賓客名單", seating: "座位查詢", total: "總人數", arrived: "已到場",
-    scanCam: "開啟鏡頭", stopCam: "停止", manual: "手動輸入",
-    success: "簽到成功", duplicate: "已入場", error: "無效", regSuccess: "登記成功",
+    scanCam: "啟動掃描鏡頭", stopCam: "停止", manual: "手動輸入 ID",
+    success: "簽到成功", duplicate: "重複：此人已入場", error: "無效代碼",
+    regSuccess: "登記成功", notFound: "查無此人",
+    errPhone: "錯誤：此電話號碼已存在", errEmail: "錯誤：此 Email 已存在",
+    errPhoto: "請拍攝或上傳一張照片！", errIncomplete: "請填寫所有必填欄位",
     drawBtn: "啟動抽獎 (Space)", running: "搜尋中...", winner: "✨ 恭喜中獎 ✨", claim: "確認領獎 (Enter)",
     needMore: "等待更多賓客...", export: "導出", checkin: "簽到", cancel: "取消", logout: "登出",
     prizeTitle: "獎品池", setPrize: "新增", prizePlace: "獎品名稱", currentPrize: "正在抽取",
     markWin: "設為得主", resetWinner: "重置", select: "選取",
-    importCSV: "導入 CSV", downloadTemp: "範本", importSuccess: "成功",
+    importCSV: "導入 CSV", downloadTemp: "下載範本", importSuccess: "導入成功！",
     table: "桌號", seat: "座位", addSeat: "新增座位", searchSeat: "搜尋姓名/電話/桌號...",
-    notFound: "查無此人", autoNext: "自動跳轉...",
-    errPhoto: "請拍攝或上傳照片"
+    yourSeat: "您的座位", seatTBD: "待定"
   },
   en: {
     title: "Tesla Annual Dinner", sub: "2025 Final Control",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
-    regTitle: "Register", regSub: "Syncs to cloud instantly",
+    regTitle: "Register", regSub: "Seat assigned automatically",
     name: "Name", phone: "Phone", email: "Email",
     photoBtn: "Photo", generateBtn: "Submit",
     yourCode: "Entry Pass", showToStaff: "Show to Staff",
@@ -87,14 +89,13 @@ const translations = {
     list: "Guest List", seating: "Seating", total: "Total", arrived: "Arrived",
     scanCam: "Scan", stopCam: "Stop", manual: "Manual Input",
     success: "Success", duplicate: "Duplicate", error: "Invalid", regSuccess: "Registered",
-    drawBtn: "Start (Space)", running: "Running...", winner: "WINNER", claim: "Confirm (Enter)",
+    drawBtn: "Start (Space)", running: "Searching...", winner: "WINNER", claim: "Confirm (Enter)",
     needMore: "Waiting...", export: "Export", checkin: "Check-in", cancel: "Cancel", logout: "Logout",
     prizeTitle: "Prizes", setPrize: "Add", prizePlace: "Prize Name", currentPrize: "Drawing",
     markWin: "Mark Win", resetWinner: "Reset", select: "Select",
     importCSV: "Import", downloadTemp: "Template", importSuccess: "Done",
     table: "Table", seat: "Seat", addSeat: "Add Seat", searchSeat: "Search...",
-    notFound: "Not Found", autoNext: "Auto Next...",
-    errPhoto: "Photo required"
+    yourSeat: "Your Seat", seatTBD: "TBD"
   }
 };
 
@@ -171,7 +172,7 @@ const SoundController = {
   }
 };
 
-// --- Galaxy Canvas (V53: 縮小照片尺寸) ---
+// --- Galaxy Canvas (Visuals Fix) ---
 const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
     const canvasRef = useRef(null);
     const [isRunning, setIsRunning] = useState(false);
@@ -183,22 +184,28 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
         const canvas = canvasRef.current;
         if (!canvas || list.length === 0) return;
         const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        
+        // 修正：動態設定 Canvas 大小，避免拉伸
+        const resize = () => {
+            canvas.width = canvas.clientWidth;
+            canvas.height = canvas.clientHeight;
+        };
+        resize();
+        window.addEventListener('resize', resize);
 
         const cols = Math.ceil(Math.sqrt(list.length * 1.5));
-        // 🔥 修改：縮小照片尺寸 (除以2)
-        const size = Math.max(30, (canvas.width / cols) * 0.5); 
+        const size = Math.max(50, canvas.width / cols);
 
         particles.current = list.map((p, i) => {
             const img = new Image();
+            // Fallback avatar if photo missing
             img.src = p.photo || `https://ui-avatars.com/api/?name=${p.name}&background=random&color=fff&size=128`;
             return {
                 id: p.id,
-                x: (i % cols) * size * 2 + 50, // 增加間距
-                y: Math.floor(i / cols) * size * 2 + 50,
-                targetX: (i % cols) * size * 2 + 50,
-                targetY: Math.floor(i / cols) * size * 2 + 50,
+                x: (i % cols) * size, 
+                y: Math.floor(i / cols) * size,
+                targetX: (i % cols) * size,
+                targetY: Math.floor(i / cols) * size,
                 vx: 0, vy: 0,
                 size: size,
                 img: img,
@@ -207,32 +214,50 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
         });
 
         const render = () => {
-            ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // 清除畫布，使用透明背景
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
             particles.current.forEach(p => {
                 if (mode.current === 'galaxy') {
                     p.x += p.vx; p.y += p.vy;
                     if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
                     if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
                 } else {
-                    p.x += (p.targetX - p.x) * 0.1; p.y += (p.targetY - p.y) * 0.1;
+                    p.x += (p.targetX - p.x) * 0.1;
+                    p.y += (p.targetY - p.y) * 0.1;
                 }
-                ctx.save();
-                ctx.beginPath(); ctx.arc(p.x + p.size/2, p.y + p.size/2, p.size/2 - 2, 0, Math.PI * 2); ctx.clip();
-                if (p.img.complete) ctx.drawImage(p.img, p.x, p.y, p.size, p.size);
-                else { ctx.fillStyle = '#333'; ctx.fillRect(p.x, p.y, p.size, p.size); }
-                ctx.restore();
+                
+                // 繪製
+                if (p.img.complete) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(p.x + p.size/2, p.y + p.size/2, p.size/2 - 2, 0, Math.PI * 2);
+                    ctx.clip();
+                    ctx.drawImage(p.img, p.x, p.y, p.size, p.size);
+                    ctx.restore();
+                } else {
+                    // 載入失敗或未載入時的佔位符
+                    ctx.fillStyle = '#333';
+                    ctx.fillRect(p.x, p.y, p.size, p.size);
+                }
             });
             frameId.current = requestAnimationFrame(render);
         };
         render();
-        return () => cancelAnimationFrame(frameId.current);
+        return () => { 
+            cancelAnimationFrame(frameId.current);
+            window.removeEventListener('resize', resize);
+        };
     }, [list]);
 
     const start = () => {
         if(list.length < 2) return;
         setIsRunning(true);
         mode.current = 'galaxy';
-        particles.current.forEach(p => { p.vx = (Math.random() - 0.5) * 25; p.vy = (Math.random() - 0.5) * 25; });
+        particles.current.forEach(p => { 
+            p.vx = (Math.random() - 0.5) * 30; 
+            p.vy = (Math.random() - 0.5) * 30; 
+        });
         SoundController.startSuspense();
         setTimeout(stop, 5000);
     };
@@ -243,7 +268,8 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
         setIsRunning(false);
         mode.current = 'mosaic';
         SoundController.playWin();
-        setTimeout(() => onDrawEnd(winner), 800);
+        // 延遲觸發，讓視覺有暫停感
+        setTimeout(() => onDrawEnd(winner), 500);
     };
 
     useEffect(() => {
@@ -253,9 +279,9 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
     }, [isRunning, list]);
 
     return (
-        <div className="fixed inset-0 z-0">
-            <canvas ref={canvasRef} className="block w-full h-full" />
-            {!isRunning && <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50"><button onClick={start} className="bg-red-600 text-white px-12 py-4 rounded-full font-bold text-2xl shadow-2xl border border-white/20 uppercase tracking-widest hover:scale-105 transition-transform">{t.drawBtn}</button></div>}
+        <div className="w-full h-full relative">
+            <canvas ref={canvasRef} className="w-full h-full block" />
+            {!isRunning && <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50"><button onClick={start} className="bg-red-600 text-white px-12 py-4 rounded-full font-bold text-2xl shadow-2xl border border-white/20 uppercase tracking-widest hover:scale-105 transition-transform">{t.drawBtn}</button></div>}
             {isRunning && <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none"><h1 className="text-8xl font-black text-white drop-shadow-[0_0_30px_rgba(232,33,39,0.8)] animate-pulse uppercase tracking-widest">{t.running}</h1></div>}
         </div>
     );
@@ -274,7 +300,9 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                 // 自動跳下一獎
                 if (currentPrize && prizes.length > 0) {
                     const currentIdx = prizes.findIndex(p => p.name === currentPrize);
+                    // 尋找下一個未有得主的獎品 (從當前索引開始往後找)
                     const nextAvailablePrize = prizes.find((p, idx) => idx > currentIdx && !drawHistory.some(h => h.prize === p.name));
+                    
                     if (nextAvailablePrize && db) {
                         await setDoc(doc(db, "config", "settings"), { currentPrize: nextAvailablePrize.name }, { merge: true });
                     }
@@ -287,7 +315,12 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
 
     const handleDrawEnd = async (w) => {
         setWinner(w);
-        if (db) await addDoc(collection(db, "winners"), { attendeeId: w.id, name: w.name, phone: w.phone, photo: w.photo, table: w.table, seat: w.seat, prize: currentPrize || "Grand Prize", wonAt: new Date().toISOString() });
+        if (db) await addDoc(collection(db, "winners"), { 
+            attendeeId: w.id, name: w.name, phone: w.phone, photo: w.photo, 
+            table: w.table, seat: w.seat, 
+            prize: currentPrize || "Grand Prize", 
+            wonAt: new Date().toISOString() 
+        });
     };
 
     const ConfettiInner = () => {
@@ -302,37 +335,68 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     };
 
     return (
-        <div className="min-h-screen bg-black text-white relative overflow-hidden flex flex-col items-center justify-center">
+        <div className="min-h-screen bg-black text-white relative flex flex-col items-center">
+            {/* 1. Header (20%) */}
             <button onClick={onBack} className="absolute top-6 left-6 text-white/30 hover:text-white z-50 transition-colors"><ChevronLeft size={24}/></button>
-            <div className="absolute top-10 left-0 right-0 z-40 text-center">
+            <div className="h-[20vh] w-full flex flex-col items-center justify-end z-40 pb-4 bg-gradient-to-b from-black to-transparent">
                  <h3 className="text-xl text-yellow-500 uppercase tracking-widest font-bold mb-1">{t.currentPrize}</h3>
                  <h1 className="text-6xl font-black text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">{currentPrize || "WAITING..."}</h1>
             </div>
-            <div className="absolute inset-0 z-10">
-                {eligible.length > 0 ? <GalaxyCanvas list={eligible} t={t} onDrawEnd={handleDrawEnd} /> : <div className="w-full h-full flex flex-col items-center justify-center text-white/30"><Trophy size={100} className="mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p></div>}
+
+            {/* 2. Main Draw Area (60%) */}
+            <div className="h-[60vh] w-full relative z-10 flex items-center justify-center">
+                {eligible.length > 0 ? (
+                    <GalaxyCanvas list={eligible} t={t} onDrawEnd={handleDrawEnd} />
+                ) : (
+                    <div className="text-center text-white/30"><Trophy size={100} className="mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p></div>
+                )}
             </div>
-            {drawHistory.length > 0 && (
-                <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black to-transparent z-40 flex items-center overflow-x-auto px-10">
-                    <div className="flex gap-4">{drawHistory.map(h => (<div key={h.id} className="bg-white/10 px-4 py-2 rounded-full flex items-center gap-2 border border-white/10 shrink-0"><span className="text-yellow-400 font-bold text-xs">{h.prize}</span><div className="w-[1px] h-3 bg-white/20"></div><span className="font-bold text-sm">{h.name}</span></div>))}</div>
-                </div>
-            )}
+            
+            {/* 3. Footer Marquee (20%) */}
+            <div className="h-[20vh] w-full z-40 flex items-start justify-center pt-6 bg-gradient-to-t from-black via-black/80 to-transparent">
+                {drawHistory.length > 0 && (
+                    <div className="w-full max-w-7xl overflow-x-auto px-10 pb-4">
+                        <div className="flex gap-4 justify-center">
+                            {drawHistory.map(h => (
+                                <div key={h.id} className="bg-white/10 px-4 py-2 rounded-full flex items-center gap-2 border border-white/10 shrink-0">
+                                    <span className="text-yellow-400 font-bold text-xs">{h.prize}</span>
+                                    <div className="w-[1px] h-3 bg-white/20"></div>
+                                    <span className="font-bold text-sm">{h.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Winner Overlay */}
             {winner && (
                 <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center animate-in zoom-in duration-300">
-                    <Confetti/>
-                    <Trophy className="text-yellow-400 mb-6 drop-shadow-[0_0_50px_rgba(250,204,21,0.8)] animate-bounce" size={100} />
-                    <h2 className="text-3xl font-bold text-white/80 mb-6 tracking-[0.5em]">{t.winner}</h2>
-                    {/* 🔥 V53 修正：中獎時照片放大顯示 */}
-                    {winner.photo ? <img src={winner.photo} className="w-80 h-80 rounded-full border-8 border-yellow-400 object-cover shadow-[0_0_100px_rgba(234,179,8,0.5)] mb-8"/> : <div className="w-64 h-64 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={100}/></div>}
-                    <h1 className="text-8xl font-black text-white mb-4">{winner.name}</h1>
-                    {winner.table && <div className="bg-white/20 px-8 py-3 rounded-full text-2xl font-bold border border-white/30 flex items-center gap-3"><Armchair/> Table {winner.table}</div>}
-                    <p className="mt-10 text-white/30 text-sm">Press ENTER to continue</p>
+                    <div className="absolute inset-0 pointer-events-none"><ConfettiInner/></div>
+                    <div className="relative text-center w-full max-w-5xl px-4 animate-in zoom-in-50 duration-500 flex flex-col items-center">
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-red-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+                        <h3 className="text-4xl font-bold text-yellow-400 mb-6 tracking-widest uppercase animate-pulse">{currentPrize || "WINNER"}</h3>
+                        <div className="relative">
+                            {winner.photo ? <img src={winner.photo} className="w-96 h-96 rounded-full border-[10px] border-yellow-400 object-cover shadow-[0_0_80px_rgba(234,179,8,0.6)] mb-8 animate-in zoom-in duration-700"/> : <div className="w-64 h-64 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={100}/></div>}
+                            <div className="absolute -bottom-4 right-0 bg-white/10 backdrop-blur-md border border-white/20 px-6 py-2 rounded-full flex items-center gap-3">
+                                <Armchair size={24} className="text-yellow-400"/>
+                                <div className="text-left">
+                                    <div className="text-xs text-white/50 uppercase tracking-wider">{t.yourSeat}</div>
+                                    <div className="text-xl font-bold text-white">Table {winner.table || '?'} / Seat {winner.seat || '?'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <h1 className="text-8xl md:text-9xl font-black text-white mb-2 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] scale-110">{winner.name}</h1>
+                        <p className="text-3xl text-white/60 font-mono mb-8">{winner.phone}</p>
+                        <p className="text-white/30 text-sm">Press ENTER to continue</p>
+                    </div>
                 </div>
             )}
         </div>
     );
 };
 
-// --- Reception Dashboard ---
+// --- Reception Dashboard (Check-in + Seat Import) ---
 const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan, drawHistory }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
@@ -343,7 +407,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
 
   const filteredSeat = seatingPlan.filter(s => (s.name||'').includes(search) || (s.phone||'').includes(search) || s.table.includes(search));
 
-  const handleScan = useCallback((text) => {
+  const handleScan = useCallback(async (text) => {
     const now = Date.now();
     if(now - lastTime.current < 2000) return;
     try {
@@ -351,6 +415,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
         lastTime.current = now;
         let targetId = data.id || (data.type==='new_reg' && attendees.find(x=>x.phone===normalizePhone(data.phone))?.id);
         const p = attendees.find(x=>x.id===targetId);
+        
         if(!p) setScanRes({type:'error', msg:t.notFound});
         else if(p.checkedIn) setScanRes({type:'duplicate', msg:t.duplicate, p});
         else {
@@ -372,7 +437,13 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
     const file = e.target.files[0]; if(!file)return;
     const text = await file.text(); const lines = text.split('\n').slice(1);
     const batch = writeBatch(db);
-    lines.forEach(l => { const c = l.split(','); if(c.length>=4) { const ref = doc(collection(db, "seating_plan")); batch.set(ref, { name: c[0].trim(), phone: normalizePhone(c[1]), email: normalizeEmail(c[2]), table: c[3].trim(), seat: c[4]?.trim()||'' }); } });
+    lines.forEach(l => {
+        const c = l.split(',');
+        if(c.length>=4) {
+            const ref = doc(collection(db, "seating_plan"));
+            batch.set(ref, { name: c[0].trim(), phone: normalizePhone(c[1]), email: normalizeEmail(c[2]), table: c[3].trim(), seat: c[4]?.trim()||'' });
+        }
+    });
     await batch.commit(); alert(t.importSuccess);
   };
   
@@ -387,6 +458,8 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   const toggleCancelCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: false, checkInTime: null }); };
   const deletePerson = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "attendees", id)); };
 
+  const downloadTemplate = () => { const content = "\uFEFFName,Phone,Email,Table,Seat\nElon Musk,0912345678,elon@tesla.com,1,A"; const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "seating_template.csv"; link.click(); };
+
   return (
     <div className="min-h-[100dvh] bg-neutral-950 text-white flex flex-col">
        <header className="p-4 border-b border-white/10 flex justify-between items-center bg-neutral-900"><div className="font-bold text-lg flex gap-2"><QrCode/> Reception</div><button onClick={onLogout}><LogOut size={18}/></button></header>
@@ -394,27 +467,70 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
           <div className="flex gap-2 mb-6 bg-white/5 p-1 rounded-xl">
               {['scan','list','seating'].map(k=><button key={k} onClick={()=>{setTab(k);setIsScan(false)}} className={`px-4 py-2 rounded-lg text-sm ${tab===k?'bg-blue-600':'text-white/50'}`}>{t[k]}</button>)}
           </div>
+          
           {tab==='scan' && (
               <div className="w-full max-w-md">
                   {isScan ? <div id="reader" className="bg-black rounded-xl overflow-hidden mb-4"></div> : <button onClick={()=>setIsScan(true)} className="w-full py-12 border-2 border-dashed border-white/20 rounded-xl text-white/50 flex flex-col items-center gap-2 hover:bg-white/5"><Camera size={32}/> {t.scanCam}</button>}
                   {scanRes && <div className={`p-4 rounded-xl text-center font-bold ${scanRes.type==='success'?'bg-green-600':'bg-red-600'}`}>{scanRes.msg} {scanRes.p?.name}</div>}
               </div>
           )}
+
           {tab==='list' && (
               <div className="w-full flex-1 flex flex-col h-[70vh]">
                   <div className="p-4 bg-white/5 rounded-t-xl border-b border-white/10">
-                      <form onSubmit={handleAddGuest} className="flex gap-2 flex-wrap"><input placeholder="Name" value={adminForm.name} onChange={e=>setAdminForm({...adminForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-sm outline-none"/><input placeholder="Phone" value={adminForm.phone} onChange={e=>setAdminForm({...adminForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-sm outline-none"/><input placeholder="Email" value={adminForm.email} onChange={e=>setAdminForm({...adminForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-32 text-sm outline-none"/><input placeholder="Tab" value={adminForm.table} onChange={e=>setAdminForm({...adminForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-12 text-sm outline-none"/><button className="bg-green-600 px-3 py-1 rounded text-sm"><Plus size={16}/></button></form>
+                      <form onSubmit={handleAddGuest} className="flex gap-2 flex-wrap">
+                          <input placeholder="Name" value={adminForm.name} onChange={e=>setAdminForm({...adminForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-sm outline-none"/>
+                          <input placeholder="Phone" value={adminForm.phone} onChange={e=>setAdminForm({...adminForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-sm outline-none"/>
+                          <input placeholder="Email" value={adminForm.email} onChange={e=>setAdminForm({...adminForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-32 text-sm outline-none"/>
+                          <input placeholder="Tab" value={adminForm.table} onChange={e=>setAdminForm({...adminForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-12 text-sm outline-none"/>
+                          <button className="bg-green-600 px-3 py-1 rounded text-sm"><Plus size={16}/></button>
+                      </form>
                   </div>
-                  <div className="p-2 bg-white/5 border-b border-white/10 flex justify-between text-xs text-white/50 px-4"><span>Total: {attendees.length}</span><span className="text-emerald-400">Arrived: {attendees.filter(x=>x.checkedIn).length}</span></div>
+                  
+                  <div className="p-2 bg-white/5 border-b border-white/10 flex justify-between text-xs text-white/50 px-4">
+                      <span>Total: {attendees.length}</span>
+                      <span className="text-emerald-400">Arrived: {attendees.filter(x=>x.checkedIn).length}</span>
+                  </div>
+
                   <div className="flex-1 overflow-y-auto bg-white/5 rounded-b-xl p-2">
-                      {attendees.map(p=>{ const winnerRec = drawHistory.find(h=>h.attendeeId===p.id); return (<div key={p.id} className="flex justify-between items-center p-3 border-b border-white/10 hover:bg-white/10"><div className="flex items-center gap-3">{p.photo ? <img src={p.photo} className="w-8 h-8 rounded-full object-cover"/> : <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><User size={14}/></div>}<div><div className="font-bold text-sm flex items-center gap-2">{p.name} {winnerRec && <span className="bg-yellow-500 text-black text-[10px] px-1 rounded">🏆 {winnerRec.prize}</span>}</div><div className="text-[10px] text-white/50">{p.phone} | {p.email}</div></div></div><div className="flex items-center gap-2"><span className="text-xs text-white/50 font-mono">T-{p.table}</span><button onClick={()=>toggleCheckIn(p)} className={`text-xs px-2 py-1 rounded ${p.checkedIn?'bg-green-600':'bg-white/20'}`}>{p.checkedIn?t.arrived:t.checkin}</button><button onClick={()=>deletePerson(p.id)} className="p-1 text-white/30 hover:text-red-500"><Trash2 size={14}/></button></div></div>); })}
+                      {attendees.map(p=>{
+                          const winnerRec = drawHistory.find(h=>h.attendeeId===p.id);
+                          return (
+                              <div key={p.id} className="flex justify-between items-center p-3 border-b border-white/10 hover:bg-white/10">
+                                  <div className="flex items-center gap-3">
+                                      {p.photo ? <img src={p.photo} className="w-8 h-8 rounded-full object-cover"/> : <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><User size={14}/></div>}
+                                      <div>
+                                          <div className="font-bold text-sm flex items-center gap-2">{p.name} {winnerRec && <span className="bg-yellow-500 text-black text-[10px] px-1 rounded">🏆 {winnerRec.prize}</span>}</div>
+                                          <div className="text-[10px] text-white/50">{p.phone} | {p.email}</div>
+                                      </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                      <span className="text-xs text-white/50 font-mono">T-{p.table}</span>
+                                      <button onClick={()=>toggleCheckIn(p)} className={`text-xs px-2 py-1 rounded ${p.checkedIn?'bg-green-600':'bg-white/20'}`}>{p.checkedIn?t.arrived:t.checkin}</button>
+                                      <button onClick={()=>deletePerson(p.id)} className="p-1 text-white/30 hover:text-red-500"><Trash2 size={14}/></button>
+                                  </div>
+                              </div>
+                          );
+                      })}
                   </div>
               </div>
           )}
+
           {tab==='seating' && (
               <div className="w-full flex-1 flex flex-col gap-4">
-                  <div className="flex gap-2"><input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none"/><label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label></div>
-                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2">{filteredSeat.map(s=>(<div key={s.id} className="flex justify-between p-3 border-b border-white/10"><div><div className="font-bold">{s.name}</div><div className="text-xs text-white/50">{s.phone}</div></div><div className="text-right text-blue-400 font-mono font-bold">T-{s.table}</div></div>))}</div>
+                  <div className="flex gap-2">
+                      <input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none"/>
+                      <label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label>
+                      <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2">
+                      {filteredSeat.map(s=>(
+                          <div key={s.id} className="flex justify-between p-3 border-b border-white/10">
+                              <div><div className="font-bold">{s.name}</div><div className="text-xs text-white/50">{s.phone}</div></div>
+                              <div className="text-right text-blue-400 font-mono font-bold">T-{s.table}</div>
+                          </div>
+                      ))}
+                  </div>
               </div>
           )}
        </main>
@@ -422,7 +538,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   );
 };
 
-// ... PrizeDashboard (保持不變) ...
+// ... PrizeDashboard ...
 const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, setCurrentPrize }) => {
   const [prizes, setPrizes] = useState([]); 
   const [newPrizeName, setNewPrizeName] = useState("");
@@ -466,6 +582,8 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
       const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
       const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l, createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!");
   };
+  const downloadTemplate = () => { const content = "\uFEFFName\nGrand Prize\nSecond Prize"; const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "prize_template.csv"; link.click(); };
+
   const filteredPrizes = prizes.filter(p => p.name.toLowerCase().includes(prizeSearch.toLowerCase()));
 
   return (
@@ -478,18 +596,30 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
         <div className="w-full grid md:grid-cols-2 gap-8 h-full">
             <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex flex-col h-[700px]">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Gift size={20} className="text-red-500"/> {t.prizeList}</h3>
-                <form onSubmit={handleAddPrize} className="flex gap-2 mb-4"><input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-[2] bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:border-red-500 outline-none"/><input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} className="w-16 bg-black/50 border border-white/20 rounded-xl px-2 py-3 text-sm text-center text-white focus:border-red-500 outline-none"/><button className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-colors"><Plus size={20}/></button></form>
-                <div className="flex gap-2 mb-4 relative"><Search className="absolute top-3 left-3 text-white/30" size={16}/><input value={prizeSearch} onChange={e=>setPrizeSearch(e.target.value)} placeholder="Search Prize..." className="w-full bg-black/30 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none"/><label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Upload size={12}/> CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label></div>
+                <form onSubmit={handleAddPrize} className="flex gap-2 mb-4">
+                    <input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-[2] bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:border-red-500 outline-none"/>
+                    <input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} className="w-16 bg-black/50 border border-white/20 rounded-xl px-2 py-3 text-sm text-center text-white focus:border-red-500 outline-none"/>
+                    <button className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-colors"><Plus size={20}/></button>
+                </form>
+                <div className="flex gap-2 mb-4 relative">
+                    <Search className="absolute top-3 left-3 text-white/30" size={16}/>
+                    <input value={prizeSearch} onChange={e=>setPrizeSearch(e.target.value)} placeholder="Search Prize..." className="w-full bg-black/30 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none"/>
+                    <label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Upload size={12}/> CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label>
+                </div>
                 <div className="flex-1 overflow-y-auto pr-2 custom-scroll flex flex-col gap-2">
                     {filteredPrizes.map(p=>{
                         const winnerRecord = drawHistory.find(h => h.prize === p.name);
                         return (
                             <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${currentPrize===p.name?'bg-red-600/20 border-red-600':'bg-white/5 border-white/10'} ${winnerRecord ? 'opacity-70 bg-black/40' : ''}`}>
-                                <div className="flex flex-col"><span className={`font-bold ${currentPrize===p.name?'text-white':'text-white/70'}`}>{p.name}</span>{winnerRecord && <span className="text-xs text-yellow-400 flex items-center gap-1 mt-1 font-bold">🏆 {winnerRecord.name}</span>}</div>
+                                <div className="flex flex-col">
+                                    <span className={`font-bold ${currentPrize===p.name?'text-white':'text-white/70'}`}>{p.name}</span>
+                                    {winnerRecord && <span className="text-xs text-yellow-400 flex items-center gap-1 mt-1 font-bold">🏆 {winnerRecord.name}</span>}
+                                </div>
                                 <div className="flex gap-2">
                                     {currentPrize!==p.name && !winnerRecord && <button onClick={()=>handleSelectPrize(p.name)} className="px-3 py-1.5 bg-white/10 hover:bg-green-600 rounded-lg text-xs transition-colors">{t.select}</button>}
                                     {currentPrize===p.name && <span className="px-3 py-1.5 bg-red-600 rounded-lg text-xs font-bold">{t.active}</span>}
-                                    {winnerRecord ? <button onClick={()=>toggleWinnerStatus(winnerRecord)} className="p-2 bg-white/10 hover:bg-yellow-600 rounded-lg transition-colors" title={t.resetWinner}><RotateCcw size={14}/></button> : <button onClick={()=>handleDeletePrize(p.id)} className="p-2 bg-white/10 hover:bg-red-600 rounded-lg transition-colors"><Trash2 size={14}/></button>}
+                                    {winnerRecord ? <button onClick={()=>toggleWinnerStatus(winnerRecord)} className="p-2 bg-white/10 hover:bg-yellow-600 rounded-lg transition-colors" title={t.resetWinner}><RotateCcw size={14}/></button>
+                                                  : <button onClick={()=>handleDeletePrize(p.id)} className="p-2 bg-white/10 hover:bg-red-600 rounded-lg transition-colors"><Trash2 size={14}/></button>}
                                 </div>
                             </div>
                         );
@@ -510,7 +640,15 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
                 <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex-1 h-[350px] overflow-hidden flex flex-col">
                     <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Trophy size={20} className="text-yellow-500"/> {t.winnersList}</h3>
                     <div className="flex-1 overflow-y-auto custom-scroll flex flex-col gap-2">
-                        {drawHistory.map(h => (<div key={h.id} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5"><span className="text-yellow-500 text-sm font-bold">{h.prize}</span><div className="flex items-center gap-2">{h.photo && <img src={h.photo} className="w-6 h-6 rounded-full object-cover"/>}<span className="font-bold">{h.name}</span></div></div>))}
+                        {drawHistory.map(h => (
+                            <div key={h.id} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
+                                <span className="text-yellow-500 text-sm font-bold">{h.prize}</span>
+                                <div className="flex items-center gap-2">
+                                    {h.photo && <img src={h.photo} className="w-6 h-6 rounded-full object-cover"/>}
+                                    <span className="font-bold">{h.name}</span>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -520,7 +658,20 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
   );
 };
 
-// ... GuestView 保持 V53 (含座位輸入) ...
+// ... LoginView, GuestView (保持 V53, 已包含座位輸入) ...
+const LoginView = ({ t, onLogin, onBack }) => {
+    const [pwd, setPwd] = useState('');
+    const handleSubmit = (e) => { e.preventDefault(); if(pwd === ADMIN_PASSWORD) onLogin(); else { alert(t.wrongPwd); setPwd(''); } };
+    return (
+      <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
+        <div className="relative bg-neutral-900/80 border border-white/20 p-10 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in duration-500 z-50">
+          <button onClick={onBack} className="text-white/50 hover:text-white mb-8 flex items-center transition-colors text-sm uppercase tracking-widest"><ChevronLeft size={16} className="mr-1"/> {t.back}</button>
+          <div className="text-center mb-8"><h2 className="text-3xl font-bold text-white mb-2 tracking-tight">{t.login}</h2></div>
+          <form onSubmit={handleSubmit}><input type="password" autoFocus value={pwd} onChange={(e) => setPwd(e.target.value)} placeholder={t.pwdPlace} className="w-full bg-white/5 border border-white/10 text-white p-4 rounded-xl mb-6 focus:ring-1 focus:ring-red-600 focus:border-red-600 outline-none transition-all text-center tracking-[0.3em] placeholder:tracking-normal placeholder:text-white/20"/><button type="submit" className="w-full bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-900/40 transition-all active:scale-95 uppercase tracking-widest text-sm">{t.enter}</button></form>
+        </div>
+      </div>
+    );
+};
 const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({name:'',phone:'',email:'',company:'',table:'',seat:''});
@@ -538,7 +689,6 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   const handleSubmit = async (e) => { e.preventDefault(); setErr(''); if(!photo) { setErr(t.errPhoto); return; } setLoading(true); const cleanPhone = normalizePhone(form.phone); const cleanEmail = normalizeEmail(form.email); const dup = checkDuplicate(cleanPhone, cleanEmail); if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } let assignedTable = form.table || ""; let assignedSeat = form.seat || ""; if(!assignedTable) { const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail); const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; } else if(phoneMatch) { assignedTable = phoneMatch.table; assignedSeat = phoneMatch.seat; } } setMatchSeat({ table: assignedTable, seat: assignedSeat }); try { if (!db) throw new Error("Firebase not initialized"); const docRef = await addDoc(collection(db, "attendees"), { name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, table: assignedTable, seat: assignedSeat, photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() }); setNewId(docRef.id); setStep(2); } catch (error) { console.error(error); setErr("Network Error."); } setLoading(false); };
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black pointer-events-none"></div>
       <div className="relative bg-neutral-900/80 border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl">
         <div className="bg-gradient-to-r from-red-700 to-red-900 p-8 text-white text-center relative">
           {!isCameraOpen && <button onClick={onBack} className="absolute left-6 top-6 text-white/70 hover:text-white z-10"><ChevronLeft/></button>}
@@ -560,16 +710,8 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
               {!isCameraOpen && (
                   <div className="space-y-3">
                     {['name', 'phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
-                    {/* Manual Table/Seat Input */}
-                    <div className="flex gap-2">
-                         <div className="relative group flex-1">
-                            <div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors"><Armchair size={18}/></div>
-                            <input className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t.table} value={form.table} onChange={e=>setForm({...form,table:e.target.value})} />
-                         </div>
-                         <div className="relative group flex-1">
-                            <input className="w-full bg-white/5 border border-white/10 text-white p-3 px-4 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t.seat} value={form.seat} onChange={e=>setForm({...form,seat:e.target.value})} />
-                         </div>
-                    </div>
+                    {/* Manual Table/Seat Input (Restored) */}
+                    <div className="flex gap-2"><div className="relative group flex-1"><div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors"><Armchair size={18}/></div><input className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t.table} value={form.table} onChange={e=>setForm({...form,table:e.target.value})} /></div><div className="relative group flex-1"><input className="w-full bg-white/5 border border-white/10 text-white p-3 px-4 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t.seat} value={form.seat} onChange={e=>setForm({...form,seat:e.target.value})} /></div></div>
                     <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
                   </div>
               )}
