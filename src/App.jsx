@@ -15,7 +15,7 @@ import {
 } from "firebase/firestore";
 
 // =================================================================
-// ✅ Firebase Config
+// ✅ Firebase Config (已整合您的設定)
 // =================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyDUZeeaWvQZJORdDv4PdAHQK-SqXFIDsy4",
@@ -41,7 +41,7 @@ const ADMIN_PASSWORD = "admin";
 const translations = {
   zh: {
     title: "Tesla Annual Dinner",
-    sub: "",
+    sub: "2025 年度晚宴",
     guestMode: "參加者登記",
     guestDesc: "Guest Registration",
     adminMode: "工作人員入口",
@@ -89,7 +89,7 @@ const translations = {
   },
   en: {
     title: "Tesla Annual Dinner",
-    sub: "",
+    sub: "2025 Event",
     guestMode: "Guest Registration",
     guestDesc: "For Attendees",
     adminMode: "Staff Portal",
