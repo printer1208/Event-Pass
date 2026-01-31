@@ -5,7 +5,7 @@ import {
   ArrowRight, UserPlus, LogOut, Globe, Mail,
   Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
   Cloud, Zap, Image as ImageIcon, MonitorPlay, Aperture, Gift,
-  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid
+  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw
 } from 'lucide-react';
 
 // --- Firebase 模組 ---
@@ -56,7 +56,7 @@ const StyleInjector = () => {
 const translations = {
   zh: {
     title: "Tesla Annual Dinner",
-    sub: "2025 自動化流程版",
+    sub: "2025 完美修復版",
     guestMode: "參加者登記",
     guestDesc: "Guest Registration",
     adminMode: "接待處 (簽到)",
@@ -70,17 +70,17 @@ const translations = {
     enter: "登入",
     wrongPwd: "密碼錯誤",
     regTitle: "賓客登記",
-    regSub: "系統將依資料自動分配座位",
-    name: "姓名 (Name)",
-    phone: "電話 (Mobile)",
-    email: "電子郵件 (Email)",
-    company: "公司/備註 (選填)",
-    generateBtn: "確認登記 / Submit",
+    regSub: "系統將依 Email/電話 自動分配座位",
+    name: "姓名",
+    phone: "電話",
+    email: "電子郵件",
+    company: "公司/備註",
+    generateBtn: "確認登記",
     back: "返回",
     yourCode: "您的入場憑證",
     yourSeat: "您的座位",
     showToStaff: "資料已同步！請出示給工作人員掃描",
-    next: "完成 (Finish)",
+    next: "完成",
     scan: "極速掃描",
     draw: "抽獎控制",
     prizeList: "獎品管理",
@@ -101,7 +101,7 @@ const translations = {
     errPhoto: "請拍攝或上傳一張照片！",
     errIncomplete: "請填寫所有必填欄位",
     drawBtn: "啟動抽獎 (Space)",
-    running: "搜尋幸運兒...",
+    running: "全場鎖定中...",
     winner: "✨ 恭喜中獎 ✨",
     claim: "確認領獎 (Enter)",
     needMore: "等待更多賓客入場...",
@@ -123,16 +123,20 @@ const translations = {
     seat: "座位",
     addSeat: "新增",
     searchSeat: "搜尋姓名/電話/桌號...",
-    seatTBD: "待定 (請洽櫃台)",
+    seatTBD: "待定",
     importCSV: "導入 CSV",
     downloadTemp: "下載範本",
     importSuccess: "導入成功！",
     resetWinner: "重抽此獎",
-    select: "選取"
+    select: "選取抽此獎",
+    photoBtn: "開啟相機 / 選擇照片",
+    photoRetake: "重拍",
+    active: "當前",
+    drawn: "已抽出"
   },
   en: {
     title: "Tesla Annual Dinner",
-    sub: "2025 Auto-Flow",
+    sub: "2025 Fixed Edition",
     guestMode: "Guest Registration",
     guestDesc: "For Attendees",
     adminMode: "Reception",
@@ -147,11 +151,11 @@ const translations = {
     wrongPwd: "Wrong Password",
     regTitle: "Registration",
     regSub: "Seat assigned automatically",
-    name: "Full Name",
-    phone: "Phone Number",
-    email: "Email Address",
-    company: "Company (Optional)",
-    generateBtn: "Submit Registration",
+    name: "Name",
+    phone: "Phone",
+    email: "Email",
+    company: "Company",
+    generateBtn: "Submit",
     back: "Back",
     yourCode: "Entry Pass",
     yourSeat: "Your Seat",
@@ -177,7 +181,7 @@ const translations = {
     errPhoto: "Photo is required!",
     errIncomplete: "Fill all fields",
     drawBtn: "Start Draw (Space)",
-    running: "Searching...",
+    running: "Locking...",
     winner: "✨ GRAND PRIZE ✨",
     claim: "Confirm (Enter)",
     needMore: "Waiting for guests...",
@@ -199,12 +203,16 @@ const translations = {
     seat: "Seat",
     addSeat: "Add",
     searchSeat: "Search Name/Phone/Table...",
-    seatTBD: "TBD (Ask Staff)",
+    seatTBD: "TBD",
     importCSV: "Import CSV",
     downloadTemp: "Template",
     importSuccess: "Import Successful!",
     resetWinner: "Re-draw",
-    select: "Select"
+    select: "Select",
+    photoBtn: "Camera / Upload",
+    photoRetake: "Retake",
+    active: "Active",
+    drawn: "Drawn"
   }
 };
 
@@ -251,12 +259,14 @@ const SoundController = {
   startSuspense: function() {
       if (!this.ctx) this.init(); if (this.ctx.state === 'suspended') this.ctx.resume();
       const now = this.ctx.currentTime;
+      // Rumble
       const drone = this.ctx.createOscillator(); const droneGain = this.ctx.createGain();
       drone.type = 'sawtooth'; drone.frequency.value = 40; 
       drone.connect(droneGain); droneGain.connect(this.ctx.destination);
       droneGain.gain.setValueAtTime(0.2, now); droneGain.gain.linearRampToValueAtTime(0.5, now + 5);
       drone.start(now);
       this.oscList.push({stop: () => { droneGain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.5); setTimeout(() => drone.stop(), 500); }});
+      // Beat
       let beatTime = 0.5;
       const playBeat = () => {
           const osc = this.ctx.createOscillator(); const g = this.ctx.createGain();
@@ -281,78 +291,106 @@ const SoundController = {
   }
 };
 
-// --- Mosaic Draw ---
-const MosaicDrawComponent = ({ list, t, onDrawEnd }) => {
-    const [status, setStatus] = useState('mosaic'); 
-    const containerRef = useRef(null);
+// 🔥 Galaxy Draw (Canvas)
+const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
+    const canvasRef = useRef(null);
+    const [isRunning, setIsRunning] = useState(false);
+    const particles = useRef([]);
+    const animationFrameId = useRef(null);
+    const mode = useRef('mosaic');
+
+    useEffect(() => {
+        if (list.length === 0) return;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const cols = Math.ceil(Math.sqrt(list.length * 1.5));
+        const size = Math.max(50, canvas.width / cols);
+
+        particles.current = list.map((p, i) => {
+            const img = new Image();
+            img.src = p.photo || `https://ui-avatars.com/api/?name=${p.name}&background=random`;
+            return {
+                id: p.id,
+                x: (i % cols) * size, 
+                y: Math.floor(i / cols) * size,
+                vx: 0, vy: 0,
+                targetX: (i % cols) * size,
+                targetY: Math.floor(i / cols) * size,
+                size: size,
+                img: img
+            };
+        });
+
+        const render = () => {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            particles.current.forEach(p => {
+                if (mode.current === 'galaxy') {
+                    p.x += p.vx; p.y += p.vy;
+                    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+                    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+                } else {
+                    p.x += (p.targetX - p.x) * 0.1;
+                    p.y += (p.targetY - p.y) * 0.1;
+                }
+                ctx.save();
+                ctx.beginPath(); ctx.arc(p.x + p.size/2, p.y + p.size/2, p.size/2 - 2, 0, Math.PI * 2); ctx.clip();
+                try { ctx.drawImage(p.img, p.x, p.y, p.size, p.size); } catch(e){}
+                ctx.restore();
+                ctx.strokeStyle = mode.current === 'galaxy' ? '#E82127' : '#333';
+                ctx.lineWidth = 2; ctx.stroke();
+            });
+            animationFrameId.current = requestAnimationFrame(render);
+        };
+        render();
+        return () => cancelAnimationFrame(animationFrameId.current);
+    }, [list]);
 
     const start = () => {
-        if (list.length < 2) return;
-        setStatus('galaxy');
+        if(list.length < 2) return;
+        setIsRunning(true);
+        mode.current = 'galaxy';
+        particles.current.forEach(p => { p.vx = (Math.random() - 0.5) * 20; p.vy = (Math.random() - 0.5) * 20; });
         SoundController.startSuspense();
-        setTimeout(() => { stop(); }, 6000);
+        setTimeout(stop, 5000);
     };
 
     const stop = () => {
-        setStatus('stopping');
-        SoundController.playWin();
         const winnerIdx = Math.floor(Math.random() * list.length);
-        const finalWinner = list[winnerIdx];
-        
-        setTimeout(() => {
-            onDrawEnd(finalWinner);
-            setStatus('mosaic');
-        }, 1000);
+        const winner = list[winnerIdx];
+        setIsRunning(false);
+        mode.current = 'mosaic';
+        SoundController.playWin();
+        setTimeout(() => onDrawEnd(winner), 1000);
     };
 
     useEffect(() => {
-        const handleKey = (e) => {
-            if (e.code === 'Space' && status === 'mosaic') { e.preventDefault(); start(); }
-        };
-        window.addEventListener('keydown', handleKey);
-        return () => window.removeEventListener('keydown', handleKey);
-    }, [status, list]);
+        const handleKey = (e) => { if (e.code === 'Space' && !isRunning) { e.preventDefault(); start(); } };
+        window.addEventListener('keydown', handleKey); return () => window.removeEventListener('keydown', handleKey);
+    }, [isRunning, list]);
 
     return (
-        <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden" ref={containerRef}>
-            {status === 'mosaic' && (
-                <div className="absolute inset-0 flex flex-wrap content-start overflow-hidden opacity-100 transition-opacity duration-500">
-                    {list.map((p, i) => (
-                        <div key={p.id} className="relative aspect-square flex-grow-0 flex-shrink-0" style={{ width: `${Math.max(4, 100 / Math.ceil(Math.sqrt(list.length)))}%`, transition: 'all 0.5s ease-in-out' }}>
-                            {p.photo ? <img src={p.photo} className="w-full h-full object-cover border-[0.5px] border-black/50 grayscale hover:grayscale-0 transition-all"/> : <div className="w-full h-full bg-white/10 flex items-center justify-center text-[8px] text-white/50">{p.name.slice(0,1)}</div>}
-                        </div>
-                    ))}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black pointer-events-none"></div>
+        <div className="fixed inset-0 z-0">
+            <canvas ref={canvasRef} className="block" />
+            {!isRunning && (
+                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50">
+                    <button onClick={start} className="bg-red-600 text-white px-12 py-4 rounded-full font-bold text-2xl shadow-2xl hover:scale-105 transition-transform border border-white/20 uppercase tracking-widest">{t.drawBtn}</button>
                 </div>
             )}
-            {(status === 'galaxy' || status === 'stopping') && (
-                <div className="absolute inset-0">
-                    {list.map((p, i) => { 
-                         const isEven = i % 2 === 0;
-                         const duration = Math.random() * 2 + 1 + 's';
-                         const delay = Math.random() * 1 + 's';
-                         const keyframe = isEven ? 'fly1' : 'fly2';
-                         return (
-                             <div key={p.id} className={`absolute w-24 h-24 rounded-full border-2 border-white/40 overflow-hidden shadow-[0_0_25px_rgba(255,255,255,0.4)] ${status === 'stopping' ? 'opacity-0 scale-150 transition-all duration-500' : 'animate-fly opacity-90'}`} style={{ left: Math.random() * 90 + '%', top: Math.random() * 90 + '%', animation: status === 'galaxy' ? `${keyframe} ${duration} infinite alternate ease-in-out` : 'none', animationDelay: delay }}>
-                                 {p.photo ? <img src={p.photo} className="w-full h-full object-cover"/> : <div className="w-full h-full bg-red-600 flex items-center justify-center text-lg font-bold">{p.name.slice(0,1)}</div>}
-                             </div>
-                         )
-                    })}
+            {isRunning && (
+                <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
+                    <h1 className="text-8xl font-black text-white drop-shadow-[0_0_30px_rgba(232,33,39,0.8)] animate-pulse uppercase tracking-widest">{t.running}</h1>
                 </div>
             )}
-            {status === 'mosaic' && (
-                <div className="z-10 bg-black/60 backdrop-blur-md p-8 rounded-3xl border border-white/20 text-center shadow-2xl animate-pulse">
-                    <Trophy className="text-yellow-400 mx-auto mb-4" size={64}/>
-                    <p className="text-white/60 text-sm tracking-widest uppercase mb-2">Ready to Draw</p>
-                    <button onClick={start} className="bg-white text-black px-12 py-3 rounded-full font-bold text-xl hover:scale-105 transition-transform">{t.drawBtn}</button>
-                </div>
-            )}
-            <style>{`@keyframes fly1 { 0% { transform: translate(0, 0) scale(0.8) rotate(0deg); } 100% { transform: translate(100px, -100px) scale(1.2) rotate(20deg); } } @keyframes fly2 { 0% { transform: translate(0, 0) scale(1.2) rotate(0deg); } 100% { transform: translate(-100px, 50px) scale(0.8) rotate(-20deg); } }`}</style>
         </div>
     );
 };
 
-// ... LoginView, GuestView (保持不變) ...
+// ... (LoginView 保持不變) ...
 const LoginView = ({ t, onLogin, onBack }) => {
     const [pwd, setPwd] = useState('');
     const handleSubmit = (e) => { e.preventDefault(); if(pwd === ADMIN_PASSWORD) onLogin(); else { alert(t.wrongPwd); setPwd(''); } };
@@ -371,6 +409,8 @@ const LoginView = ({ t, onLogin, onBack }) => {
       </div>
     );
 };
+
+// ... (GuestView 保持 V41, 確保 Email 寫入) ...
 const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({name:'',phone:'',email:'',company:'',table:'',seat:''});
@@ -382,10 +422,40 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
+
   const startCamera = async () => { setErr(''); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } }); setIsCameraOpen(true); setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100); } catch (e) { fileInputRef.current.click(); } };
   const takePhoto = async () => { if(!videoRef.current) return; const canvas = document.createElement('canvas'); const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const xOffset = (videoRef.current.videoWidth - size) / 2; const yOffset = (videoRef.current.videoHeight - size) / 2; ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size); const rawBase64 = canvas.toDataURL('image/jpeg'); const stream = videoRef.current.srcObject; if(stream) stream.getTracks().forEach(track => track.stop()); setIsCameraOpen(false); const compressed = await compressImage(rawBase64, false); setPhoto(compressed); };
   const handleFileChange = async (e) => { const file = e.target.files[0]; if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); } };
-  const handleSubmit = async (e) => { e.preventDefault(); setErr(''); if(!photo) { setErr(t.errPhoto); return; } setLoading(true); const cleanPhone = normalizePhone(form.phone); const cleanEmail = normalizeEmail(form.email); const dup = checkDuplicate(cleanPhone, cleanEmail); if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } let assignedTable = ""; let assignedSeat = ""; const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail); const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; } else if(phoneMatch) { assignedTable = phoneMatch.table; assignedSeat = phoneMatch.seat; } setMatchSeat({ table: assignedTable, seat: assignedSeat }); try { if (!db) throw new Error("Firebase not initialized"); const docRef = await addDoc(collection(db, "attendees"), { name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, table: assignedTable, seat: assignedSeat, photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() }); setNewId(docRef.id); setStep(2); } catch (error) { console.error(error); setErr("Network Error."); } setLoading(false); };
+  const handleSubmit = async (e) => { 
+      e.preventDefault(); setErr(''); 
+      if(!photo) { setErr(t.errPhoto); return; } 
+      setLoading(true); 
+      const cleanPhone = normalizePhone(form.phone); 
+      const cleanEmail = normalizeEmail(form.email); 
+      const dup = checkDuplicate(cleanPhone, cleanEmail); 
+      if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } 
+      if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } 
+
+      // 座位匹配邏輯
+      let assignedTable = ""; let assignedSeat = ""; 
+      const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail); 
+      const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); 
+      if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; } 
+      else if(phoneMatch) { assignedTable = phoneMatch.table; assignedSeat = phoneMatch.seat; } 
+      setMatchSeat({ table: assignedTable, seat: assignedSeat }); 
+      
+      try { 
+          if (!db) throw new Error("Firebase not initialized"); 
+          const docRef = await addDoc(collection(db, "attendees"), { 
+              name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, 
+              table: assignedTable, seat: assignedSeat, photo: photo, 
+              checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() 
+          }); 
+          setNewId(docRef.id); setStep(2); 
+      } catch (error) { console.error(error); setErr("Network Error."); } 
+      setLoading(false); 
+  };
+
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black pointer-events-none"></div>
@@ -430,27 +500,22 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   );
 };
 
-// 🔥 V47 Projector View (Auto Advance & Sync Fix)
+// 🔥 Projector View (Updated)
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes }) => {
     const [winner, setWinner] = useState(null);
-    // 嚴格篩選資格 (包含未中獎檢查)
     const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
+    const presentCount = attendees.filter(p => p.checkedIn).length;
+    const eligibleCount = eligible.length;
 
     useEffect(() => {
         const handleKey = async (e) => { 
             if (winner && e.key === 'Enter') {
-                setWinner(null); // 關閉彈窗
-                
-                // 🔥 自動切換到下一個未抽的獎品 (Auto Advance Logic)
+                setWinner(null);
+                // 自動跳下一獎
                 if (currentPrize && prizes.length > 0) {
                     const currentIndex = prizes.findIndex(p => p.name === currentPrize);
-                    // 檢查當前獎品是否還有名額? 這裡簡單假設一個獎品名稱對應一次抽獎
-                    // 尋找下一個未在 winners 中出現過的獎品
-                    // 注意：這裡 prizes 列表是包含 #1, #2 的完整展開列表
-                    // 我們需要找到第一個「不在 drawHistory 中的獎品」
-                    
+                    // 尋找下一個未有得主的獎品
                     const nextAvailablePrize = prizes.find(p => !drawHistory.some(h => h.prize === p.name));
-                    
                     if (nextAvailablePrize && db) {
                         await setDoc(doc(db, "config", "settings"), { currentPrize: nextAvailablePrize.name }, { merge: true });
                     }
@@ -466,26 +531,45 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
         if (db) await addDoc(collection(db, "winners"), { attendeeId: winner.id, name: winner.name, phone: winner.phone, photo: winner.photo, table: winner.table, seat: winner.seat, prize: currentPrize || "Lucky Draw", wonAt: new Date().toISOString() });
     };
 
+    const ConfettiInner = () => {
+        const canvasRef = useRef(null);
+        useEffect(() => {
+            const c = canvasRef.current; const ctx = c.getContext('2d'); c.width = window.innerWidth; c.height = window.innerHeight;
+            const p = Array.from({length:200}).map(()=>({x:Math.random()*c.width, y:Math.random()*c.height,c:['#E82127','#FFFFFF','#808080'][Math.floor(Math.random()*3)],s:Math.random()*8+2,d:Math.random()*5}));
+            const draw = () => { ctx.clearRect(0,0,c.width,c.height); p.forEach(i=>{i.y+=i.s;i.x+=Math.sin(i.d);if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}ctx.fillStyle=i.c;ctx.beginPath();ctx.arc(i.x,i.y,i.s/2,0,Math.PI*2);ctx.fill();}); requestAnimationFrame(draw); };
+            draw();
+        }, []);
+        return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
+    };
+
     return (
         <div className="min-h-screen bg-black text-white relative overflow-hidden flex flex-col items-center justify-center">
             <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black pointer-events-none"></div>
             <button onClick={onBack} className="absolute top-6 left-6 text-white/30 hover:text-white z-50 transition-colors"><ChevronLeft size={24}/></button>
+
             <div className="relative z-10 w-full h-full flex flex-col items-center justify-center p-10">
                 <div className="mb-6 text-center animate-in fade-in slide-in-from-top-4">
                     <h3 className="text-xl text-yellow-500 uppercase tracking-widest mb-1 font-bold">{t.currentPrize}</h3>
                     <h1 className="text-6xl font-black text-white tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">{currentPrize || "LUCKY DRAW"}</h1>
+                    <div className="flex justify-center gap-8 mt-4 text-sm text-white/40">
+                        <span>{t.total}: {attendees.length}</span>
+                        <span>{t.arrived}: {presentCount}</span>
+                        <span className="text-emerald-500">{t.eligible}: {eligibleCount}</span>
+                    </div>
                 </div>
+
                 <div className="flex-1 w-full max-w-7xl flex flex-col items-center justify-center min-h-[500px]">
                     {eligible.length < 2 ? (
-                        <div className="text-center text-white/30"><Trophy size={100} className="mx-auto mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p><p className="text-sm mt-2 font-mono">Current: {eligible.length}</p></div>
+                        <div className="text-center text-white/30"><Trophy size={100} className="mx-auto mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p></div>
                     ) : (
-                        <MosaicDrawComponent list={eligible} t={t} onDrawEnd={handleDrawEnd} />
+                        <GalaxyCanvas list={eligible} t={t} onDrawEnd={handleDrawEnd} />
                     )}
                 </div>
             </div>
+
             {winner && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 animate-in fade-in duration-500 backdrop-blur-xl">
-                    <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
+                    <div className="absolute inset-0 pointer-events-none"><ConfettiInner/></div>
                     <div className="relative text-center w-full max-w-5xl px-4 animate-in zoom-in-50 duration-500 flex flex-col items-center">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-red-600/20 rounded-full blur-[120px] pointer-events-none"></div>
                         <h3 className="text-4xl font-bold text-yellow-400 mb-6 tracking-widest uppercase animate-pulse">{currentPrize || "WINNER"}</h3>
@@ -509,7 +593,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     );
 };
 
-// 🔥 Reception Dashboard (Reception Mode - Back by popular demand)
+// 🔥 Reception Dashboard (Updated with Seating Import)
 const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
@@ -551,10 +635,21 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan 
     if(window.Html5QrcodeScanner) init(); else { const sc = document.createElement('script'); sc.src = "https://unpkg.com/html5-qrcode"; sc.onload = init; document.body.appendChild(sc); }
     return () => { if(s) try{s.clear()}catch(e){} };
   }, [isScan, tab, handleScan]);
-
+  
+  const handleImportSeating = async (e) => {
+      const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
+      const startIdx = lines[0].toLowerCase().includes("email") ? 1 : 0;
+      for(let i=startIdx; i<lines.length; i++) {
+          const cols = lines[i].split(',');
+          if(cols.length >= 4) { await addDoc(collection(db, "seating_plan"), { name: cols[0].trim(), phone: normalizePhone(cols[1]), email: normalizeEmail(cols[2]), table: cols[3].trim(), seat: cols[4]?.trim() || '' }); }
+      }
+      alert(t.importSuccess);
+  };
+  const downloadTemplate = () => { const content = "\uFEFFName,Phone,Email,Table,Seat\nElon Musk,0912345678,elon@tesla.com,1,A"; const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "seating_template.csv"; link.click(); };
   const toggleCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: true, checkInTime: new Date().toISOString() }); };
   const toggleCancelCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: false, checkInTime: null }); };
-  
+  const deletePerson = async (id) => { if(confirm('Delete user?') && db) await deleteDoc(doc(db, "attendees", id)); };
+
   return (
     <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
       <header className="bg-neutral-900/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
@@ -580,12 +675,12 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan 
            {tab === 'list' && (
              <div className="h-full w-full flex flex-col">
                <div className="p-4 bg-black/20 border-b border-white/10 flex justify-between items-center gap-4"><div className="font-bold text-white flex items-center gap-3"><span className="text-white/50 text-sm font-normal">{t.total}: {attendees.length}</span> <span className="w-[1px] h-4 bg-white/20"></span> <span className="text-emerald-400">{t.arrived}: {attendees.filter(x=>x.checkedIn).length}</span></div><button className="text-xs font-bold bg-white/10 border border-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/20 flex items-center gap-2 transition-colors"><Download size={14}/> CSV</button></div>
-               <div className="flex-1 overflow-y-auto p-4"><table className="w-full text-left border-collapse"><thead className="text-xs text-white/40 uppercase tracking-widest border-b border-white/10"><tr><th className="p-4 pl-6">Name</th><th className="p-4 hidden md:table-cell">Phone</th><th className="p-4">Table</th><th className="p-4 text-right">Action</th></tr></thead><tbody className="divide-y divide-white/5">{attendees.map(p=>(<tr key={p.id} className="hover:bg-white/5"><td className="p-4 pl-6 font-bold text-white">{p.name}</td><td className="p-4 text-white/60 hidden md:table-cell">{p.phone}</td><td className="p-4 text-white/80">{p.table}/{p.seat}</td><td className="p-4 text-right">{!p.checkedIn && <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-3 py-1 rounded-lg text-xs font-bold">{t.checkin}</button>}{p.checkedIn && <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-3 py-1 rounded-lg text-xs font-bold">{t.cancel}</button>}</td></tr>))}</tbody></table></div>
+               <div className="flex-1 overflow-y-auto p-4"><table className="w-full text-left border-collapse"><thead className="text-xs text-white/40 uppercase tracking-widest border-b border-white/10"><tr><th className="p-4 pl-6">Name</th><th className="p-4 hidden md:table-cell">Phone</th><th className="p-4">Table</th><th className="p-4 text-center">Status</th><th className="p-4 text-right">Action</th></tr></thead><tbody className="divide-y divide-white/5">{attendees.map(p=>(<tr key={p.id} className="hover:bg-white/5"><td className="p-4 pl-6 font-bold text-white flex items-center gap-2">{p.name} {p.winner && <Trophy size={14} className="text-yellow-500"/>}</td><td className="p-4 text-white/60 hidden md:table-cell">{p.phone}</td><td className="p-4 text-white/80">{p.table}/{p.seat}</td><td className="p-4 text-center">{!p.checkedIn && <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-3 py-1 rounded-lg text-xs font-bold">{t.checkin}</button>}{p.checkedIn && <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-3 py-1 rounded-lg text-xs font-bold">{t.cancel}</button>}</td><td className="p-4 text-right"><button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={16}/></button></td></tr>))}</tbody></table></div>
              </div>
            )}
            {tab === 'seating' && (
              <div className="h-full w-full flex flex-col p-8">
-               <div className="mb-6 flex gap-4"><div className="flex-1 relative"><Search className="absolute top-3 left-3 text-white/30" size={16}/><input placeholder={t.searchSeat} value={searchSeat} onChange={e=>setSearchSeat(e.target.value)} className="w-full bg-white/5 border border-white/10 text-white pl-10 pr-4 py-2.5 rounded-xl outline-none focus:border-emerald-500"/></div></div>
+               <div className="mb-6 flex gap-4"><div className="flex-1 relative"><Search className="absolute top-3 left-3 text-white/30" size={16}/><input placeholder={t.searchSeat} value={searchSeat} onChange={e=>setSearchSeat(e.target.value)} className="w-full bg-white/5 border border-white/10 text-white pl-10 pr-4 py-2.5 rounded-xl outline-none focus:border-emerald-500"/></div><label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-4 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-2"><Upload size={16} className="text-red-500"/><span className="font-bold">{t.importCSV}</span><input type="file" accept=".csv" className="hidden" onChange={handleImportSeating}/></label><button onClick={()=>downloadTemplate('seating')} className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-4 py-2 text-xs transition-colors flex items-center justify-center gap-2"><FileText size={16} className="text-blue-500"/><span className="font-bold">{t.downloadTemp}</span></button></div>
                <div className="flex-1 overflow-y-auto bg-black/20 rounded-xl border border-white/10 p-4"><div className="grid gap-2">{filteredSeating.map(s=>(<div key={s.id} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-white/5"><div className="flex items-center gap-4"><div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-xs font-bold">{s.table}</div><div><div className="font-bold text-white text-sm">{s.name}</div><div className="text-xs text-white/40">{s.phone}</div></div></div><span className="text-emerald-400 font-bold text-xs">Table {s.table}</span></div>))}</div></div>
              </div>
            )}
@@ -595,7 +690,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan 
   );
 };
 
-// 🔥 Prize Dashboard (Updated with Re-draw Logic)
+// 🔥 Prize Dashboard (Stage Control)
 const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, setCurrentPrize }) => {
   const [prizes, setPrizes] = useState([]); 
   const [newPrizeName, setNewPrizeName] = useState("");
@@ -627,17 +722,13 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
 
   const handleSelectPrize = async (prizeName) => { if(db) await setDoc(doc(db, "config", "settings"), { currentPrize: prizeName }, { merge: true }); };
   const handleDeletePrize = async (id) => { if(confirm('Delete prize?')) await deleteDoc(doc(db, "prizes", id)); };
-  
-  // 🔥 重置中獎者功能 (Fix: 自動恢復獎品可選狀態)
   const toggleWinnerStatus = async (winnerRecord) => { 
       if(confirm('Reset this prize? Winner will be removed.')) {
-          // 1. 刪除得主紀錄
           await deleteDoc(doc(db, "winners", winnerRecord.id));
-          // 2. 自動將當前獎品切換回該獎項 (方便立刻重抽)
+          // Auto switch to this prize
           await setDoc(doc(db, "config", "settings"), { currentPrize: winnerRecord.prize }, { merge: true });
       }
   };
-  
   const handleImportPrizes = async (e) => {
       const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
       const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l, createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!");
@@ -729,7 +820,7 @@ export default function App() {
   const [drawHistory, setDrawHistory] = useState([]);
   const [currentPrize, setCurrentPrize] = useState("");
   const [seatingPlan, setSeatingPlan] = useState([]); 
-  const [prizes, setPrizes] = useState([]); // 共享獎品列表
+  const [prizes, setPrizes] = useState([]);
 
   useEffect(() => {
     if (!db) return;
@@ -762,21 +853,25 @@ export default function App() {
         <p className="text-white/40 text-xl font-light tracking-[0.3em] uppercase">{t.sub}</p>
       </div>
       <div className="grid md:grid-cols-4 gap-4 w-full max-w-7xl z-10 px-4">
+        {/* Guest */}
         <button onClick={()=>setView('guest')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><ImageIcon size={60} className="text-white"/></div>
             <h3 className="text-xl font-bold text-white mb-1">{t.guestMode}</h3><p className="text-white/50 text-xs">{t.guestDesc}</p>
             <div className="mt-8 flex items-center text-black font-bold text-sm group-hover:translate-x-2 transition-transform bg-white w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
         </button>
+        {/* Admin (Reception) */}
         <button onClick={()=>setView('login_admin')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><UserCheck size={60} className="text-white"/></div>
             <h3 className="text-xl font-bold text-white mb-1">{t.adminMode}</h3><p className="text-white/50 text-xs">{t.adminDesc}</p>
             <div className="mt-8 flex items-center text-white font-bold text-sm group-hover:translate-x-2 transition-transform bg-red-600 w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
         </button>
+        {/* Prize Mgr (New) */}
         <button onClick={()=>setView('login_prize')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Gift size={60} className="text-white"/></div>
             <h3 className="text-xl font-bold text-white mb-1">{t.prizeMode}</h3><p className="text-white/50 text-xs">{t.prizeDesc}</p>
             <div className="mt-8 flex items-center text-white font-bold text-sm group-hover:translate-x-2 transition-transform bg-indigo-600 w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
         </button>
+        {/* Projector */}
         <button onClick={()=>setView('login_projector')} className="group relative overflow-hidden bg-gradient-to-br from-neutral-800 to-black hover:from-neutral-700 border border-white/20 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
             <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-30 transition-opacity"><MonitorPlay size={60} className="text-yellow-500"/></div>
             <h3 className="text-xl font-bold text-yellow-500 mb-1">{t.projectorMode}</h3><p className="text-white/50 text-xs">{t.projectorDesc}</p>
