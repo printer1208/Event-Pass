@@ -3,7 +3,7 @@ import {
   Users, QrCode, Trophy, Download, Plus, CheckCircle, 
   XCircle, Search, Trash2, ScanLine, Camera, 
   ArrowRight, UserPlus, LogOut, Globe, Mail,
-  Lock, ChevronLeft, AlertTriangle, Star
+  Lock, ChevronLeft, AlertTriangle, Loader2
 } from 'lucide-react';
 
 // --- 1. 設定 ---
@@ -11,8 +11,8 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "EventPass V13",
-    sub: "豪華視覺特效版",
+    title: "EventPass V14",
+    sub: "嚴格數據清洗版",
     guestMode: "參加者登記",
     guestDesc: "自助獲取入場憑證",
     adminMode: "工作人員後台",
@@ -27,10 +27,11 @@ const translations = {
     phone: "電話號碼",
     email: "電子郵件",
     company: "公司/備註 (選填)",
-    getPass: "領取入場證",
-    yourPass: "您的入場憑證",
-    saveTip: "請截圖保存，入場時出示",
-    next: "下一位",
+    generateBtn: "確認並生成入場證",
+    back: "返回",
+    yourCode: "您的入場憑證",
+    showToStaff: "請截圖保存，入場時出示",
+    next: "登記下一位",
     scan: "極速掃描",
     draw: "幸運轉盤",
     list: "名單管理",
@@ -41,13 +42,13 @@ const translations = {
     manual: "手動輸入 ID",
     processing: "處理中...",
     success: "簽到成功",
-    duplicate: "重複掃描",
+    duplicate: "注意：資料重複 (已自動合併)",
     error: "無效代碼",
-    welcome: "歡迎回來",
-    regSuccess: "登記並簽到",
+    welcome: "歡迎回來 (已補簽到)",
+    regSuccess: "新用戶登記成功",
     notFound: "查無此人",
-    errPhone: "此電話已被註冊",
-    errEmail: "此 Email 已被註冊",
+    errPhone: "此電話已被註冊！",
+    errEmail: "此 Email 已被註冊！",
     errIncomplete: "請填寫完整資料",
     drawBtn: "開始轉動 (空白鍵)",
     spinning: "好運轉動中...",
@@ -60,8 +61,8 @@ const translations = {
     logout: "登出"
   },
   en: {
-    title: "EventPass V13",
-    sub: "Deluxe Visual Version",
+    title: "EventPass V14",
+    sub: "Strict Data Clean Version",
     guestMode: "Guest Registration",
     guestDesc: "Get your entry pass",
     adminMode: "Admin Dashboard",
@@ -76,9 +77,10 @@ const translations = {
     phone: "Phone Number",
     email: "Email Address",
     company: "Company (Optional)",
-    getPass: "Get Entry Pass",
-    yourPass: "Your Entry Pass",
-    saveTip: "Screenshot this for entry",
+    generateBtn: "Generate Pass",
+    back: "Back",
+    yourCode: "Your Entry Pass",
+    showToStaff: "Screenshot this for entry",
     next: "Next Person",
     scan: "Speed Scan",
     draw: "Lucky Draw",
@@ -90,13 +92,13 @@ const translations = {
     manual: "Manual Input",
     processing: "Processing...",
     success: "Success",
-    duplicate: "Duplicate",
+    duplicate: "Duplicate (Merged)",
     error: "Invalid Code",
-    welcome: "Welcome Back",
-    regSuccess: "Registered & Checked-in",
+    welcome: "Welcome Back (Checked-in)",
+    regSuccess: "New User Registered",
     notFound: "Not Found",
-    errPhone: "Phone already taken",
-    errEmail: "Email already taken",
+    errPhone: "Phone already taken!",
+    errEmail: "Email already taken!",
     errIncomplete: "Fill all fields",
     drawBtn: "Spin (Space)",
     spinning: "Spinning...",
@@ -110,28 +112,29 @@ const translations = {
   }
 };
 
-// --- 2. 工具組件 ---
+// --- 2. 核心工具：數據清洗 (Normalize) ---
+// 這是解決重複登記的關鍵，強制統一格式
+const normalizePhone = (p) => String(p).replace(/[^0-9]/g, ''); // 只保留數字
+const normalizeEmail = (e) => String(e).trim().toLowerCase();   // 去空格轉小寫
+
+// --- 3. 基礎組件 ---
 const Confetti = () => {
   const canvasRef = useRef(null);
   useEffect(() => {
     const c = canvasRef.current;
     const ctx = c.getContext('2d');
     c.width = window.innerWidth; c.height = window.innerHeight;
-    // 增加粒子數量到 300，並增加金色
     const p = Array.from({length:300}).map(()=>({
-        x:Math.random()*c.width,
-        y:Math.random()*c.height,
+        x:Math.random()*c.width, y:Math.random()*c.height,
         c:['#FFD700', '#FF4500', '#00BFFF', '#32CD32', '#FF69B4', '#FFFFFF'][Math.floor(Math.random()*6)],
-        s:Math.random()*8+2,
-        d:Math.random()*5
+        s:Math.random()*8+2, d:Math.random()*5
     }));
     const draw = () => { 
         ctx.clearRect(0,0,c.width,c.height); 
         p.forEach(i=>{
             i.y+=i.s; i.x+=Math.sin(i.d); 
             if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}
-            ctx.fillStyle=i.c;
-            ctx.beginPath(); ctx.arc(i.x, i.y, i.s/2, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle=i.c; ctx.beginPath(); ctx.arc(i.x, i.y, i.s/2, 0, Math.PI*2); ctx.fill();
         }); 
         requestAnimationFrame(draw); 
     };
@@ -140,7 +143,7 @@ const Confetti = () => {
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
 };
 
-// --- 3. 獨立頁面 ---
+// --- 4. 獨立頁面 ---
 
 const LoginView = ({ t, onLogin, onBack }) => {
   const [pwd, setPwd] = useState('');
@@ -148,13 +151,13 @@ const LoginView = ({ t, onLogin, onBack }) => {
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 bg-[url('https://images.unsplash.com/photo-1519681393798-38e43269d877?auto=format&fit=crop&q=80')] bg-cover bg-center">
       <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md"></div>
-      <div className="relative bg-black/40 border border-white/10 p-8 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in zoom-in duration-500">
+      <div className="relative bg-black/40 border border-white/10 p-8 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in zoom-in">
         <button onClick={onBack} className="text-white/60 hover:text-white mb-6 flex items-center transition-colors"><ChevronLeft size={20}/> {t.sub}</button>
         <h2 className="text-3xl font-bold text-white mb-2">{t.login}</h2>
         <form onSubmit={e=>{e.preventDefault(); if(pwd===ADMIN_PASSWORD)onLogin(); else setErr(true);}}>
           <input type="password" autoFocus value={pwd} onChange={e=>{setPwd(e.target.value);setErr(false)}} placeholder={t.pwdPlace} className="w-full bg-white/10 border border-white/10 text-white p-4 rounded-xl mb-4 focus:ring-2 focus:ring-amber-500 outline-none transition-all text-center tracking-widest placeholder:tracking-normal"/>
           {err && <div className="text-red-400 text-sm text-center mb-4">{t.wrongPwd}</div>}
-          <button className="w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white p-4 rounded-xl font-bold shadow-lg shadow-orange-500/20 transition-all active:scale-95">{t.enter}</button>
+          <button className="w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95">{t.enter}</button>
         </form>
       </div>
     </div>
@@ -165,13 +168,36 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({name:'',phone:'',email:'',company:''});
   const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const dup = checkDuplicate(form.phone, form.email);
-    if(dup === 'phone') { setErr(t.errPhone); return; }
-    if(dup === 'email') { setErr(t.errEmail); return; }
-    setStep(2);
+    setErr('');
+    setLoading(true);
+
+    // 模擬網路延遲，防止按鈕連點
+    setTimeout(() => {
+        // 使用嚴格清洗後的數據進行檢查
+        const cleanPhone = normalizePhone(form.phone);
+        const cleanEmail = normalizeEmail(form.email);
+
+        const dup = checkDuplicate(cleanPhone, cleanEmail);
+        
+        if(dup === 'phone') { 
+            setErr(t.errPhone); 
+            setLoading(false);
+            return; 
+        }
+        if(dup === 'email') { 
+            setErr(t.errEmail); 
+            setLoading(false);
+            return; 
+        }
+        
+        // 成功，進入下一步
+        setStep(2);
+        setLoading(false);
+    }, 500);
   };
 
   return (
@@ -186,19 +212,36 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
         <div className="p-8">
           {step === 1 ? (
             <form onSubmit={handleSubmit} className="space-y-4">
-              {err && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center"><AlertTriangle size={16} className="mr-2"/>{err}</div>}
+              {err && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center border border-red-100 animate-pulse"><AlertTriangle size={16} className="mr-2"/>{err}</div>}
               {['name','phone','email','company'].map(f => (
                 <div key={f}>
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">{t[f]} {f!=='company'&&'*'}</label>
-                  <input required={f!=='company'} type={f==='email'?'email':f==='phone'?'tel':'text'} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all" value={form[f]} onChange={e=>{setErr('');setForm({...form,[f]:e.target.value})}} />
+                  <input 
+                    required={f!=='company'} 
+                    type={f==='email'?'email':f==='phone'?'tel':'text'} 
+                    className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
+                    value={form[f]} 
+                    onChange={e=>{setErr('');setForm({...form,[f]:e.target.value})}} 
+                  />
                 </div>
               ))}
-              <button className="w-full bg-slate-900 text-white p-4 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg active:scale-95 mt-4">{t.getPass}</button>
+              <button disabled={loading} className="w-full bg-slate-900 text-white p-4 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg active:scale-95 mt-4 flex justify-center items-center disabled:opacity-70 disabled:cursor-not-allowed">
+                  {loading ? <Loader2 className="animate-spin mr-2"/> : null}
+                  {t.generateBtn}
+              </button>
             </form>
           ) : (
             <div className="text-center animate-in zoom-in">
               <div className="bg-white p-4 border-2 border-dashed border-blue-200 rounded-2xl inline-block mb-6 shadow-sm">
-                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({...form,type:'new_reg',id:Date.now().toString()}))}`} alt="QR" className="w-48 h-48 object-contain"/>
+                {/* QR Code 生成時也使用清洗過的數據，確保一致性 */}
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({
+                    name: form.name,
+                    phone: normalizePhone(form.phone),
+                    email: normalizeEmail(form.email),
+                    company: form.company,
+                    type:'new_reg',
+                    id:Date.now().toString()
+                }))}`} alt="QR" className="w-48 h-48 object-contain"/>
               </div>
               <h3 className="text-2xl font-bold text-slate-800 mb-1">{form.name}</h3>
               <p className="text-slate-500 text-sm mb-8">{t.saveTip}</p>
@@ -220,26 +263,11 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
   const lastScanTimeRef = useRef(0);
   const lastScannedCodeRef = useRef('');
 
-  const playSound = (type) => {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    if(type === 'success') {
-        osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
-        gain.gain.setValueAtTime(0.3, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-        osc.start(); osc.stop(ctx.currentTime + 0.1);
-    } else {
-        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, ctx.currentTime);
-        gain.gain.setValueAtTime(0.3, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-        osc.start(); osc.stop(ctx.currentTime + 0.2);
-    }
-  };
-
+  // 掃描處理 (含嚴格數據比對)
   const handleScan = useCallback((text) => {
     const now = Date.now();
-    if (now - lastScanTimeRef.current < 1500) return;
-    if (text === lastScannedCodeRef.current && now - lastScanTimeRef.current < 5000) return;
+    if (now - lastScanTimeRef.current < 1500) return; // 冷卻 1.5s
+    if (text === lastScannedCodeRef.current && now - lastScanTimeRef.current < 5000) return; // 同碼冷卻 5s
 
     try {
       let data = JSON.parse(text);
@@ -248,30 +276,57 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
 
       const processResult = (resultType, msg, person) => {
           setScanRes({ type: resultType, msg, p: person });
-          playSound(resultType === 'success' ? 'success' : 'error');
-          setTimeout(() => setScanRes(null), 1500);
+          // 自動清除結果
+          setTimeout(() => setScanRes(null), 2000);
       };
 
-      let person = null;
-      let isNew = false;
+      // 數據清洗：確保掃描進來的資料也是乾淨的
+      const scanPhone = data.phone ? normalizePhone(data.phone) : '';
+      const scanEmail = data.email ? normalizeEmail(data.email) : '';
+      const scanId = data.id;
 
-      if (data.type === 'new_reg') {
-          person = attendees.find(p => p.phone === data.phone || p.email === data.email);
-          if (!person) {
-              person = { id: Date.now().toString(), name: data.name, phone: data.phone, email: data.email, company: data.company, checkedIn: true, checkInTime: new Date().toISOString() };
-              setAttendees(prev => [person, ...prev]);
-              isNew = true;
-          }
-      } else {
-          let tid = data.id || data;
-          person = attendees.find(x => x.id === tid);
+      // 核心比對邏輯
+      let existingPerson = null;
+
+      // 1. 先找有沒有完全相同的 ID
+      if (scanId) existingPerson = attendees.find(x => x.id === scanId);
+
+      // 2. 如果沒找到 ID，再找電話或 Email (針對自助登記)
+      if (!existingPerson && (scanPhone || scanEmail)) {
+          existingPerson = attendees.find(p => 
+              (scanPhone && normalizePhone(p.phone) === scanPhone) || 
+              (scanEmail && normalizeEmail(p.email) === scanEmail)
+          );
       }
 
-      if (!person) processResult('error', t.notFound, null);
-      else if (person.checkedIn && !isNew) processResult('duplicate', t.duplicate, person);
-      else {
-          if (!isNew) setAttendees(prev => prev.map(x => x.id === person.id ? {...x, checkedIn: true, checkInTime: new Date().toISOString()} : x));
-          processResult('success', isNew ? t.regSuccess : t.success, person);
+      // 3. 處理結果
+      if (existingPerson) {
+          // 資料已存在
+          if (existingPerson.checkedIn) {
+              // 已經簽到過 -> 報錯 (重複)
+              processResult('duplicate', t.duplicate, existingPerson);
+          } else {
+              // 尚未簽到 -> 執行簽到
+              setAttendees(prev => prev.map(x => x.id === existingPerson.id ? {...x, checkedIn: true, checkInTime: new Date().toISOString()} : x));
+              processResult('success', t.welcome, existingPerson);
+          }
+      } else {
+          // 資料不存在 -> 新增 (只針對自助登記類型)
+          if (data.type === 'new_reg') {
+              const newPerson = { 
+                  id: Date.now().toString(), 
+                  name: data.name, 
+                  phone: scanPhone, // 存入清洗後的電話
+                  email: scanEmail, // 存入清洗後的Email
+                  company: data.company, 
+                  checkedIn: true, 
+                  checkInTime: new Date().toISOString() 
+              };
+              setAttendees(prev => [newPerson, ...prev]);
+              processResult('success', t.regSuccess, newPerson);
+          } else {
+              processResult('error', t.notFound, null);
+          }
       }
     } catch (e) {}
   }, [attendees, setAttendees, t]);
@@ -305,28 +360,19 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
     };
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        {/* 豪華輪盤樣式 */}
         <div className="relative w-[300px] h-[300px] lg:w-[500px] lg:h-[500px] rounded-full border-[12px] border-amber-400 shadow-[0_0_50px_rgba(251,191,36,0.4)] overflow-hidden bg-white transition-all duration-500 box-content">
-          {/* 外圈燈光裝飾 */}
           <div className="absolute inset-0 rounded-full border-4 border-dashed border-white/50 pointer-events-none z-10 opacity-50"></div>
-          
           <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 z-20 w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[40px] border-t-red-600 drop-shadow-xl filter"></div>
-          
           <svg width="100%" height="100%" viewBox="0 0 300 300" style={{transform:`rotate(${rot}deg)`, transition: spin?'transform 4.5s cubic-bezier(0.2,0.8,0.2,1)':'none'}}>
             {list.map((p,i)=>{
                const a = 360/list.length; const s = i*a, e = (i+1)*a;
                const x1=150+150*Math.cos((s-90)*Math.PI/180), y1=150+150*Math.sin((s-90)*Math.PI/180);
                const x2=150+150*Math.cos((e-90)*Math.PI/180), y2=150+150*Math.sin((e-90)*Math.PI/180);
-               // 豪華配色
                const colors = ['#FF4136', '#FF851B', '#FFDC00', '#2ECC40', '#0074D9', '#B10DC9'];
                return <path key={i} d={`M 150 150 L ${x1} ${y1} A 150 150 0 ${e-s<=180?0:1} 1 ${x2} ${y2} Z`} fill={colors[i%colors.length]} stroke="#fff" strokeWidth="2"/>
             })}
           </svg>
-          
-          {/* 中心裝飾 */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-gradient-to-br from-amber-300 to-amber-600 rounded-full shadow-lg flex items-center justify-center border-4 border-white">
-             <Trophy size={24} className="text-white"/>
-          </div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-gradient-to-br from-amber-300 to-amber-600 rounded-full shadow-lg flex items-center justify-center border-4 border-white"><Trophy size={24} className="text-white"/></div>
         </div>
         <button disabled={spin} onClick={run} className="mt-10 bg-gradient-to-r from-slate-900 to-slate-800 text-white px-12 py-4 rounded-full font-bold text-2xl shadow-2xl hover:scale-105 transition-transform disabled:opacity-50 disabled:scale-100 border border-slate-700">{spin?t.spinning:t.drawBtn}</button>
       </div>
@@ -361,7 +407,7 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
                         <div className="bg-white p-6 rounded-full shadow-lg mb-4 animate-bounce">
                             {scanRes.type==='success' ? <CheckCircle size={48} className="text-emerald-600"/> : scanRes.type==='duplicate' ? <AlertTriangle size={48} className="text-amber-600"/> : <XCircle size={48} className="text-red-600"/>}
                         </div>
-                        <h3 className="text-4xl font-black text-white mb-2 drop-shadow-md">{scanRes.msg}</h3>
+                        <h3 className="text-3xl font-black text-white mb-2 drop-shadow-md text-center px-4">{scanRes.msg}</h3>
                         {scanRes.p && <p className="text-white/90 text-xl font-bold">{scanRes.p.name}</p>}
                     </div>
                   )}
@@ -404,27 +450,12 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 animate-in fade-in backdrop-blur-md">
           <Confetti />
           <div className="relative text-center w-full max-w-5xl mx-auto px-4 animate-in zoom-in duration-500">
-            {/* 聚光燈效果 */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-amber-500/30 to-transparent blur-[100px] pointer-events-none"></div>
-            
             <Trophy className="mx-auto text-yellow-400 mb-8 drop-shadow-[0_0_30px_rgba(250,204,21,0.8)] animate-bounce" size={140} />
-            
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 uppercase tracking-[0.5em] text-shadow-lg opacity-80">{t.winner}</h2>
-            
-            {/* 巨大中獎名字 */}
-            <h1 className="text-7xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 via-yellow-400 to-yellow-600 mb-6 drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)] scale-110">
-                {winner.name}
-            </h1>
-            
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 inline-block px-10 py-4 rounded-full mb-12">
-                <p className="text-3xl text-white/90 font-mono tracking-widest">{winner.phone}</p>
-            </div>
-            
-            <div>
-                <button autoFocus onClick={()=>setWinner(null)} className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white px-16 py-6 rounded-full font-bold text-3xl shadow-[0_0_50px_rgba(245,158,11,0.5)] transition-transform hover:scale-105 active:scale-95 border-2 border-white/30">
-                    {t.claim}
-                </button>
-            </div>
+            <h1 className="text-7xl md:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 via-yellow-400 to-yellow-600 mb-6 drop-shadow-[0_10px_10px_rgba(0,0,0,0.8)] scale-110">{winner.name}</h1>
+            <div className="bg-white/10 backdrop-blur-md border border-white/20 inline-block px-10 py-4 rounded-full mb-12"><p className="text-3xl text-white/90 font-mono tracking-widest">{winner.phone}</p></div>
+            <div><button autoFocus onClick={()=>setWinner(null)} className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white px-16 py-6 rounded-full font-bold text-3xl shadow-[0_0_50px_rgba(245,158,11,0.5)] transition-transform hover:scale-105 active:scale-95 border-2 border-white/30">{t.claim}</button></div>
           </div>
         </div>
       )}
@@ -443,8 +474,9 @@ export default function App() {
   useEffect(() => { localStorage.setItem('ep_hist', JSON.stringify(drawHistory)); }, [drawHistory]);
 
   const checkDuplicate = (p, e) => {
-    if(attendees.some(x => x.phone.trim() === p.trim())) return 'phone';
-    if(attendees.some(x => x.email.trim().toLowerCase() === e.trim().toLowerCase())) return 'email';
+    // 這裡也使用 normalize 函數，確保比對時標準一致
+    if(attendees.some(x => normalizePhone(x.phone) === normalizePhone(p))) return 'phone';
+    if(attendees.some(x => normalizeEmail(x.email) === normalizeEmail(e))) return 'email';
     return null;
   };
 
