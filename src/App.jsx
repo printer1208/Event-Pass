@@ -4,7 +4,7 @@ import {
   XCircle, Search, Trash2, ScanLine, Camera, 
   ArrowRight, UserPlus, LogOut, Globe, Mail,
   Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
-  Cloud, Zap
+  Cloud, Zap, Image as ImageIcon, MonitorPlay
 } from 'lucide-react';
 
 // --- Firebase 模組 ---
@@ -38,75 +38,86 @@ const ADMIN_PASSWORD = "admin";
 const translations = {
   zh: {
     title: "Tesla Annual Dinner",
-    sub: "V19 2025 年度晚宴",
+    sub: "2025 投影分流版",
     guestMode: "參加者登記",
     guestDesc: "Guest Registration",
     adminMode: "工作人員入口",
     adminDesc: "Staff Only",
-    login: "Staff Login",
-    pwdPlace: "請輸入後台密碼",
-    enter: "登入系統",
+    projectorMode: "大螢幕投影",
+    projectorDesc: "Lucky Draw Screen",
+    login: "系統驗證",
+    pwdPlace: "請輸入密碼",
+    enter: "登入",
     wrongPwd: "密碼錯誤",
     regTitle: "賓客登記",
-    regSub: "Welcome to Tesla Event",
+    regSub: "請上傳照片以便抽獎",
     name: "姓名 (Name)",
     phone: "電話 (Mobile)",
     email: "電子郵件 (Email)",
+    photoBtn: "點擊拍攝 / 上傳照片",
+    photoRetake: "重拍",
     generateBtn: "確認登記 / Submit",
     back: "返回",
     yourCode: "您的入場憑證",
     showToStaff: "資料已同步！請出示給工作人員掃描",
     next: "完成 (Finish)",
     scan: "極速掃描",
-    draw: "幸運轉盤",
+    draw: "頭像轉盤",
     list: "賓客名單",
     total: "總人數",
     arrived: "已到場",
     scanCam: "啟動掃描鏡頭",
     stopCam: "停止掃描",
     manual: "手動輸入 ID",
-    success: "簽到成功 (Verified)",
+    success: "簽到成功",
     duplicate: "重複：此人已入場",
     error: "無效代碼",
     regSuccess: "登記成功",
     notFound: "查無此人",
     errPhone: "錯誤：此電話號碼已存在",
     errEmail: "錯誤：此 Email 已存在",
+    errPhoto: "請拍攝或上傳一張照片！",
     errIncomplete: "請填寫所有必填欄位",
     drawBtn: "啟動轉盤 (Space)",
-    spinning: "加速中...",
-    winner: "✨ GRAND PRIZE ✨",
+    spinning: "鎖定目標中...",
+    winner: "✨ 恭喜中獎 ✨",
     claim: "確認領獎 (Enter)",
     needMore: "等待更多賓客入場...",
     export: "導出名單",
     checkin: "簽到",
     cancel: "取消",
     logout: "登出",
-    cloudStatus: "雲端連線正常"
+    cloudStatus: "雲端連線正常",
+    winnersList: "中獎名單",
+    projectorView: "投影模式"
   },
   en: {
     title: "Tesla Annual Dinner",
-    sub: "V19 2025 Event",
+    sub: "2025 Projector Edition",
     guestMode: "Guest Registration",
     guestDesc: "For Attendees",
     adminMode: "Staff Portal",
     adminDesc: "For Event Team",
-    login: "Staff Login",
+    projectorMode: "Projector View",
+    projectorDesc: "For Big Screen",
+    login: "Security Check",
     pwdPlace: "Password",
     enter: "Login",
     wrongPwd: "Wrong Password",
     regTitle: "Registration",
-    regSub: "Welcome to Tesla Event",
+    regSub: "Please take a selfie for lucky draw",
     name: "Full Name",
     phone: "Phone Number",
     email: "Email Address",
+    photoBtn: "Take Selfie / Upload",
+    photoRetake: "Retake",
     generateBtn: "Submit Registration",
     back: "Back",
     yourCode: "Entry Pass",
     showToStaff: "Synced! Show to staff.",
     next: "Finish",
     scan: "Scanner",
-    draw: "Lucky Draw",
+    draw: "Photo Wheel",
     list: "Guest List",
     total: "Total",
     arrived: "Arrived",
@@ -120,9 +131,10 @@ const translations = {
     notFound: "Not Found",
     errPhone: "Phone already exists",
     errEmail: "Email already exists",
+    errPhoto: "Photo is required!",
     errIncomplete: "Fill all fields",
     drawBtn: "Spin (Space)",
-    spinning: "Accelerating...",
+    spinning: "Locking Target...",
     winner: "✨ GRAND PRIZE ✨",
     claim: "Confirm (Enter)",
     needMore: "Waiting for guests...",
@@ -130,27 +142,109 @@ const translations = {
     checkin: "Check-in",
     cancel: "Cancel",
     logout: "Logout",
-    cloudStatus: "Connected"
+    cloudStatus: "Connected",
+    winnersList: "Winners List",
+    projectorView: "Projector Mode"
   }
 };
 
+// --- 工具 ---
 const normalizePhone = (p) => String(p).replace(/[^0-9]/g, '');
 const normalizeEmail = (e) => String(e).trim().toLowerCase();
 
-// --- 獨立頁面組件 (強制黑紅風格) ---
+const compressImage = (file) => {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const MAX_WIDTH = 300;
+                const scaleSize = MAX_WIDTH / img.width;
+                canvas.width = MAX_WIDTH;
+                canvas.height = img.height * scaleSize;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                resolve(canvas.toDataURL('image/jpeg', 0.6)); 
+            }
+        }
+    });
+};
 
+// --- 組件 ---
+const Confetti = () => {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const c = canvasRef.current;
+    const ctx = c.getContext('2d');
+    c.width = window.innerWidth; c.height = window.innerHeight;
+    const p = Array.from({length:200}).map(()=>({x:Math.random()*c.width, y:Math.random()*c.height,c:['#E82127','#FFFFFF','#808080'][Math.floor(Math.random()*3)],s:Math.random()*8+2,d:Math.random()*5}));
+    const draw = () => { ctx.clearRect(0,0,c.width,c.height); p.forEach(i=>{i.y+=i.s;i.x+=Math.sin(i.d);if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}ctx.fillStyle=i.c;ctx.beginPath();ctx.arc(i.x,i.y,i.s/2,0,Math.PI*2);ctx.fill();}); requestAnimationFrame(draw); };
+    draw();
+  }, []);
+  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
+};
+
+// 🔥 獨立抽獎輪盤組件 (可複用)
+const WheelComponent = ({ list, t, onDrawEnd }) => {
+    const [rot, setRot] = useState(0);
+    const [spin, setSpin] = useState(false);
+    
+    // 計算半徑：人越多，輪盤越大
+    const WHEEL_RADIUS = list.length > 30 ? 280 : 200; 
+    
+    useEffect(() => { const k=(e)=>{if(e.code==='Space'&&!spin&&list.length>=2){e.preventDefault();run()}}; window.addEventListener('keydown',k); return ()=>window.removeEventListener('keydown',k); }, [spin, list]);
+    
+    const run = async () => {
+      setSpin(true);
+      const winIdx = Math.floor(Math.random()*list.length);
+      const angle = 360/list.length;
+      setRot(rot + 1800 + (360 - winIdx * angle));
+      
+      setTimeout(async () => {
+          setSpin(false); 
+          const winner = list[winIdx];
+          onDrawEnd(winner); // 回調通知中獎者
+      }, 4500);
+    };
+
+    return (
+      <div className="flex flex-col items-center justify-center h-full w-full relative">
+        <div className="relative flex items-center justify-center transition-all duration-500" style={{ width: WHEEL_RADIUS*2 + 100, height: WHEEL_RADIUS*2 + 100 }}>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30 w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[30px] border-t-red-600 drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]"></div>
+          <div className="absolute inset-0 rounded-full transition-transform duration-[4500ms] cubic-bezier(0.1, 0, 0.2, 1)" style={{ transform: `rotate(${rot}deg)` }}>
+             {list.map((p, i) => {
+                 const angle = (360 / list.length) * i;
+                 const rad = (angle - 90) * (Math.PI / 180);
+                 return (
+                     <div key={p.id} className="absolute top-1/2 left-1/2 w-12 h-12 -ml-6 -mt-6 rounded-full border-2 border-white shadow-lg overflow-hidden transform origin-center" style={{ transform: `rotate(${angle}deg) translate(0, -${WHEEL_RADIUS}px) rotate(-${angle}deg)` }}>
+                         {p.photo ? <img src={p.photo} alt={p.name} className="w-full h-full object-cover"/> : <div className="w-full h-full bg-neutral-800 flex items-center justify-center text-[10px] font-bold text-white">{p.name.substring(0, 2).toUpperCase()}</div>}
+                     </div>
+                 );
+             })}
+             <div className="absolute inset-0 border-4 border-dashed border-white/10 rounded-full m-12"></div>
+          </div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-neutral-900 rounded-full shadow-2xl flex items-center justify-center border-4 border-white/20 z-20">
+              <Zap size={40} className="text-red-500 fill-current"/>
+          </div>
+        </div>
+        <button disabled={spin} onClick={run} className="mt-8 bg-white text-black px-12 py-4 rounded-full font-bold text-xl shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:bg-gray-200 hover:scale-105 transition-all disabled:opacity-50 border border-white tracking-widest uppercase relative z-40">
+            {spin ? t.spinning : t.drawBtn}
+        </button>
+      </div>
+    );
+};
+
+// 🔥 獨立頁面：Login
 const LoginView = ({ t, onLogin, onBack }) => (
-  <div className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
-    {/* 紅色光暈背景 */}
+  <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
     <div className="absolute top-[-20%] left-[-20%] w-[600px] h-[600px] bg-red-700/30 rounded-full blur-[120px] pointer-events-none"></div>
     <div className="absolute bottom-[-20%] right-[-20%] w-[600px] h-[600px] bg-neutral-800/30 rounded-full blur-[120px] pointer-events-none"></div>
-
     <div className="relative bg-neutral-900/60 border border-white/10 p-10 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in duration-500">
       <button onClick={onBack} className="text-white/50 hover:text-white mb-8 flex items-center transition-colors text-sm uppercase tracking-widest"><ChevronLeft size={16} className="mr-1"/> {t.back}</button>
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">{t.login}</h2>
-        <div className="flex justify-center items-center gap-2 text-emerald-500 text-xs font-mono tracking-wider"><Cloud size={12}/> {t.cloudStatus}</div>
-      </div>
+      <div className="text-center mb-8"><h2 className="text-3xl font-bold text-white mb-2 tracking-tight">{t.login}</h2></div>
       <form onSubmit={e=>{e.preventDefault(); if(e.target[0].value===ADMIN_PASSWORD)onLogin(); else alert(t.wrongPwd);}}>
         <input type="password" autoFocus placeholder={t.pwdPlace} className="w-full bg-white/5 border border-white/10 text-white p-4 rounded-xl mb-6 focus:ring-1 focus:ring-red-600 focus:border-red-600 outline-none transition-all text-center tracking-[0.3em] placeholder:tracking-normal placeholder:text-white/20"/>
         <button className="w-full bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-900/40 transition-all active:scale-95 uppercase tracking-widest text-sm">{t.enter}</button>
@@ -159,16 +253,30 @@ const LoginView = ({ t, onLogin, onBack }) => (
   </div>
 );
 
+// 🔥 獨立頁面：參加者登記
 const GuestView = ({ t, onBack, checkDuplicate }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({name:'',phone:'',email:'',company:''});
+  const [photo, setPhoto] = useState(null);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
   const [newId, setNewId] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const handleFileChange = async (e) => {
+      const file = e.target.files[0];
+      if(file) {
+          const compressed = await compressImage(file);
+          setPhoto(compressed);
+          setErr('');
+      }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErr(''); setLoading(true);
+    setErr(''); 
+    if(!photo) { setErr(t.errPhoto); return; }
+    setLoading(true);
     const cleanPhone = normalizePhone(form.phone);
     const cleanEmail = normalizeEmail(form.email);
     const dup = checkDuplicate(cleanPhone, cleanEmail);
@@ -179,7 +287,7 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
         if (!db) throw new Error("Firebase not initialized");
         const docRef = await addDoc(collection(db, "attendees"), {
             name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company,
-            checkedIn: false, checkInTime: null, createdAt: new Date().toISOString()
+            photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString()
         });
         setNewId(docRef.id);
         setStep(2);
@@ -188,7 +296,7 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
+    <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black pointer-events-none"></div>
       <div className="relative bg-neutral-900/80 border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl">
         <div className="bg-gradient-to-r from-red-700 to-red-900 p-8 text-white text-center relative">
@@ -200,32 +308,30 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
           {step === 1 ? (
             <form onSubmit={handleSubmit} className="space-y-5">
               {err && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm flex items-center animate-pulse"><AlertTriangle size={16} className="mr-2"/>{err}</div>}
+              <div className="flex flex-col items-center mb-6">
+                  <div onClick={() => fileInputRef.current.click()} className={`w-32 h-32 rounded-full border-2 border-dashed flex items-center justify-center cursor-pointer transition-all overflow-hidden ${photo ? 'border-red-500' : 'border-white/30 hover:border-white hover:bg-white/5'}`}>
+                      {photo ? <img src={photo} alt="Preview" className="w-full h-full object-cover" /> : <div className="text-center text-white/50"><Camera size={32} className="mx-auto mb-1"/><span className="text-[10px] uppercase tracking-wider">{t.photoBtn}</span></div>}
+                  </div>
+                  <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handleFileChange}/>
+              </div>
               <div className="space-y-4">
                 {['name', 'phone', 'email'].map((field) => (
                     <div key={field} className="relative group">
-                        <div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">
-                            {field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}
-                        </div>
-                        <input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'}
-                            className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" 
-                            placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} 
-                        />
+                        <div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div>
+                        <input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} />
                     </div>
                 ))}
               </div>
-              <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">
-                  {loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}
-              </button>
+              <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
             </form>
           ) : (
             <div className="text-center animate-in zoom-in duration-300">
               <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)] relative">
                 <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({id: newId}))}`} alt="QR" className="w-48 h-48 object-contain"/>
-                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full shadow-lg flex items-center gap-1 font-bold tracking-wider"><Cloud size={10}/> SAVED</div>
               </div>
               <h3 className="text-2xl font-bold text-white mb-2">{form.name}</h3>
               <p className="text-white/50 text-sm mb-8 leading-relaxed">{t.showToStaff}</p>
-              <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:''})}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm">{t.next}</button>
+              <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm">{t.next}</button>
             </div>
           )}
         </div>
@@ -234,11 +340,77 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
   );
 };
 
+// 🔥 獨立頁面：大螢幕投影模式 (Projector View)
+const ProjectorView = ({ t, attendees, drawHistory, onBack }) => {
+    const [winner, setWinner] = useState(null);
+    const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
+
+    const handleDrawEnd = async (winner) => {
+        setWinner(winner);
+        if (db) await addDoc(collection(db, "winners"), { attendeeId: winner.id, name: winner.name, phone: winner.phone, photo: winner.photo, wonAt: new Date().toISOString() });
+    };
+
+    return (
+        <div className="min-h-screen bg-black text-white relative overflow-hidden flex flex-col items-center justify-center">
+            {/* 背景特效 */}
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black pointer-events-none"></div>
+            <button onClick={onBack} className="absolute top-6 left-6 text-white/30 hover:text-white z-50 transition-colors"><ChevronLeft size={24}/></button>
+
+            {/* 主要區域 */}
+            <div className="relative z-10 w-full h-full flex flex-col items-center justify-center p-10">
+                <h1 className="text-4xl md:text-5xl font-black text-white mb-8 tracking-tighter drop-shadow-2xl uppercase opacity-80">{t.draw}</h1>
+                
+                <div className="flex-1 w-full max-w-4xl flex flex-col items-center justify-center min-h-[500px]">
+                    {eligible.length < 2 ? (
+                        <div className="text-center text-white/30">
+                            <Trophy size={100} className="mx-auto mb-6 opacity-20"/>
+                            <p className="text-2xl">{t.needMore}</p>
+                            <p className="text-sm mt-2 font-mono">Current: {eligible.length}</p>
+                        </div>
+                    ) : (
+                        <WheelComponent list={eligible} t={t} onDrawEnd={handleDrawEnd} />
+                    )}
+                </div>
+
+                {/* 底部中獎名單 */}
+                {drawHistory.length > 0 && (
+                    <div className="w-full max-w-6xl mt-12">
+                        <div className="flex flex-wrap gap-4 justify-center">
+                            {drawHistory.map((h, i) => (
+                                <div key={h.id} className="bg-white/10 backdrop-blur-md border border-white/10 px-6 py-3 rounded-full flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
+                                    <span className="bg-yellow-500 text-black w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{drawHistory.length - i}</span>
+                                    {h.photo && <img src={h.photo} className="w-8 h-8 rounded-full border border-white/50 object-cover"/>}
+                                    <span className="font-bold tracking-wide">{h.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* 投影模式的中獎彈窗 (無關閉按鈕，需按 Enter) */}
+            {winner && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 animate-in fade-in duration-500 backdrop-blur-xl">
+                    <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
+                    <div className="relative text-center w-full max-w-5xl px-4 animate-in zoom-in-50 duration-500 flex flex-col items-center">
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-red-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+                        <Trophy className="text-yellow-400 mb-8 drop-shadow-[0_0_50px_rgba(250,204,21,0.6)] animate-bounce" size={120} />
+                        <h2 className="text-3xl md:text-4xl font-bold text-white/60 mb-6 uppercase tracking-[0.5em]">{t.winner}</h2>
+                        {winner.photo && <img src={winner.photo} className="w-80 h-80 rounded-full border-[10px] border-yellow-400 object-cover shadow-[0_0_50px_rgba(234,179,8,0.5)] mb-8 animate-in zoom-in duration-700"/>}
+                        <h1 className="text-7xl md:text-9xl font-black text-white mb-8 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] scale-110">{winner.name}</h1>
+                        <p className="text-white/30 text-sm mt-8">Press ENTER to continue</p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// 🔥 獨立頁面：後台管理 (Admin Dashboard)
 const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, setDrawHistory }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
   const [scanRes, setScanRes] = useState(null);
-  const [winner, setWinner] = useState(null);
   const lastScanTimeRef = useRef(0);
   const lastScannedCodeRef = useRef('');
 
@@ -260,8 +432,7 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
       if (!person) processResult('error', t.notFound, null);
       else if (person.checkedIn) processResult('duplicate', t.duplicate, person);
       else {
-          if (!db) return;
-          await updateDoc(doc(db, "attendees", person.id), { checkedIn: true, checkInTime: new Date().toISOString() });
+          if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: true, checkInTime: new Date().toISOString() });
           processResult('success', t.success, person);
       }
     } catch (e) { console.error(e); }
@@ -277,48 +448,15 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
   const toggleCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: !person.checkedIn, checkInTime: !person.checkedIn ? new Date().toISOString() : null }); };
   const deletePerson = async (id) => { if(confirm('Delete user?') && db) await deleteDoc(doc(db, "attendees", id)); };
 
-  const Wheel = ({ list }) => {
-    const [rot, setRot] = useState(0);
-    const [spin, setSpin] = useState(false);
-    useEffect(() => { const k=(e)=>{if(e.code==='Space'&&!spin&&list.length>=2){e.preventDefault();run()}}; window.addEventListener('keydown',k); return ()=>window.removeEventListener('keydown',k); }, [spin, list]);
-    const run = async () => {
-      setSpin(true);
-      const winIdx = Math.floor(Math.random()*list.length);
-      const angle = 360/list.length;
-      setRot(rot+1800+(360-winIdx*angle)+(Math.random()-0.5)*angle*0.8);
-      setTimeout(async () => {
-          setSpin(false); const winner = list[winIdx]; setWinner(winner);
-          if (db) await addDoc(collection(db, "winners"), { attendeeId: winner.id, name: winner.name, phone: winner.phone, wonAt: new Date().toISOString() });
-      }, 4500);
-    };
-    return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <div className="relative w-[300px] h-[300px] lg:w-[500px] lg:h-[500px] rounded-full border-[8px] border-white/20 shadow-[0_0_50px_rgba(232,33,39,0.3)] overflow-hidden bg-neutral-900 transition-all duration-500 box-content">
-          <div className="absolute inset-0 rounded-full border-4 border-dashed border-white/10 pointer-events-none z-10"></div>
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 z-20 w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[40px] border-t-red-600 drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]"></div>
-          <svg width="100%" height="100%" viewBox="0 0 300 300" style={{transform:`rotate(${rot}deg)`, transition: spin?'transform 4.5s cubic-bezier(0.2,0.8,0.2,1)':'none'}}>
-            {list.map((p,i)=>{ const a=360/list.length;const s=i*a,e=(i+1)*a;const x1=150+150*Math.cos((s-90)*Math.PI/180),y1=150+150*Math.sin((s-90)*Math.PI/180);const x2=150+150*Math.cos((e-90)*Math.PI/180),y2=150+150*Math.sin((e-90)*Math.PI/180);
-            const c=['#E82127', '#171717', '#404040', '#E82127', '#171717', '#A3A3A3'];
-            return <path key={i} d={`M 150 150 L ${x1} ${y1} A 150 150 0 ${e-s<=180?0:1} 1 ${x2} ${y2} Z`} fill={c[i%6]} stroke="#000" strokeWidth="1"/> })}
-          </svg>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-neutral-900 rounded-full shadow-lg flex items-center justify-center border-4 border-white/20"><Zap size={32} className="text-red-500 fill-current"/></div>
-        </div>
-        <button disabled={spin} onClick={run} className="mt-12 bg-white text-black px-12 py-4 rounded-full font-bold text-xl shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:bg-gray-200 hover:scale-105 transition-all disabled:opacity-50 border border-white tracking-widest uppercase">{spin?t.spinning:t.drawBtn}</button>
-      </div>
-    );
-  };
-
-  const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
-
   return (
-    <div className="min-h-screen bg-neutral-950 flex flex-col font-sans text-white">
+    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
       <header className="bg-neutral-900/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
         <div className="flex items-center gap-3 font-bold text-xl"><div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center text-white"><QrCode size={18}/></div> {t.adminMode}</div>
         <button onClick={onLogout} className="text-white/50 hover:text-red-500 text-sm flex items-center gap-2 transition-colors"><LogOut size={16}/> {t.logout}</button>
       </header>
       <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col items-center">
         <div className="flex justify-center mb-8 bg-white/5 p-1 rounded-2xl shadow-lg border border-white/10 w-fit backdrop-blur-sm">
-          {[ {id:'scan',icon:ScanLine,l:t.scan}, {id:'draw',icon:Trophy,l:t.draw}, {id:'list',icon:Users,l:t.list} ].map(i=> (
+          {[ {id:'scan',icon:ScanLine,l:t.scan}, {id:'list',icon:Users,l:t.list} ].map(i=> (
             <button key={i.id} onClick={()=>{setTab(i.id);setIsScan(false);setScanRes(null)}} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all text-sm tracking-wide ${tab===i.id?'bg-red-600 text-white shadow-md':'text-white/50 hover:bg-white/10 hover:text-white'}`}><i.icon size={16}/> {i.l}</button>
           ))}
         </div>
@@ -347,11 +485,6 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
               )}
             </div>
           )}
-          {tab === 'draw' && (
-            <div className="h-full w-full flex flex-col items-center justify-center p-8">
-              {eligible.length < 2 ? <div className="text-center text-white/30"><Trophy size={80} className="mx-auto mb-6 opacity-20"/><p className="text-xl">{t.needMore}</p></div> : <Wheel list={eligible} />}
-            </div>
-          )}
           {tab === 'list' && (
             <div className="h-full w-full flex flex-col">
               <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/20">
@@ -360,19 +493,28 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
               </div>
               <div className="flex-1 overflow-y-auto p-4">
                 <table className="w-full text-left border-collapse">
-                  <thead className="text-xs text-white/40 uppercase tracking-widest border-b border-white/10"><tr><th className="p-4 pl-6">{t.name}</th><th className="p-4">{t.phone}</th><th className="p-4">{t.email}</th><th className="p-4 text-right">{t.checkin}</th></tr></thead>
+                  <thead className="text-xs text-white/40 uppercase tracking-widest border-b border-white/10"><tr><th className="p-4 pl-6">Avatar</th><th className="p-4">{t.name}</th><th className="p-4">{t.phone}</th><th className="p-4">{t.email}</th><th className="p-4 text-right">{t.checkin}</th></tr></thead>
                   <tbody className="divide-y divide-white/5">
-                    {attendees.map(p=>(
-                      <tr key={p.id} className="hover:bg-white/5 transition-colors group">
-                        <td className="p-4 pl-6 font-bold text-white">{p.name}</td>
-                        <td className="p-4 text-white/60 text-sm font-mono">{p.phone}</td>
-                        <td className="p-4 text-white/60 text-sm">{p.email}</td>
-                        <td className="p-4 text-right flex justify-end gap-2">
-                          <button onClick={()=>toggleCheckIn(p)} className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${p.checkedIn?'bg-emerald-500/20 text-emerald-400 border-emerald-500/50':'bg-white/5 text-white/40 border-white/10 hover:bg-white/10 hover:text-white'}`}>{p.checkedIn?t.checkin:t.cancel}</button>
-                          <button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={16}/></button>
-                        </td>
-                      </tr>
-                    ))}
+                    {attendees.map(p=>{
+                        const isWinner = drawHistory.some(h => h.attendeeId === p.id);
+                        return (
+                          <tr key={p.id} className={`transition-colors group ${isWinner ? 'bg-yellow-500/10' : 'hover:bg-white/5'}`}>
+                            <td className="p-4 pl-6">
+                                {p.photo ? <img src={p.photo} alt="User" className="w-10 h-10 rounded-full object-cover border border-white/20"/> : <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"><User size={16}/></div>}
+                            </td>
+                            <td className="p-4 font-bold text-white flex items-center gap-2">
+                                {p.name}
+                                {isWinner && <Trophy size={16} className="text-yellow-500 fill-current animate-pulse"/>}
+                            </td>
+                            <td className="p-4 text-white/60 text-sm font-mono">{p.phone}</td>
+                            <td className="p-4 text-white/60 text-sm">{p.email}</td>
+                            <td className="p-4 text-right flex justify-end gap-2">
+                              <button onClick={()=>toggleCheckIn(p)} className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${p.checkedIn?'bg-emerald-500/20 text-emerald-400 border-emerald-500/50':'bg-white/5 text-white/40 border-white/10 hover:bg-white/10 hover:text-white'}`}>{p.checkedIn?t.checkin:t.cancel}</button>
+                              <button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={16}/></button>
+                            </td>
+                          </tr>
+                        );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -380,18 +522,6 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
           )}
         </div>
       </main>
-      {winner && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 animate-in fade-in duration-500 backdrop-blur-xl">
-          <div className="relative text-center w-full max-w-5xl mx-auto px-4 animate-in zoom-in-50 duration-500 flex flex-col items-center">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-red-600/20 rounded-full blur-[120px] pointer-events-none"></div>
-            <Trophy className="text-yellow-400 mb-8 drop-shadow-[0_0_50px_rgba(250,204,21,0.6)] animate-bounce" size={120} />
-            <h2 className="text-2xl md:text-3xl font-bold text-white/60 mb-4 uppercase tracking-[0.5em]">{t.winner}</h2>
-            <h1 className="text-6xl md:text-9xl font-black text-white mb-8 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] scale-110">{winner.name}</h1>
-            <div className="bg-white/10 border border-white/20 backdrop-blur-md px-10 py-4 rounded-full mb-12"><p className="text-2xl text-white font-mono tracking-widest">{winner.phone}</p></div>
-            <button autoFocus onClick={()=>setWinner(null)} className="bg-white text-black hover:bg-gray-200 px-16 py-5 rounded-full font-bold text-2xl shadow-[0_0_50px_rgba(255,255,255,0.3)] transition-transform hover:scale-105 active:scale-95 uppercase tracking-widest">{t.claim}</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
@@ -416,34 +546,49 @@ export default function App() {
     return null;
   };
 
+  const handleLoginSuccess = (targetView) => {
+      setView(targetView);
+  };
+
   if(view === 'landing') return (
-    <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-6 relative overflow-hidden text-white">
+    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col items-center justify-center p-6 relative overflow-hidden text-white">
       <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-800 via-neutral-950 to-neutral-950 pointer-events-none"></div>
       <button onClick={()=>setLang(l=>l==='zh'?'en':'zh')} className="absolute top-6 right-6 text-white/50 hover:text-white flex items-center gap-2 border border-white/10 px-4 py-2 rounded-full transition-all z-10 text-xs font-mono"><Globe size={14}/> {lang.toUpperCase()}</button>
       <div className="z-10 text-center mb-16 flex flex-col items-center">
         <div className="w-24 h-24 bg-gradient-to-br from-red-600 to-red-800 rounded-3xl flex items-center justify-center shadow-[0_0_60px_rgba(220,38,38,0.4)] mb-8 animate-in zoom-in duration-700">
             <QrCode size={48} className="text-white"/>
         </div>
-        <h1 className="text-5xl md:text-8xl font-black text-white mb-4 tracking-tighter drop-shadow-2xl">{t.title} <span className="text-red-600 text-3xl align-top">V19</span></h1>
+        <h1 className="text-5xl md:text-8xl font-black text-white mb-4 tracking-tighter drop-shadow-2xl">{t.title}</h1>
         <p className="text-white/40 text-xl font-light tracking-[0.3em] uppercase">{t.sub}</p>
       </div>
-      <div className="grid md:grid-cols-2 gap-8 w-full max-w-4xl z-10 px-4">
-        <button onClick={()=>setView('guest')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-10 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
-            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity"><UserPlus size={120} className="text-white"/></div>
-            <h3 className="text-3xl font-bold text-white mb-2">{t.guestMode}</h3>
-            <p className="text-white/50 text-lg">{t.guestDesc}</p>
-            <div className="mt-12 flex items-center text-black font-bold text-lg group-hover:translate-x-2 transition-transform bg-white w-fit px-6 py-2 rounded-full">{t.enter} <ArrowRight size={20} className="ml-2"/></div>
+      <div className="grid md:grid-cols-3 gap-6 w-full max-w-6xl z-10 px-4">
+        {/* 參加者 */}
+        <button onClick={()=>setView('guest')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-8 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
+            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity"><UserPlus size={80} className="text-white"/></div>
+            <h3 className="text-2xl font-bold text-white mb-2">{t.guestMode}</h3>
+            <p className="text-white/50 text-sm">{t.guestDesc}</p>
+            <div className="mt-8 flex items-center text-black font-bold text-sm group-hover:translate-x-2 transition-transform bg-white w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
         </button>
-        <button onClick={()=>setView('login')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-10 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
-            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity"><Lock size={120} className="text-white"/></div>
-            <h3 className="text-3xl font-bold text-white mb-2">{t.adminMode}</h3>
-            <p className="text-white/50 text-lg">{t.adminDesc}</p>
-            <div className="mt-12 flex items-center text-white font-bold text-lg group-hover:translate-x-2 transition-transform bg-red-600 w-fit px-6 py-2 rounded-full">{t.enter} <ArrowRight size={20} className="ml-2"/></div>
+        {/* 工作人員 */}
+        <button onClick={()=>setView('login_admin')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-8 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
+            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity"><Lock size={80} className="text-white"/></div>
+            <h3 className="text-2xl font-bold text-white mb-2">{t.adminMode}</h3>
+            <p className="text-white/50 text-sm">{t.adminDesc}</p>
+            <div className="mt-8 flex items-center text-white font-bold text-sm group-hover:translate-x-2 transition-transform bg-red-600 w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
+        </button>
+        {/* 🔥 新增：大螢幕模式 */}
+        <button onClick={()=>setView('login_projector')} className="group relative overflow-hidden bg-gradient-to-br from-neutral-800 to-black hover:from-neutral-700 border border-white/20 p-8 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
+            <div className="absolute top-0 right-0 p-6 opacity-20 group-hover:opacity-30 transition-opacity"><MonitorPlay size={80} className="text-yellow-500"/></div>
+            <h3 className="text-2xl font-bold text-yellow-500 mb-2">{t.projectorMode}</h3>
+            <p className="text-white/50 text-sm">{t.projectorDesc}</p>
+            <div className="mt-8 flex items-center text-black font-bold text-sm group-hover:translate-x-2 transition-transform bg-yellow-500 w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
         </button>
       </div>
     </div>
   );
   if(view === 'guest') return <GuestView t={t} onBack={()=>setView('landing')} checkDuplicate={checkDuplicate} />;
-  if(view === 'login') return <LoginView t={t} onLogin={()=>setView('admin')} onBack={()=>setView('landing')} />;
+  if(view === 'login_admin') return <LoginView t={t} onLogin={()=>handleLoginSuccess('admin')} onBack={()=>setView('landing')} />;
+  if(view === 'login_projector') return <LoginView t={t} onLogin={()=>handleLoginSuccess('projector')} onBack={()=>setView('landing')} />;
   if(view === 'admin') return <AdminDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} setAttendees={setAttendees} drawHistory={drawHistory} setDrawHistory={setDrawHistory} />;
+  if(view === 'projector') return <ProjectorView t={t} onBack={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} />;
 }
