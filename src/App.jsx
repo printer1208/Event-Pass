@@ -4,7 +4,8 @@ import {
   XCircle, Search, Trash2, ScanLine, Camera, 
   ArrowRight, UserPlus, LogOut, Globe, Mail,
   Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
-  Cloud, Zap, Image as ImageIcon, MonitorPlay, Aperture, Gift, Play, Check
+  Cloud, Zap, Image as ImageIcon, MonitorPlay, Aperture, Gift,
+  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Save
 } from 'lucide-react';
 
 // --- Firebase 模組 ---
@@ -55,7 +56,7 @@ const StyleInjector = () => {
 const translations = {
   zh: {
     title: "Tesla Annual Dinner",
-    sub: "2025 獎品清單版",
+    sub: "2025 智能座位版",
     guestMode: "參加者登記",
     guestDesc: "Guest Registration",
     adminMode: "工作人員入口",
@@ -67,20 +68,21 @@ const translations = {
     enter: "登入",
     wrongPwd: "密碼錯誤",
     regTitle: "賓客登記",
-    regSub: "請上傳照片以便抽獎",
+    regSub: "系統將依 Email 自動分配座位",
     name: "姓名 (Name)",
     phone: "電話 (Mobile)",
     email: "電子郵件 (Email)",
-    photoBtn: "開啟相機 / 選擇照片",
-    photoRetake: "重拍",
+    company: "公司/備註 (選填)",
     generateBtn: "確認登記 / Submit",
     back: "返回",
     yourCode: "您的入場憑證",
+    yourSeat: "您的座位",
     showToStaff: "資料已同步！請出示給工作人員掃描",
     next: "完成 (Finish)",
     scan: "極速掃描",
     draw: "頭像轉盤",
     list: "賓客名單",
+    seating: "座位表設定",
     total: "總人數",
     arrived: "已到場",
     scanCam: "啟動掃描鏡頭",
@@ -106,16 +108,22 @@ const translations = {
     logout: "登出",
     cloudStatus: "雲端連線正常",
     winnersList: "中獎名單",
-    prizeTitle: "獎品池",
-    addPrize: "新增獎品",
-    prizePlace: "輸入獎品名稱 (例如: 頭獎)",
-    activePrize: "正在抽取",
-    activate: "啟用",
-    delPrize: "刪除"
+    prizeTitle: "當前獎項",
+    setPrize: "設定",
+    prizePlace: "輸入獎品 (如: 頭獎 Model 3)",
+    currentPrize: "正在抽取",
+    markWin: "設為中獎",
+    unmarkWin: "取消中獎",
+    delete: "刪除",
+    table: "桌號",
+    seat: "座位",
+    addSeat: "新增座位分配",
+    emailMatch: "匹配 Email",
+    seatTBD: "待定 (請洽櫃台)"
   },
   en: {
     title: "Tesla Annual Dinner",
-    sub: "2025 Prize List",
+    sub: "2025 Smart Seating",
     guestMode: "Guest Registration",
     guestDesc: "For Attendees",
     adminMode: "Staff Portal",
@@ -127,20 +135,21 @@ const translations = {
     enter: "Login",
     wrongPwd: "Wrong Password",
     regTitle: "Registration",
-    regSub: "Please take a selfie for lucky draw",
+    regSub: "Seat assigned by Email",
     name: "Full Name",
     phone: "Phone Number",
     email: "Email Address",
-    photoBtn: "Camera / Upload",
-    photoRetake: "Retake",
+    company: "Company (Optional)",
     generateBtn: "Submit Registration",
     back: "Back",
     yourCode: "Entry Pass",
+    yourSeat: "Your Seat",
     showToStaff: "Synced! Show to staff.",
     next: "Finish",
     scan: "Scanner",
     draw: "Photo Wheel",
     list: "Guest List",
+    seating: "Seating Plan",
     total: "Total",
     arrived: "Arrived",
     scanCam: "Start Camera",
@@ -166,12 +175,18 @@ const translations = {
     logout: "Logout",
     cloudStatus: "Connected",
     winnersList: "Winners List",
-    prizeTitle: "Prize Pool",
-    addPrize: "Add Prize",
+    prizeTitle: "Current Prize",
+    setPrize: "Set",
     prizePlace: "Enter Prize Name",
-    activePrize: "Drawing For",
-    activate: "Select",
-    delPrize: "Delete"
+    currentPrize: "Drawing For",
+    markWin: "Mark Win",
+    unmarkWin: "Remove Win",
+    delete: "Delete",
+    table: "Table",
+    seat: "Seat",
+    addSeat: "Add Assignment",
+    emailMatch: "Match Email",
+    seatTBD: "TBD (Ask Staff)"
   }
 };
 
@@ -213,6 +228,7 @@ const Confetti = () => {
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
 };
 
+// --- 輪盤組件 ---
 const WheelComponent = ({ list, t, onDrawEnd }) => {
     const [rot, setRot] = useState(0);
     const [spin, setSpin] = useState(false);
@@ -251,7 +267,7 @@ const WheelComponent = ({ list, t, onDrawEnd }) => {
     );
 };
 
-// ... LoginView, GuestView 保持不變 ...
+// --- Login View ---
 const LoginView = ({ t, onLogin, onBack }) => {
     const [pwd, setPwd] = useState('');
     const handleSubmit = (e) => { e.preventDefault(); if(pwd === ADMIN_PASSWORD) onLogin(); else { alert(t.wrongPwd); setPwd(''); } };
@@ -270,20 +286,89 @@ const LoginView = ({ t, onLogin, onBack }) => {
       </div>
     );
 };
-const GuestView = ({ t, onBack, checkDuplicate }) => {
+
+// --- Guest View (V39: 智能匹配座位) ---
+const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({name:'',phone:'',email:'',company:''});
   const [photo, setPhoto] = useState(null);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
   const [newId, setNewId] = useState(null);
+  const [matchedSeat, setMatchSeat] = useState(null); // 儲存匹配到的座位
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
-  const startCamera = async () => { setErr(''); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } }); setIsCameraOpen(true); setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100); } catch (e) { fileInputRef.current.click(); } };
-  const takePhoto = async () => { if(!videoRef.current) return; const canvas = document.createElement('canvas'); const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const xOffset = (videoRef.current.videoWidth - size) / 2; const yOffset = (videoRef.current.videoHeight - size) / 2; ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size); const rawBase64 = canvas.toDataURL('image/jpeg'); const stream = videoRef.current.srcObject; if(stream) stream.getTracks().forEach(track => track.stop()); setIsCameraOpen(false); const compressed = await compressImage(rawBase64, false); setPhoto(compressed); };
-  const handleFileChange = async (e) => { const file = e.target.files[0]; if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); } };
-  const handleSubmit = async (e) => { e.preventDefault(); setErr(''); if(!photo) { setErr(t.errPhoto); return; } setLoading(true); const cleanPhone = normalizePhone(form.phone); const cleanEmail = normalizeEmail(form.email); const dup = checkDuplicate(cleanPhone, cleanEmail); if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } try { if (!db) throw new Error("Firebase not initialized"); const docRef = await addDoc(collection(db, "attendees"), { name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() }); setNewId(docRef.id); setStep(2); } catch (error) { console.error(error); setErr("Network Error."); } setLoading(false); };
+
+  const startCamera = async () => {
+      setErr('');
+      try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } });
+          setIsCameraOpen(true);
+          setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100);
+      } catch (e) { fileInputRef.current.click(); }
+  };
+  const takePhoto = async () => {
+      if(!videoRef.current) return;
+      const canvas = document.createElement('canvas');
+      const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight);
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const xOffset = (videoRef.current.videoWidth - size) / 2;
+      const yOffset = (videoRef.current.videoHeight - size) / 2;
+      ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size);
+      const rawBase64 = canvas.toDataURL('image/jpeg');
+      const stream = videoRef.current.srcObject;
+      if(stream) stream.getTracks().forEach(track => track.stop());
+      setIsCameraOpen(false);
+      const compressed = await compressImage(rawBase64, false);
+      setPhoto(compressed);
+  };
+  const handleFileChange = async (e) => {
+      const file = e.target.files[0];
+      if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault(); setErr(''); 
+    if(!photo) { setErr(t.errPhoto); return; }
+    setLoading(true);
+    const cleanPhone = normalizePhone(form.phone); const cleanEmail = normalizeEmail(form.email);
+    const dup = checkDuplicate(cleanPhone, cleanEmail);
+    if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; }
+    if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; }
+
+    // 🔥 智能匹配座位
+    let assignedTable = "";
+    let assignedSeat = "";
+    // 優先匹配 Email
+    const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail);
+    if(emailMatch) {
+        assignedTable = emailMatch.table;
+        assignedSeat = emailMatch.seat;
+    } else {
+        // 次要匹配 Phone (防止沒填 Email)
+        const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); // 假設座位表也有 phone 欄位
+        if(phoneMatch) {
+            assignedTable = phoneMatch.table;
+            assignedSeat = phoneMatch.seat;
+        }
+    }
+    
+    setMatchSeat({ table: assignedTable, seat: assignedSeat });
+
+    try {
+        if (!db) throw new Error("Firebase not initialized");
+        const docRef = await addDoc(collection(db, "attendees"), { 
+            name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, 
+            table: assignedTable, seat: assignedSeat, // 寫入匹配結果
+            photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() 
+        });
+        setNewId(docRef.id); setStep(2);
+    } catch (error) { console.error(error); setErr("Network Error."); }
+    setLoading(false);
+  };
+
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black pointer-events-none"></div>
@@ -324,6 +409,7 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
                             <input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} />
                         </div>
                     ))}
+                    <input className="w-full bg-white/5 border border-white/10 text-white p-3 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t.company} value={form.company} onChange={e=>setForm({...form,company:e.target.value})} />
                     <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
                   </div>
               )}
@@ -334,7 +420,15 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
                 <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({id: newId}))}`} alt="QR" className="w-48 h-48 object-contain"/>
                 <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full shadow-lg flex items-center gap-1 font-bold tracking-wider"><Cloud size={10}/> SAVED</div>
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">{form.name}</h3>
+              <h3 className="text-2xl font-bold text-white mb-1">{form.name}</h3>
+              
+              {/* 顯示匹配到的座位 */}
+              <div className="text-red-400 text-lg font-bold mb-4 flex justify-center items-center gap-2 bg-white/5 p-2 rounded-lg border border-red-500/30">
+                 <Armchair size={18}/> 
+                 {matchedSeat && matchedSeat.table ? `${t.table} ${matchedSeat.table}` : t.seatTBD} 
+                 {matchedSeat && matchedSeat.seat ? ` / ${t.seat} ${matchedSeat.seat}` : ""}
+              </div>
+
               <p className="text-white/50 text-sm mb-8 leading-relaxed">{t.showToStaff}</p>
               <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm">{t.next}</button>
             </div>
@@ -345,7 +439,7 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
   );
 };
 
-// 🔥 Projector View (Updated)
+// ... Projector View 保持不變 ...
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize }) => {
     const [winner, setWinner] = useState(null);
     const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
@@ -412,6 +506,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize }) => {
                     <div className="relative text-center w-full max-w-5xl px-4 animate-in zoom-in-50 duration-500 flex flex-col items-center">
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-red-600/20 rounded-full blur-[120px] pointer-events-none"></div>
                         <h3 className="text-4xl font-bold text-yellow-400 mb-6 tracking-widest uppercase animate-pulse">{currentPrize || "WINNER"}</h3>
+                        <Trophy className="text-yellow-400 mb-8 drop-shadow-[0_0_50px_rgba(250,204,21,0.6)] animate-bounce" size={120} />
                         {winner.photo && <img src={winner.photo} className="w-80 h-80 rounded-full border-[10px] border-yellow-400 object-cover shadow-[0_0_50px_rgba(234,179,8,0.5)] mb-8 animate-in zoom-in duration-700"/>}
                         <h1 className="text-7xl md:text-9xl font-black text-white mb-8 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] scale-110">{winner.name}</h1>
                         <p className="text-white/30 text-sm mt-8">Press ENTER to continue</p>
@@ -422,39 +517,45 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize }) => {
     );
 };
 
-// 🔥 Admin Dashboard (New Prize List)
-const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, setDrawHistory, currentPrize, setCurrentPrize }) => {
+// 🔥 Admin Dashboard (New Seating Plan Tab)
+const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, setDrawHistory, currentPrize, setCurrentPrize, seatingPlan, setSeatingPlan }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
   const [scanRes, setScanRes] = useState(null);
   const [newPrizeName, setNewPrizeName] = useState("");
-  const [prizes, setPrizes] = useState([]); // 新增：獎品列表
+  const [adminForm, setAdminForm] = useState({ name: '', phone: '', email: '', table: '', seat: '' });
+  const [seatForm, setSeatForm] = useState({ email: '', table: '', seat: '' }); // 座位表表單
+
   const lastScanTimeRef = useRef(0);
   const lastScannedCodeRef = useRef('');
 
-  // 監聽獎品列表
-  useEffect(() => {
-    if (!db) return;
-    const unsub = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => {
-        setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsub();
-  }, []);
+  // 新增座位預設
+  const handleAddSeating = async (e) => {
+      e.preventDefault();
+      if(!seatForm.email || !seatForm.table) return;
+      if(db) await addDoc(collection(db, "seating_plan"), { 
+          email: normalizeEmail(seatForm.email), 
+          table: seatForm.table, 
+          seat: seatForm.seat 
+      });
+      setSeatForm({ email: '', table: '', seat: '' });
+      alert("Seating Added!");
+  };
 
-  const handleAddPrize = async (e) => {
+  const handleDeleteSeating = async (id) => {
+      if(confirm('Delete this seating?')) await deleteDoc(doc(db, "seating_plan", id));
+  };
+
+  const handleUpdateSeat = async (id, table, seat) => {
+      if(db) await updateDoc(doc(db, "attendees", id), { table, seat });
+  };
+
+  const handleSetPrize = async (e) => {
       e.preventDefault();
       if(newPrizeName && db) {
-          await addDoc(collection(db, "prizes"), { name: newPrizeName, createdAt: new Date().toISOString() });
+          await setDoc(doc(db, "config", "settings"), { currentPrize: newPrizeName }, { merge: true });
           setNewPrizeName("");
       }
-  };
-
-  const handleSelectPrize = async (prizeName) => {
-      if(db) await setDoc(doc(db, "config", "settings"), { currentPrize: prizeName }, { merge: true });
-  };
-  
-  const handleDeletePrize = async (id) => {
-      if(confirm('Delete prize?') && db) await deleteDoc(doc(db, "prizes", id));
   };
 
   const handleScan = useCallback(async (text) => {
@@ -489,8 +590,29 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
     return () => { if(s) try{s.clear()}catch(e){} };
   }, [isScan, tab, handleScan]);
 
-  const toggleCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: !person.checkedIn, checkInTime: !person.checkedIn ? new Date().toISOString() : null }); };
+  const toggleCheckIn = async (person) => { 
+      if (!db) return;
+      await updateDoc(doc(db, "attendees", person.id), { checkedIn: true, checkInTime: new Date().toISOString() }); 
+  };
+  
+  const toggleCancelCheckIn = async (person) => { 
+      if (!db) return;
+      await updateDoc(doc(db, "attendees", person.id), { checkedIn: false, checkInTime: null }); 
+  };
+
   const deletePerson = async (id) => { if(confirm('Delete user?') && db) await deleteDoc(doc(db, "attendees", id)); };
+
+  const toggleWinnerStatus = async (person, winnerRecord) => {
+      if (winnerRecord) {
+          if(confirm('Remove this winner?')) await deleteDoc(doc(db, "winners", winnerRecord.id));
+      } else {
+          if(confirm('Mark as winner?')) {
+              await addDoc(collection(db, "winners"), { attendeeId: person.id, name: person.name, phone: person.phone, photo: person.photo, prize: currentPrize || "Manual Selection", wonAt: new Date().toISOString() });
+          }
+      }
+  };
+
+  const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
 
   return (
     <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
@@ -500,48 +622,16 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
       </header>
       <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col items-center">
         
-        {/* 新增：獎品清單管理區 */}
-        <div className="w-full max-w-md mb-6 bg-white/5 border border-white/10 p-4 rounded-xl flex flex-col gap-4">
-            <div className="flex justify-between items-center">
-                <span className="text-xs text-white/50 uppercase tracking-widest font-bold flex items-center gap-2"><Gift size={14}/> {t.prizeTitle}</span>
-                <div className="text-sm">Current: <span className="text-yellow-400 font-bold ml-1">{currentPrize || "---"}</span></div>
-            </div>
-            
-            {/* 新增表單 */}
-            <form onSubmit={handleAddPrize} className="flex gap-2">
-                <input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-1 bg-black/50 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:border-red-500 outline-none"/>
-                <button className="bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg text-xs font-bold transition-colors"><Plus size={16}/></button>
-            </form>
-
-            {/* 獎品列表 */}
-            <div className="flex flex-col gap-2 max-h-40 overflow-y-auto">
-                {prizes.map(prize => (
-                    <div key={prize.id} className={`flex items-center justify-between p-2 rounded-lg border transition-all ${currentPrize === prize.name ? 'bg-green-500/20 border-green-500/50' : 'bg-white/5 border-white/10'}`}>
-                        <span className="text-sm font-bold">{prize.name}</span>
-                        <div className="flex gap-2">
-                            {currentPrize !== prize.name && (
-                                <button onClick={()=>handleSelectPrize(prize.name)} className="p-1.5 bg-white/10 hover:bg-green-600 rounded text-xs transition-colors" title={t.activate}><Play size={14}/></button>
-                            )}
-                            {currentPrize === prize.name && <CheckCircle size={18} className="text-green-500 mr-2"/>}
-                            <button onClick={()=>handleDeletePrize(prize.id)} className="p-1.5 bg-white/10 hover:bg-red-600 rounded text-xs transition-colors" title={t.delPrize}><Trash2 size={14}/></button>
-                        </div>
-                    </div>
-                ))}
-                {prizes.length === 0 && <div className="text-white/30 text-xs text-center py-2">No prizes yet</div>}
-            </div>
-        </div>
-
+        {/* Tabs */}
         <div className="flex justify-center mb-8 bg-white/5 p-1 rounded-2xl shadow-lg border border-white/10 w-fit backdrop-blur-sm">
-          {[ {id:'scan',icon:ScanLine,l:t.scan}, {id:'list',icon:Users,l:t.list} ].map(i=> (
+          {[ {id:'scan',icon:ScanLine,l:t.scan}, {id:'list',icon:Users,l:t.list}, {id:'seating',icon:Armchair,l:t.seating} ].map(i=> (
             <button key={i.id} onClick={()=>{setTab(i.id);setIsScan(false);setScanRes(null)}} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all text-sm tracking-wide ${tab===i.id?'bg-red-600 text-white shadow-md':'text-white/50 hover:bg-white/10 hover:text-white'}`}><i.icon size={16}/> {i.l}</button>
           ))}
         </div>
-
-        {/* ... (Scan & List sections remain same, omitted for brevity but included in full code above) ... */}
-        {/* 請直接使用您原本 V35 的 AdminDashboard 下半部 (Scan/List)，這裡為了節省篇幅僅展示新增的 Prize 部分 */}
-        {/* 為了完整性，我將完整重複一遍下半部代碼 */}
         
         <div className="bg-neutral-900/50 backdrop-blur-xl border border-white/10 rounded-3xl shadow-2xl w-full min-h-[600px] overflow-hidden relative flex flex-col items-center justify-center">
+          
+          {/* 1. 掃描 */}
           {tab === 'scan' && (
             <div className="h-full w-full flex flex-col items-center justify-center p-8">
               {isScan ? (
@@ -551,7 +641,15 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
                     <div className={`absolute inset-0 flex flex-col items-center justify-center backdrop-blur-md transition-all duration-300 ${scanRes.type==='success'?'bg-emerald-600/90':scanRes.type==='duplicate'?'bg-amber-600/90':'bg-red-600/90'}`}>
                         <div className="bg-white text-black p-6 rounded-full shadow-lg mb-4 animate-bounce">{scanRes.type==='success' ? <CheckCircle size={48}/> : scanRes.type==='duplicate' ? <AlertTriangle size={48}/> : <XCircle size={48}/>}</div>
                         <h3 className="text-3xl font-black text-white mb-2 drop-shadow-md text-center px-4 tracking-widest">{scanRes.msg}</h3>
-                        {scanRes.p && <p className="text-white text-xl font-bold border-b-2 border-white pb-1">{scanRes.p.name}</p>}
+                        {scanRes.p && (
+                            <div className="text-center text-white mt-2">
+                                <p className="text-2xl font-bold">{scanRes.p.name}</p>
+                                <div className="flex justify-center gap-4 mt-2 text-sm opacity-90">
+                                    <span className="bg-white/20 px-3 py-1 rounded-full"><Armchair size={14} className="inline mr-1"/> {scanRes.p.table || '-'}</span>
+                                    <span className="bg-white/20 px-3 py-1 rounded-full">{scanRes.p.seat || '-'}</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                   )}
                   <button onClick={()=>setIsScan(false)} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 hover:bg-red-600 text-white border border-white/30 backdrop-blur px-6 py-2 rounded-full text-sm transition-all z-20">{t.stopCam}</button>
@@ -565,29 +663,57 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
             </div>
           )}
           
+          {/* 2. 名單管理 */}
           {tab === 'list' && (
             <div className="h-full w-full flex flex-col">
-              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-black/20">
-                <div className="font-bold text-white flex items-center gap-3"><span className="text-white/50 text-sm font-normal">{t.total}: {attendees.length}</span> <span className="w-[1px] h-4 bg-white/20"></span> <span className="text-emerald-400">{t.arrived}: {attendees.filter(x=>x.checkedIn).length}</span></div>
-                <button onClick={()=>{const csv="Name,Phone,Email,Status\n"+attendees.map(p=>`${p.name},${p.phone},${p.email},${p.checkedIn?'Checked':'Pending'}`).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:'text/csv'}));a.download="list.csv";a.click();}} className="text-xs font-bold bg-white/10 border border-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/20 flex items-center gap-2 transition-colors"><Download size={14}/> CSV</button>
+              <div className="p-4 bg-black/20 border-b border-white/10 flex flex-col gap-4">
+                 {/* 獎品設定 */}
+                 <div className="flex gap-2 items-center text-xs text-white/50">
+                    <span className="uppercase tracking-widest">{t.prizeTitle}: <span className="text-yellow-400 font-bold">{currentPrize || "---"}</span></span>
+                    <input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="bg-white/5 border border-white/10 rounded px-2 py-1 w-40 text-white focus:border-red-500 outline-none"/>
+                    <button onClick={handleSetPrize} className="bg-white/10 hover:bg-white/20 px-2 py-1 rounded">{t.setPrize}</button>
+                 </div>
+                 
+                 <div className="flex justify-between items-center">
+                    <div className="font-bold text-white flex items-center gap-3"><span className="text-white/50 text-sm font-normal">{t.total}: {attendees.length}</span> <span className="w-[1px] h-4 bg-white/20"></span> <span className="text-emerald-400">{t.arrived}: {attendees.filter(x=>x.checkedIn).length}</span></div>
+                    <button onClick={()=>{const csv="Name,Phone,Email,Table,Seat,Status\n"+attendees.map(p=>`${p.name},${p.phone},${p.email},${p.table},${p.seat},${p.checkedIn?'Checked':'Pending'}`).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:'text/csv'}));a.download="list.csv";a.click();}} className="text-xs font-bold bg-white/10 border border-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/20 flex items-center gap-2 transition-colors"><Download size={14}/> CSV</button>
+                 </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4">
                 <table className="w-full text-left border-collapse">
-                  <thead className="text-xs text-white/40 uppercase tracking-widest border-b border-white/10"><tr><th className="p-4 pl-6">Avatar</th><th className="p-4">{t.name}</th><th className="p-4">{t.phone}</th><th className="p-4">{t.email}</th><th className="p-4 text-right">{t.checkin}</th></tr></thead>
+                  <thead className="text-xs text-white/40 uppercase tracking-widest border-b border-white/10"><tr><th className="p-4 pl-6">Avatar</th><th className="p-4">{t.name}</th><th className="p-4 hidden md:table-cell">{t.phone}</th><th className="p-4">{t.table}/{t.seat}</th><th className="p-4 text-center">Status</th><th className="p-4 text-center">Win</th><th className="p-4 text-right">Action</th></tr></thead>
                   <tbody className="divide-y divide-white/5">
                     {attendees.map(p=>{
-                        const isWinner = drawHistory.some(h => h.attendeeId === p.id);
+                        const winnerRecord = drawHistory.find(h => h.attendeeId === p.id);
                         return (
-                          <tr key={p.id} className={`transition-colors group ${isWinner ? 'bg-yellow-500/10' : 'hover:bg-white/5'}`}>
+                          <tr key={p.id} className={`transition-colors group ${winnerRecord ? 'bg-yellow-500/10' : 'hover:bg-white/5'}`}>
                             <td className="p-4 pl-6">{p.photo ? <img src={p.photo} alt="User" className="w-10 h-10 rounded-full object-cover border border-white/20"/> : <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"><User size={16}/></div>}</td>
-                            <td className="p-4 font-bold text-white flex items-center gap-2">
+                            <td className="p-4 font-bold text-white">
                                 {p.name}
-                                {isWinner && <Trophy size={16} className="text-yellow-500 fill-current animate-pulse"/>}
+                                {winnerRecord && <div className="text-[10px] text-yellow-500 flex items-center gap-1"><Trophy size={10}/> {winnerRecord.prize}</div>}
                             </td>
-                            <td className="p-4 text-white/60 text-sm font-mono">{p.phone}</td>
-                            <td className="p-4 text-white/60 text-sm">{p.email}</td>
-                            <td className="p-4 text-right flex justify-end gap-2">
-                              <button onClick={()=>toggleCheckIn(p)} className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${p.checkedIn?'bg-emerald-500/20 text-emerald-400 border-emerald-500/50':'bg-white/5 text-white/40 border-white/10 hover:bg-white/10 hover:text-white'}`}>{p.checkedIn?t.checkin:t.cancel}</button>
+                            <td className="p-4 text-white/60 text-sm font-mono hidden md:table-cell">{p.phone}</td>
+                            
+                            <td className="p-4 text-white/80 text-sm font-mono cursor-pointer hover:text-red-400" onClick={()=>{
+                                const newTable = prompt("Edit Table No.", p.table || "");
+                                if(newTable !== null) {
+                                    const newSeat = prompt("Edit Seat No.", p.seat || "");
+                                    if(newSeat !== null) handleUpdateSeat(p.id, newTable, newSeat);
+                                }
+                            }}>
+                                {p.table || '-'}/{p.seat || '-'} <Edit3 size={12} className="inline ml-1 opacity-50"/>
+                            </td>
+
+                            <td className="p-4 text-center">
+                                {!p.checkedIn && <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-3 py-1 rounded-lg text-xs font-bold hover:bg-emerald-600 hover:text-white transition-colors flex items-center justify-center gap-1 w-full"><UserCheck size={14}/> {t.checkin}</button>}
+                                {p.checkedIn && <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-3 py-1 rounded-lg text-xs font-bold hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/50 transition-colors flex items-center justify-center gap-1 w-full"><UserX size={14}/> {t.cancel}</button>}
+                            </td>
+                            <td className="p-4 text-center">
+                                <button onClick={()=>toggleWinnerStatus(p, winnerRecord)} className={`p-2 rounded-lg transition-colors ${winnerRecord ? 'text-yellow-400 hover:bg-yellow-500/20' : 'text-white/20 hover:text-yellow-400 hover:bg-white/10'}`}>
+                                    {winnerRecord ? <Star size={18} fill="currentColor"/> : <StarOff size={18}/>}
+                                </button>
+                            </td>
+                            <td className="p-4 text-right">
                               <button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={16}/></button>
                             </td>
                           </tr>
@@ -598,6 +724,47 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
               </div>
             </div>
           )}
+
+          {/* 3. 新增：座位表設定 (Seating Plan) */}
+          {tab === 'seating' && (
+              <div className="h-full w-full flex flex-col p-8">
+                  <div className="mb-6 flex gap-2 items-end">
+                      <div className="flex-1">
+                          <label className="text-xs text-white/50 block mb-1">{t.emailMatch}</label>
+                          <input className="w-full bg-white/5 border border-white/10 text-white p-2 rounded-lg outline-none focus:border-red-500" value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} placeholder="user@example.com" />
+                      </div>
+                      <div className="w-20">
+                          <label className="text-xs text-white/50 block mb-1">{t.table}</label>
+                          <input className="w-full bg-white/5 border border-white/10 text-white p-2 rounded-lg outline-none focus:border-red-500" value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} placeholder="1" />
+                      </div>
+                      <div className="w-20">
+                          <label className="text-xs text-white/50 block mb-1">{t.seat}</label>
+                          <input className="w-full bg-white/5 border border-white/10 text-white p-2 rounded-lg outline-none focus:border-red-500" value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} placeholder="A" />
+                      </div>
+                      <button onClick={handleAddSeating} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold h-[42px]">{t.addSeat}</button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto bg-black/20 rounded-xl border border-white/10 p-4">
+                      {seatingPlan.length === 0 ? <div className="text-white/30 text-center py-10">No preset seats</div> : (
+                          <div className="grid gap-2">
+                              {seatingPlan.map(s => (
+                                  <div key={s.id} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-white/5">
+                                      <div className="flex items-center gap-3">
+                                          <Mail size={16} className="text-white/30"/>
+                                          <span className="font-mono text-sm">{s.email}</span>
+                                      </div>
+                                      <div className="flex items-center gap-4">
+                                          <span className="text-emerald-400 font-bold"><Armchair size={14} className="inline mr-1"/> T: {s.table} / S: {s.seat}</span>
+                                          <button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500"><Trash2 size={14}/></button>
+                                      </div>
+                                  </div>
+                              ))}
+                          </div>
+                      )}
+                  </div>
+              </div>
+          )}
+
         </div>
       </main>
     </div>
@@ -610,14 +777,17 @@ export default function App() {
   const [attendees, setAttendees] = useState([]);
   const [drawHistory, setDrawHistory] = useState([]);
   const [currentPrize, setCurrentPrize] = useState("");
+  const [seatingPlan, setSeatingPlan] = useState([]); // 新增座位表 State
 
   useEffect(() => {
     if (!db) return;
-    const q = query(collection(db, "attendees"), orderBy("createdAt", "desc"));
-    const unsubAttendees = onSnapshot(q, (snapshot) => { setAttendees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
+    const unsubAttendees = onSnapshot(query(collection(db, "attendees"), orderBy("createdAt", "desc")), (snapshot) => { setAttendees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
     const unsubWinners = onSnapshot(collection(db, "winners"), (snapshot) => { setDrawHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
     const unsubConfig = onSnapshot(doc(db, "config", "settings"), (doc) => { if (doc.exists()) setCurrentPrize(doc.data().currentPrize); });
-    return () => { unsubAttendees(); unsubWinners(); unsubConfig(); };
+    // 新增：監聽座位表
+    const unsubSeating = onSnapshot(collection(db, "seating_plan"), (snapshot) => { setSeatingPlan(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
+    
+    return () => { unsubAttendees(); unsubWinners(); unsubConfig(); unsubSeating(); };
   }, []);
 
   const checkDuplicate = (p, e) => {
@@ -662,9 +832,10 @@ export default function App() {
       </div>
     </div>
   );
-  if(view === 'guest') return <><StyleInjector/><GuestView t={t} onBack={()=>setView('landing')} checkDuplicate={checkDuplicate} /></>;
+  // 將 seatingPlan 傳遞給 GuestView 進行自動匹配
+  if(view === 'guest') return <><StyleInjector/><GuestView t={t} onBack={()=>setView('landing')} checkDuplicate={checkDuplicate} seatingPlan={seatingPlan} /></>;
   if(view === 'login_admin') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('admin')} onBack={()=>setView('landing')} /></>;
   if(view === 'login_projector') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('projector')} onBack={()=>setView('landing')} /></>;
-  if(view === 'admin') return <><StyleInjector/><AdminDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} setAttendees={setAttendees} drawHistory={drawHistory} setDrawHistory={setDrawHistory} currentPrize={currentPrize} setCurrentPrize={setCurrentPrize} /></>;
+  if(view === 'admin') return <><StyleInjector/><AdminDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} setAttendees={setAttendees} drawHistory={drawHistory} setDrawHistory={setDrawHistory} currentPrize={currentPrize} setCurrentPrize={setCurrentPrize} seatingPlan={seatingPlan} setSeatingPlan={setSeatingPlan} /></>;
   if(view === 'projector') return <><StyleInjector/><ProjectorView t={t} onBack={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} /></>;
 }
