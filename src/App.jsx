@@ -14,7 +14,9 @@ import {
   doc, onSnapshot, query, orderBy, deleteDoc 
 } from "firebase/firestore";
 
-// ✅ Firebase Config
+// =================================================================
+// ✅ 您的 Firebase 設定
+// =================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyDUZeeaWvQZJORdDv4PdAHQK-SqXFIDsy4",
   authDomain: "eventpass-77522.firebaseapp.com",
@@ -35,6 +37,7 @@ try {
 
 const ADMIN_PASSWORD = "admin"; 
 
+// --- 翻譯包 ---
 const translations = {
   zh: {
     title: "Tesla Annual Dinner",
@@ -148,9 +151,9 @@ const translations = {
   }
 };
 
+// --- 工具 ---
 const normalizePhone = (p) => String(p).replace(/[^0-9]/g, '');
 const normalizeEmail = (e) => String(e).trim().toLowerCase();
-
 const compressImage = (source, isFile = true) => {
     return new Promise((resolve) => {
         const img = new Image();
@@ -174,6 +177,42 @@ const compressImage = (source, isFile = true) => {
     });
 };
 
+// --- 🔥 暴力樣式注入器 (Style Injector) ---
+// 這段代碼會強制把背景變黑，並從網路載入 Tailwind，無視所有本地錯誤
+const StyleInjector = () => {
+  useEffect(() => {
+    // 1. 強制設定 Body 樣式
+    document.body.style.backgroundColor = "#000000";
+    document.body.style.color = "#ffffff";
+    document.body.style.margin = "0";
+    document.body.style.minHeight = "100vh";
+    
+    // 2. 強制注入 Tailwind CDN
+    if (!document.querySelector('#tailwind-cdn')) {
+      const script = document.createElement('script');
+      script.id = 'tailwind-cdn';
+      script.src = "https://cdn.tailwindcss.com";
+      document.head.appendChild(script);
+    }
+  }, []);
+  return null;
+};
+
+// --- 組件 ---
+const Confetti = () => {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const c = canvasRef.current;
+    const ctx = c.getContext('2d');
+    c.width = window.innerWidth; c.height = window.innerHeight;
+    const p = Array.from({length:200}).map(()=>({x:Math.random()*c.width, y:Math.random()*c.height,c:['#E82127','#FFFFFF','#808080'][Math.floor(Math.random()*3)],s:Math.random()*8+2,d:Math.random()*5}));
+    const draw = () => { ctx.clearRect(0,0,c.width,c.height); p.forEach(i=>{i.y+=i.s;i.x+=Math.sin(i.d);if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}ctx.fillStyle=i.c;ctx.beginPath();ctx.arc(i.x,i.y,i.s/2,0,Math.PI*2);ctx.fill();}); requestAnimationFrame(draw); };
+    draw();
+  }, []);
+  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
+};
+
+// ... (WheelComponent 保持不變，為節省篇幅省略，功能在下方 ProjectorView 內) ...
 const WheelComponent = ({ list, t, onDrawEnd }) => {
     const [rot, setRot] = useState(0);
     const [spin, setSpin] = useState(false);
@@ -215,15 +254,16 @@ const WheelComponent = ({ list, t, onDrawEnd }) => {
     );
 };
 
+// --- Views (全部強制 Inline Style 確保黑底) ---
+
 const LoginView = ({ t, onLogin, onBack }) => (
-  <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
-    <div className="absolute top-[-20%] left-[-20%] w-[600px] h-[600px] bg-red-700/30 rounded-full blur-[120px] pointer-events-none"></div>
-    <div className="absolute bottom-[-20%] right-[-20%] w-[600px] h-[600px] bg-neutral-800/30 rounded-full blur-[120px] pointer-events-none"></div>
+  <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white" style={{backgroundColor: 'black', minHeight: '100vh'}}>
+    <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-neutral-900 via-black to-black opacity-80"></div>
     <div className="relative bg-neutral-900/60 border border-white/10 p-10 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in duration-500">
       <button onClick={onBack} className="text-white/50 hover:text-white mb-8 flex items-center transition-colors text-sm uppercase tracking-widest"><ChevronLeft size={16} className="mr-1"/> {t.back}</button>
       <div className="text-center mb-8"><h2 className="text-3xl font-bold text-white mb-2 tracking-tight">{t.login}</h2></div>
       <form onSubmit={e=>{e.preventDefault(); if(e.target[0].value===ADMIN_PASSWORD)onLogin(); else alert(t.wrongPwd);}}>
-        <input type="password" autoFocus placeholder={t.pwdPlace} className="w-full bg-white/5 border border-white/10 text-white p-4 rounded-xl mb-6 focus:ring-1 focus:ring-red-600 focus:border-red-600 outline-none transition-all text-center tracking-[0.3em] placeholder:tracking-normal placeholder:text-white/20"/>
+        <input type="password" autoFocus placeholder={t.pwdPlace} className="w-full bg-white/5 border border-white/10 text-white p-4 rounded-xl mb-6 focus:ring-1 focus:ring-red-600 focus:border-red-600 outline-none transition-all text-center tracking-[0.3em]"/>
         <button className="w-full bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-900/40 transition-all active:scale-95 uppercase tracking-widest text-sm">{t.enter}</button>
       </form>
     </div>
@@ -247,7 +287,7 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
       try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } });
           setIsCameraOpen(true);
-          setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log(e)); } }, 100);
+          setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100);
       } catch (e) { fileInputRef.current.click(); }
   };
 
@@ -290,8 +330,7 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
   };
 
   return (
-    <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black pointer-events-none"></div>
+    <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white" style={{backgroundColor: 'black'}}>
       <div className="relative bg-neutral-900/80 border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl">
         <div className="bg-gradient-to-r from-red-700 to-red-900 p-8 text-white text-center relative">
           {!isCameraOpen && <button onClick={onBack} className="absolute left-6 top-6 text-white/70 hover:text-white z-10"><ChevronLeft/></button>}
@@ -395,7 +434,7 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
   const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
 
   return (
-    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
+    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white" style={{backgroundColor: 'black'}}>
       <header className="bg-neutral-900/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
         <div className="flex items-center gap-3 font-bold text-xl"><div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center text-white"><QrCode size={18}/></div> {t.adminMode}</div>
         <button onClick={onLogout} className="text-white/50 hover:text-red-500 text-sm flex items-center gap-2 transition-colors"><LogOut size={16}/> {t.logout}</button>
@@ -444,18 +483,21 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
                 <table className="w-full text-left border-collapse">
                   <thead className="text-xs text-white/40 uppercase tracking-widest border-b border-white/10"><tr><th className="p-4 pl-6">Avatar</th><th className="p-4">{t.name}</th><th className="p-4">{t.phone}</th><th className="p-4">{t.email}</th><th className="p-4 text-right">{t.checkin}</th></tr></thead>
                   <tbody className="divide-y divide-white/5">
-                    {attendees.map(p=>(
-                      <tr key={p.id} className="hover:bg-white/5 transition-colors group">
-                        <td className="p-4 pl-6">{p.photo ? <img src={p.photo} alt="User" className="w-10 h-10 rounded-full object-cover border border-white/20"/> : <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"><User size={16}/></div>}</td>
-                        <td className="p-4 font-bold text-white">{p.name}</td>
-                        <td className="p-4 text-white/60 text-sm font-mono">{p.phone}</td>
-                        <td className="p-4 text-white/60 text-sm">{p.email}</td>
-                        <td className="p-4 text-right flex justify-end gap-2">
-                          <button onClick={()=>toggleCheckIn(p)} className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${p.checkedIn?'bg-emerald-500/20 text-emerald-400 border-emerald-500/50':'bg-white/5 text-white/40 border-white/10 hover:bg-white/10 hover:text-white'}`}>{p.checkedIn?t.checkin:t.cancel}</button>
-                          <button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={16}/></button>
-                        </td>
-                      </tr>
-                    ))}
+                    {attendees.map(p=>{
+                        const isWinner = drawHistory.some(h => h.attendeeId === p.id);
+                        return (
+                          <tr key={p.id} className={`transition-colors group ${isWinner ? 'bg-yellow-500/10' : 'hover:bg-white/5'}`}>
+                            <td className="p-4 pl-6">{p.photo ? <img src={p.photo} alt="User" className="w-10 h-10 rounded-full object-cover border border-white/20"/> : <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"><User size={16}/></div>}</td>
+                            <td className="p-4 font-bold text-white">{p.name}</td>
+                            <td className="p-4 text-white/60 text-sm font-mono">{p.phone}</td>
+                            <td className="p-4 text-white/60 text-sm">{p.email}</td>
+                            <td className="p-4 text-right flex justify-end gap-2">
+                              <button onClick={()=>toggleCheckIn(p)} className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${p.checkedIn?'bg-emerald-500/20 text-emerald-400 border-emerald-500/50':'bg-white/5 text-white/40 border-white/10 hover:bg-white/10 hover:text-white'}`}>{p.checkedIn?t.checkin:t.cancel}</button>
+                              <button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={16}/></button>
+                            </td>
+                          </tr>
+                        );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -540,10 +582,6 @@ export default function App() {
   const [drawHistory, setDrawHistory] = useState([]);
 
   useEffect(() => {
-    // 💥 這裡加上一個強制黑底的 JS，作為第三重保險 💥
-    document.body.style.backgroundColor = "#000000";
-    document.body.style.color = "#ffffff";
-    
     if (!db) return;
     const q = query(collection(db, "attendees"), orderBy("createdAt", "desc"));
     const unsubAttendees = onSnapshot(q, (snapshot) => { setAttendees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
@@ -558,7 +596,8 @@ export default function App() {
   };
 
   if(view === 'landing') return (
-    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col items-center justify-center p-6 relative overflow-hidden text-white">
+    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col items-center justify-center p-6 relative overflow-hidden text-white" style={{backgroundColor: 'black'}}>
+      <StyleInjector /> {/* 🔥 這是關鍵：強制注入樣式和黑底 */}
       <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-800 via-neutral-950 to-neutral-950 pointer-events-none"></div>
       <button onClick={()=>setLang(l=>l==='zh'?'en':'zh')} className="absolute top-6 right-6 text-white/50 hover:text-white flex items-center gap-2 border border-white/10 px-4 py-2 rounded-full transition-all z-10 text-xs font-mono"><Globe size={14}/> {lang.toUpperCase()}</button>
       <div className="z-10 text-center mb-16 flex flex-col items-center">
@@ -590,9 +629,9 @@ export default function App() {
       </div>
     </div>
   );
-  if(view === 'guest') return <GuestView t={t} onBack={()=>setView('landing')} checkDuplicate={checkDuplicate} />;
-  if(view === 'login_admin') return <LoginView t={t} onLogin={()=>handleLoginSuccess('admin')} onBack={()=>setView('landing')} />;
-  if(view === 'login_projector') return <LoginView t={t} onLogin={()=>handleLoginSuccess('projector')} onBack={()=>setView('landing')} />;
-  if(view === 'admin') return <AdminDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} setAttendees={setAttendees} drawHistory={drawHistory} setDrawHistory={setDrawHistory} />;
-  if(view === 'projector') return <ProjectorView t={t} onBack={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} />;
+  if(view === 'guest') return <><StyleInjector/><GuestView t={t} onBack={()=>setView('landing')} checkDuplicate={checkDuplicate} /></>;
+  if(view === 'login_admin') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('admin')} onBack={()=>setView('landing')} /></>;
+  if(view === 'login_projector') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('projector')} onBack={()=>setView('landing')} /></>;
+  if(view === 'admin') return <><StyleInjector/><AdminDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} setAttendees={setAttendees} drawHistory={drawHistory} setDrawHistory={setDrawHistory} /></>;
+  if(view === 'projector') return <><StyleInjector/><ProjectorView t={t} onBack={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} /></>;
 }
