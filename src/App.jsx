@@ -5,7 +5,7 @@ import {
   ArrowRight, UserPlus, LogOut, Globe, Mail,
   Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
   Cloud, Zap, Image as ImageIcon, MonitorPlay, Aperture, Gift,
-  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, Grid
+  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw
 } from 'lucide-react';
 
 // --- Firebase 模組 ---
@@ -56,7 +56,7 @@ const StyleInjector = () => {
 const translations = {
   zh: {
     title: "Tesla Annual Dinner",
-    sub: "2025 馬賽克照片牆版",
+    sub: "2025 影音震撼版",
     guestMode: "參加者登記",
     guestDesc: "Guest Registration",
     adminMode: "工作人員入口",
@@ -80,10 +80,9 @@ const translations = {
     showToStaff: "資料已同步！請出示給工作人員掃描",
     next: "完成 (Finish)",
     scan: "極速掃描",
-    draw: "馬賽克抽獎",
+    draw: "銀河抽獎",
     list: "賓客名單",
-    seating: "座位表",
-    prizesTab: "獎品管理",
+    seating: "座位表查詢",
     total: "總人數",
     arrived: "已到場",
     scanCam: "啟動掃描鏡頭",
@@ -99,7 +98,7 @@ const translations = {
     errPhoto: "請拍攝或上傳一張照片！",
     errIncomplete: "請填寫所有必填欄位",
     drawBtn: "啟動抽獎 (Space)",
-    running: "鎖定目標中...",
+    running: "搜尋幸運兒...",
     winner: "✨ 恭喜中獎 ✨",
     claim: "確認領獎 (Enter)",
     needMore: "等待更多賓客入場...",
@@ -110,8 +109,8 @@ const translations = {
     cloudStatus: "雲端連線正常",
     winnersList: "中獎名單",
     prizeTitle: "獎品池",
-    setPrize: "設定",
-    prizePlace: "輸入獎品 (如: 頭獎 Model 3)",
+    setPrize: "新增",
+    prizePlace: "輸入獎品名稱 (例如: 頭獎)",
     currentPrize: "正在抽取",
     markWin: "設為中獎",
     unmarkWin: "取消中獎",
@@ -123,11 +122,12 @@ const translations = {
     seatTBD: "待定 (請洽櫃台)",
     importCSV: "導入 CSV",
     downloadTemp: "下載範本",
-    importSuccess: "導入成功！"
+    importSuccess: "導入成功！",
+    resetWinner: "重抽此獎"
   },
   en: {
     title: "Tesla Annual Dinner",
-    sub: "2025 Mosaic Wall",
+    sub: "2025 Cinematic Edition",
     guestMode: "Guest Registration",
     guestDesc: "For Attendees",
     adminMode: "Staff Portal",
@@ -151,10 +151,9 @@ const translations = {
     showToStaff: "Synced! Show to staff.",
     next: "Finish",
     scan: "Scanner",
-    draw: "Mosaic Draw",
+    draw: "Galaxy Draw",
     list: "Guest List",
     seating: "Seating Plan",
-    prizesTab: "Prizes",
     total: "Total",
     arrived: "Arrived",
     scanCam: "Start Camera",
@@ -170,7 +169,7 @@ const translations = {
     errPhoto: "Photo is required!",
     errIncomplete: "Fill all fields",
     drawBtn: "Start Draw (Space)",
-    running: "Scanning...",
+    running: "Searching...",
     winner: "✨ GRAND PRIZE ✨",
     claim: "Confirm (Enter)",
     needMore: "Waiting for guests...",
@@ -181,7 +180,7 @@ const translations = {
     cloudStatus: "Connected",
     winnersList: "Winners List",
     prizeTitle: "Prize Pool",
-    setPrize: "Set",
+    setPrize: "Add",
     prizePlace: "Enter Prize Name",
     currentPrize: "Drawing For",
     markWin: "Mark Win",
@@ -194,7 +193,8 @@ const translations = {
     seatTBD: "TBD (Ask Staff)",
     importCSV: "Import CSV",
     downloadTemp: "Template",
-    importSuccess: "Import Successful!"
+    importSuccess: "Import Successful!",
+    resetWinner: "Re-draw"
   }
 };
 
@@ -236,41 +236,106 @@ const Confetti = () => {
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
 };
 
-// 🔥 V43 重點：馬賽克照片牆抽獎組件 (Mosaic Wall)
-const MosaicDrawComponent = ({ list, t, onDrawEnd }) => {
-    const [highlightId, setHighlightId] = useState(null); // 當前亮起的 ID
+// --- 🔊 音效控制器 (Web Audio API - 緊張鼓聲合成) ---
+const SoundController = {
+  ctx: null,
+  osc: null,
+  gain: null,
+  interval: null,
+  
+  init: function() {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) this.ctx = new AC();
+  },
+  
+  startSuspense: function() {
+      if (!this.ctx) this.init();
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+      
+      // 模擬心跳/鼓聲
+      const playBeat = () => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(60, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.1);
+          
+          gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+          
+          osc.start(this.ctx.currentTime);
+          osc.stop(this.ctx.currentTime + 0.1);
+      };
+
+      // 快速循環播放
+      this.interval = setInterval(playBeat, 200); // 每200ms一聲
+  },
+  
+  stopSuspense: function() {
+      if (this.interval) clearInterval(this.interval);
+  },
+
+  playWin: function() {
+      this.stopSuspense();
+      if (!this.ctx) return;
+      
+      // 勝利和弦
+      const playNote = (freq, time) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.3, this.ctx.currentTime + time);
+          gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + time + 1);
+          osc.start(this.ctx.currentTime + time);
+          osc.stop(this.ctx.currentTime + time + 1);
+      };
+      
+      playNote(523.25, 0); // C5
+      playNote(659.25, 0.1); // E5
+      playNote(783.99, 0.2); // G5
+      playNote(1046.50, 0.4); // C6
+  }
+};
+
+
+// 🔥 V43：銀河漫遊抽獎 (Galaxy Floating Effect)
+const GalaxyDrawComponent = ({ list, t, onDrawEnd }) => {
     const [isRunning, setIsRunning] = useState(false);
-    const intervalRef = useRef(null);
+    const containerRef = useRef(null);
 
+    // 啟動抽獎
     const start = () => {
-        if (list.length < 1) return;
+        if (list.length < 2) return;
         setIsRunning(true);
-        
-        // 極速隨機跳動 (每 80ms 切換一個亮點)
-        intervalRef.current = setInterval(() => {
-            const randomIdx = Math.floor(Math.random() * list.length);
-            setHighlightId(list[randomIdx].id);
-        }, 80);
+        SoundController.startSuspense(); // 播放緊張音樂
 
-        // 5 秒後自動停止
+        // 5 秒後停止
         setTimeout(() => {
             stop();
         }, 5000);
     };
 
+    // 停止抽獎
     const stop = () => {
-        if (intervalRef.current) clearInterval(intervalRef.current);
+        SoundController.playWin(); // 播放勝利音效
+        
         const winnerIdx = Math.floor(Math.random() * list.length);
         const finalWinner = list[winnerIdx];
-        setHighlightId(finalWinner.id); // 最後停在中獎者
-        setIsRunning(false);
         
-        // 延遲彈出大視窗
+        setIsRunning(false);
+        // 延遲以顯示中獎動畫
         setTimeout(() => {
             onDrawEnd(finalWinner);
         }, 800);
     };
 
+    // 鍵盤控制
     useEffect(() => {
         const handleKey = (e) => {
             if (e.code === 'Space' && !isRunning) {
@@ -283,38 +348,55 @@ const MosaicDrawComponent = ({ list, t, onDrawEnd }) => {
     }, [isRunning, list]);
 
     return (
-        <div className="flex flex-col items-center justify-center h-full w-full relative">
-            {/* 照片牆 Grid */}
-            <div className="w-full h-[60vh] overflow-hidden flex flex-wrap content-center justify-center gap-1 p-4">
-                {list.map((p) => {
-                    const isHighlighted = highlightId === p.id;
-                    return (
-                        <div 
-                            key={p.id} 
-                            className={`relative rounded-md overflow-hidden transition-all duration-100 ${isHighlighted ? 'z-50 scale-150 shadow-[0_0_20px_yellow] ring-4 ring-yellow-400' : 'opacity-60 grayscale scale-100'}`}
-                            style={{ 
-                                width: '60px', 
-                                height: '60px',
-                                flex: '0 0 auto'
-                            }}
-                        >
-                            {p.photo ? (
-                                <img src={p.photo} className="w-full h-full object-cover" alt="user" />
-                            ) : (
-                                <div className="w-full h-full bg-neutral-800 flex items-center justify-center text-[10px]">{p.name.substring(0,2)}</div>
-                            )}
-                        </div>
-                    );
+        <div className="flex flex-col items-center justify-center h-full w-full relative overflow-hidden" ref={containerRef}>
+            
+            {/* 照片漫遊區域 */}
+            <div className="relative w-full h-[600px] flex items-center justify-center">
+                {list.slice(0, 50).map((p, i) => { // 效能優化：最多顯示50張漫遊
+                     // 隨機生成位置與動畫參數
+                     const left = Math.random() * 80 + 10 + '%';
+                     const top = Math.random() * 80 + 10 + '%';
+                     const delay = Math.random() * 5 + 's';
+                     const duration = Math.random() * 5 + 3 + 's';
+                     
+                     return (
+                         <div 
+                             key={p.id}
+                             className={`absolute w-16 h-16 rounded-full border-2 border-white/20 overflow-hidden shadow-lg transition-all duration-500
+                                        ${isRunning ? 'animate-float opacity-100 scale-110 border-red-500' : 'opacity-40 scale-100 grayscale'}`}
+                             style={{
+                                 left: left,
+                                 top: top,
+                                 animation: isRunning ? `float ${duration} infinite alternate` : 'none',
+                                 animationDelay: delay
+                             }}
+                         >
+                             {p.photo ? <img src={p.photo} className="w-full h-full object-cover"/> : <div className="w-full h-full bg-white/10 flex items-center justify-center text-xs">{p.name.slice(0,1)}</div>}
+                         </div>
+                     )
                 })}
+                
+                {/* 中央聚焦點 */}
+                <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-40 border-4 border-dashed border-yellow-400 rounded-full flex items-center justify-center transition-all duration-300 ${isRunning ? 'opacity-100 scale-110 rotate-180' : 'opacity-0 scale-50'}`}>
+                    <Trophy className="text-yellow-400 animate-pulse" size={48}/>
+                </div>
             </div>
 
             <button 
                 disabled={isRunning} 
                 onClick={start} 
-                className="mt-8 bg-white text-black px-16 py-4 rounded-full font-black text-2xl shadow-[0_0_30px_rgba(255,255,255,0.4)] hover:scale-105 transition-transform disabled:opacity-50 uppercase tracking-widest"
+                className="absolute bottom-10 bg-white text-black px-16 py-4 rounded-full font-black text-2xl shadow-[0_0_30px_rgba(255,255,255,0.4)] hover:scale-105 transition-transform disabled:opacity-0 disabled:scale-100 uppercase tracking-widest z-50"
             >
-                {isRunning ? t.running : t.drawBtn}
+                {t.drawBtn}
             </button>
+
+            <style>{`
+                @keyframes float {
+                    0% { transform: translate(0, 0) scale(1); }
+                    100% { transform: translate(20px, -20px) scale(1.2); }
+                }
+                .animate-float { animation: float 3s infinite alternate ease-in-out; }
+            `}</style>
         </div>
     );
 };
@@ -351,59 +433,10 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  const startCamera = async () => {
-      setErr('');
-      try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } });
-          setIsCameraOpen(true);
-          setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100);
-      } catch (e) { fileInputRef.current.click(); }
-  };
-  const takePhoto = async () => {
-      if(!videoRef.current) return;
-      const canvas = document.createElement('canvas');
-      const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight);
-      canvas.width = size; canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      const xOffset = (videoRef.current.videoWidth - size) / 2;
-      const yOffset = (videoRef.current.videoHeight - size) / 2;
-      ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size);
-      const rawBase64 = canvas.toDataURL('image/jpeg');
-      const stream = videoRef.current.srcObject;
-      if(stream) stream.getTracks().forEach(track => track.stop());
-      setIsCameraOpen(false);
-      const compressed = await compressImage(rawBase64, false);
-      setPhoto(compressed);
-  };
-  const handleFileChange = async (e) => {
-      const file = e.target.files[0];
-      if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); }
-  };
-  const handleSubmit = async (e) => {
-    e.preventDefault(); setErr(''); 
-    if(!photo) { setErr(t.errPhoto); return; }
-    setLoading(true);
-    const cleanPhone = normalizePhone(form.phone); const cleanEmail = normalizeEmail(form.email);
-    const dup = checkDuplicate(cleanPhone, cleanEmail);
-    if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; }
-    if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; }
-    let assignedTable = ""; let assignedSeat = "";
-    const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail);
-    const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone);
-    if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; }
-    else if(phoneMatch) { assignedTable = phoneMatch.table; assignedSeat = phoneMatch.seat; }
-    setMatchSeat({ table: assignedTable, seat: assignedSeat });
-    try {
-        if (!db) throw new Error("Firebase not initialized");
-        const docRef = await addDoc(collection(db, "attendees"), { 
-            name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, 
-            table: assignedTable, seat: assignedSeat,
-            photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() 
-        });
-        setNewId(docRef.id); setStep(2);
-    } catch (error) { console.error(error); setErr("Network Error."); }
-    setLoading(false);
-  };
+  const startCamera = async () => { setErr(''); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } }); setIsCameraOpen(true); setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log(e)); } }, 100); } catch (e) { fileInputRef.current.click(); } };
+  const takePhoto = async () => { if(!videoRef.current) return; const canvas = document.createElement('canvas'); const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const xOffset = (videoRef.current.videoWidth - size) / 2; const yOffset = (videoRef.current.videoHeight - size) / 2; ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size); const rawBase64 = canvas.toDataURL('image/jpeg'); const stream = videoRef.current.srcObject; if(stream) stream.getTracks().forEach(track => track.stop()); setIsCameraOpen(false); const compressed = await compressImage(rawBase64, false); setPhoto(compressed); };
+  const handleFileChange = async (e) => { const file = e.target.files[0]; if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); } };
+  const handleSubmit = async (e) => { e.preventDefault(); setErr(''); if(!photo) { setErr(t.errPhoto); return; } setLoading(true); const cleanPhone = normalizePhone(form.phone); const cleanEmail = normalizeEmail(form.email); const dup = checkDuplicate(cleanPhone, cleanEmail); if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } let assignedTable = ""; let assignedSeat = ""; const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail); const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; } else if(phoneMatch) { assignedTable = phoneMatch.table; assignedSeat = phoneMatch.seat; } setMatchSeat({ table: assignedTable, seat: assignedSeat }); try { if (!db) throw new Error("Firebase not initialized"); const docRef = await addDoc(collection(db, "attendees"), { name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, table: assignedTable, seat: assignedSeat, photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() }); setNewId(docRef.id); setStep(2); } catch (error) { console.error(error); setErr("Network Error."); } setLoading(false); };
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black pointer-events-none"></div>
@@ -419,31 +452,15 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
               {err && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm flex items-center animate-pulse"><AlertTriangle size={16} className="mr-2"/>{err}</div>}
               <div className="flex flex-col items-center mb-4">
                   {isCameraOpen ? (
-                      <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black border-2 border-red-500 shadow-2xl">
-                          <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" />
-                          <button type="button" onClick={takePhoto} className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-white border-4 border-gray-300 hover:scale-110 transition-transform"><Aperture className="w-full h-full p-2 text-black"/></button>
-                      </div>
+                      <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black border-2 border-red-500 shadow-2xl"><video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" /><button type="button" onClick={takePhoto} className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-white border-4 border-gray-300 hover:scale-110 transition-transform"><Aperture className="w-full h-full p-2 text-black"/></button></div>
                   ) : (
-                      <div className="flex flex-col items-center gap-3 w-full">
-                          <div className={`w-32 h-32 rounded-full border-2 border-dashed flex items-center justify-center overflow-hidden relative shadow-lg ${photo ? 'border-red-500' : 'border-white/30'}`}>
-                              {photo ? <img src={photo} alt="Selfie" className="w-full h-full object-cover" /> : <User size={48} className="text-white/20"/>}
-                          </div>
-                          <div className="flex gap-2">
-                              <button type="button" onClick={startCamera} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><Camera size={14}/> {t.photoBtn}</button>
-                              <button type="button" onClick={()=>fileInputRef.current.click()} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><ImageIcon size={14}/> {t.uploadBtn}</button>
-                          </div>
-                      </div>
+                      <div className="flex flex-col items-center gap-3 w-full"><div className={`w-32 h-32 rounded-full border-2 border-dashed flex items-center justify-center overflow-hidden relative shadow-lg ${photo ? 'border-red-500' : 'border-white/30'}`}>{photo ? <img src={photo} alt="Selfie" className="w-full h-full object-cover" /> : <User size={48} className="text-white/20"/>}</div><div className="flex gap-2"><button type="button" onClick={startCamera} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><Camera size={14}/> {t.photoBtn}</button><button type="button" onClick={()=>fileInputRef.current.click()} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><ImageIcon size={14}/> {t.uploadBtn}</button></div></div>
                   )}
                   <input type="file" accept="image/*" capture="user" ref={fileInputRef} className="hidden" onChange={handleFileChange}/>
               </div>
               {!isCameraOpen && (
                   <div className="space-y-3">
-                    {['name', 'phone', 'email'].map((field) => (
-                        <div key={field} className="relative group">
-                            <div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div>
-                            <input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} />
-                        </div>
-                    ))}
+                    {['name', 'phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
                     <input className="w-full bg-white/5 border border-white/10 text-white p-3 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t.company} value={form.company} onChange={e=>setForm({...form,company:e.target.value})} />
                     <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
                   </div>
@@ -451,16 +468,9 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
             </form>
           ) : (
             <div className="text-center animate-in zoom-in duration-300">
-              <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)] relative">
-                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({id: newId}))}`} alt="QR" className="w-48 h-48 object-contain"/>
-                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full shadow-lg flex items-center gap-1 font-bold tracking-wider"><Cloud size={10}/> SAVED</div>
-              </div>
+              <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)] relative"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({id: newId}))}`} alt="QR" className="w-48 h-48 object-contain"/><div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full shadow-lg flex items-center gap-1 font-bold tracking-wider"><Cloud size={10}/> SAVED</div></div>
               <h3 className="text-2xl font-bold text-white mb-1">{form.name}</h3>
-              <div className="text-red-400 text-lg font-bold mb-4 flex justify-center items-center gap-2 bg-white/5 p-2 rounded-lg border border-red-500/30">
-                 <Armchair size={18}/> 
-                 {matchedSeat && matchedSeat.table ? `${t.table} ${matchedSeat.table}` : t.seatTBD} 
-                 {matchedSeat && matchedSeat.seat ? ` / ${t.seat} ${matchedSeat.seat}` : ""}
-              </div>
+              <div className="text-red-400 text-lg font-bold mb-4 flex justify-center items-center gap-2 bg-white/5 p-2 rounded-lg border border-red-500/30"><Armchair size={18}/> {matchedSeat && matchedSeat.table ? `${t.table} ${matchedSeat.table}` : t.seatTBD} {matchedSeat && matchedSeat.seat ? ` / ${t.seat} ${matchedSeat.seat}` : ""}</div>
               <p className="text-white/50 text-sm mb-8 leading-relaxed">{t.showToStaff}</p>
               <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:'',table:'',seat:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm">{t.next}</button>
             </div>
@@ -471,7 +481,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   );
 };
 
-// 🔥 Projector View (使用 MosaicDrawComponent)
+// --- Projector View ---
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize }) => {
     const [winner, setWinner] = useState(null);
     const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
@@ -484,7 +494,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize }) => {
 
     const handleDrawEnd = async (winner) => {
         setWinner(winner);
-        if (db) await addDoc(collection(db, "winners"), { attendeeId: winner.id, name: winner.name, phone: winner.phone, photo: winner.photo, prize: currentPrize || "Lucky Draw", wonAt: new Date().toISOString() });
+        if (db) await addDoc(collection(db, "winners"), { attendeeId: winner.id, name: winner.name, phone: winner.phone, photo: winner.photo, table: winner.table, seat: winner.seat, prize: currentPrize || "Lucky Draw", wonAt: new Date().toISOString() });
     };
 
     const ConfettiInner = () => {
@@ -504,22 +514,21 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize }) => {
             <button onClick={onBack} className="absolute top-6 left-6 text-white/30 hover:text-white z-50 transition-colors"><ChevronLeft size={24}/></button>
 
             <div className="relative z-10 w-full h-full flex flex-col items-center justify-center p-10">
-                <div className="mb-4 text-center animate-in fade-in slide-in-from-top-4">
+                <div className="mb-6 text-center animate-in fade-in slide-in-from-top-4">
                     <h3 className="text-xl text-yellow-500 uppercase tracking-widest mb-1 font-bold">{t.currentPrize}</h3>
                     <h1 className="text-6xl font-black text-white tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">{currentPrize || "LUCKY DRAW"}</h1>
                 </div>
 
-                <div className="flex-1 w-full max-w-6xl flex flex-col items-center justify-center min-h-[500px]">
-                    {eligible.length < 1 ? (
+                <div className="flex-1 w-full max-w-4xl flex flex-col items-center justify-center min-h-[500px]">
+                    {eligible.length < 2 ? (
                         <div className="text-center text-white/30"><Trophy size={100} className="mx-auto mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p><p className="text-sm mt-2 font-mono">Current: {eligible.length}</p></div>
                     ) : (
-                        // V43: 使用馬賽克抽獎
-                        <MosaicDrawComponent list={eligible} t={t} onDrawEnd={handleDrawEnd} />
+                        <GalaxyDrawComponent list={eligible} t={t} onDrawEnd={handleDrawEnd} />
                     )}
                 </div>
                 
                 {drawHistory.length > 0 && (
-                    <div className="w-full max-w-7xl mt-4 overflow-x-auto pb-4 px-4">
+                    <div className="w-full max-w-7xl mt-12 overflow-x-auto pb-4 px-4">
                         <div className="flex flex-wrap gap-4 justify-center">
                             {drawHistory.map((h, i) => (
                                 <div key={h.id} className="bg-white/10 backdrop-blur-md border border-white/10 px-6 py-3 rounded-full flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
@@ -541,14 +550,17 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize }) => {
                         <h3 className="text-4xl font-bold text-yellow-400 mb-6 tracking-widest uppercase animate-pulse">{currentPrize || "WINNER"}</h3>
                         <div className="relative">
                             {winner.photo && <img src={winner.photo} className="w-96 h-96 rounded-full border-[10px] border-yellow-400 object-cover shadow-[0_0_80px_rgba(234,179,8,0.6)] mb-8 animate-in zoom-in duration-700"/>}
-                            {/* 顯示中獎者座位與電話 */}
-                            <div className="absolute -bottom-4 right-0 bg-white/10 backdrop-blur-md border border-white/20 px-6 py-2 rounded-full flex flex-col items-start gap-1">
-                                <div className="text-yellow-400 font-bold flex items-center gap-2"><Armchair size={18}/> Table {winner.table || '?'} / Seat {winner.seat || '?'}</div>
-                                <div className="text-white/80 font-mono text-sm">{winner.phone}</div>
+                            <div className="absolute -bottom-4 right-0 bg-white/10 backdrop-blur-md border border-white/20 px-6 py-2 rounded-full flex items-center gap-3">
+                                <Armchair size={24} className="text-yellow-400"/>
+                                <div className="text-left">
+                                    <div className="text-xs text-white/50 uppercase tracking-wider">{t.yourSeat}</div>
+                                    <div className="text-xl font-bold text-white">Table {winner.table || '?'} / Seat {winner.seat || '?'}</div>
+                                </div>
                             </div>
                         </div>
                         <h1 className="text-8xl md:text-9xl font-black text-white mb-2 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] scale-110">{winner.name}</h1>
-                        <p className="text-white/30 text-sm mt-8">Press ENTER to continue</p>
+                        <p className="text-3xl text-white/60 font-mono mb-8">{winner.phone}</p>
+                        <p className="text-white/30 text-sm">Press ENTER to continue</p>
                     </div>
                 </div>
             )}
@@ -556,7 +568,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize }) => {
     );
 };
 
-// 🔥 Admin Dashboard (分流版)
+// 🔥 Admin Dashboard
 const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, setDrawHistory, currentPrize, setCurrentPrize, seatingPlan, setSeatingPlan }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
@@ -565,9 +577,11 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
   const [prizes, setPrizes] = useState([]); 
   const [seatForm, setSeatForm] = useState({ name: '', phone: '', email: '', table: '', seat: '' });
   const [searchSeat, setSearchSeat] = useState(""); 
-  const lastScanTimeRef = useRef(0);
+  const fileInputRef = useRef(null);
 
-  // 監聽獎品列表
+  const lastScanTimeRef = useRef(0);
+  const lastScannedCodeRef = useRef('');
+
   useEffect(() => {
     if (!db) return;
     const unsub = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => {
@@ -576,7 +590,6 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
     return () => unsub();
   }, []);
 
-  // CSV Imports
   const handleImportSeating = async (e) => {
       const file = e.target.files[0];
       if(!file) return;
@@ -586,7 +599,13 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
       for(let i=startIdx; i<lines.length; i++) {
           const cols = lines[i].split(',');
           if(cols.length >= 4) {
-              await addDoc(collection(db, "seating_plan"), { name: cols[0].trim(), phone: normalizePhone(cols[1]), email: normalizeEmail(cols[2]), table: cols[3].trim(), seat: cols[4]?.trim() || '' });
+              await addDoc(collection(db, "seating_plan"), { 
+                  name: cols[0].trim(),
+                  phone: normalizePhone(cols[1]),
+                  email: normalizeEmail(cols[2]), 
+                  table: cols[3].trim(), 
+                  seat: cols[4]?.trim() || '' 
+              });
           }
       }
       alert(t.importSuccess);
@@ -617,18 +636,43 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
   const handleAddSeating = async (e) => {
       e.preventDefault();
       if(!seatForm.table) return;
-      if(db) await addDoc(collection(db, "seating_plan"), { name: seatForm.name, phone: normalizePhone(seatForm.phone), email: normalizeEmail(seatForm.email), table: seatForm.table, seat: seatForm.seat });
+      if(db) await addDoc(collection(db, "seating_plan"), { 
+          name: seatForm.name,
+          phone: normalizePhone(seatForm.phone),
+          email: normalizeEmail(seatForm.email), 
+          table: seatForm.table, 
+          seat: seatForm.seat 
+      });
       setSeatForm({ name:'', phone:'', email: '', table: '', seat: '' });
   };
-  const handleDeleteSeating = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "seating_plan", id)); };
-  const handleAddPrize = async (e) => { e.preventDefault(); if(newPrizeName && db) { await addDoc(collection(db, "prizes"), { name: newPrizeName, createdAt: new Date().toISOString() }); setNewPrizeName(""); } };
-  const handleSelectPrize = async (prizeName) => { if(db) await setDoc(doc(db, "config", "settings"), { currentPrize: prizeName }, { merge: true }); };
-  const handleDeletePrize = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "prizes", id)); };
+
+  const handleDeleteSeating = async (id) => {
+      if(confirm('Delete this seating?')) await deleteDoc(doc(db, "seating_plan", id));
+  };
 
   const filteredSeating = seatingPlan.filter(s => {
       const term = searchSeat.toLowerCase();
-      return (s.name && s.name.toLowerCase().includes(term)) || (s.phone && s.phone.includes(term)) || (s.email && s.email.includes(term)) || (s.table && s.table.includes(term));
+      return (s.name && s.name.toLowerCase().includes(term)) || 
+             (s.phone && s.phone.includes(term)) || 
+             (s.email && s.email.includes(term)) || 
+             (s.table && s.table.includes(term));
   });
+
+  const handleAddPrize = async (e) => {
+      e.preventDefault();
+      if(newPrizeName && db) {
+          await addDoc(collection(db, "prizes"), { name: newPrizeName, createdAt: new Date().toISOString() });
+          setNewPrizeName("");
+      }
+  };
+
+  const handleSelectPrize = async (prizeName) => {
+      if(db) await setDoc(doc(db, "config", "settings"), { currentPrize: prizeName }, { merge: true });
+  };
+  
+  const handleDeletePrize = async (id) => {
+      if(confirm('Delete prize?') && db) await deleteDoc(doc(db, "prizes", id));
+  };
 
   const handleScan = useCallback(async (text) => {
     const now = Date.now();
@@ -664,9 +708,16 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
   const toggleCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: true, checkInTime: new Date().toISOString() }); };
   const toggleCancelCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: false, checkInTime: null }); };
   const deletePerson = async (id) => { if(confirm('Delete user?') && db) await deleteDoc(doc(db, "attendees", id)); };
+  
+  // 🔥 新增：重置單個中獎者功能
   const toggleWinnerStatus = async (person, winnerRecord) => {
-      if (winnerRecord) { if(confirm('Remove this winner?')) await deleteDoc(doc(db, "winners", winnerRecord.id)); } 
-      else { if(confirm('Mark as winner?')) await addDoc(collection(db, "winners"), { attendeeId: person.id, name: person.name, phone: person.phone, photo: person.photo, table: person.table, seat: person.seat, prize: currentPrize || "Manual Selection", wonAt: new Date().toISOString() }); }
+      if (winnerRecord) {
+          if(confirm('Remove this winner?')) await deleteDoc(doc(db, "winners", winnerRecord.id));
+      } else {
+          if(confirm('Mark as winner?')) {
+              await addDoc(collection(db, "winners"), { attendeeId: person.id, name: person.name, phone: person.phone, photo: person.photo, table: person.table, seat: person.seat, prize: currentPrize || "Manual Selection", wonAt: new Date().toISOString() });
+          }
+      }
   };
   const handleUpdateSeat = async (id, table, seat) => { if(db) await updateDoc(doc(db, "attendees", id), { table, seat }); };
 
@@ -678,14 +729,9 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
       </header>
       <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col items-center">
         
-        {/* Tabs: 分流管理 */}
-        <div className="flex flex-wrap justify-center gap-2 mb-8 bg-white/5 p-1 rounded-2xl shadow-lg border border-white/10 w-fit backdrop-blur-sm">
-          {[ 
-              {id:'scan',icon:ScanLine,l:t.scan}, 
-              {id:'list',icon:Users,l:t.list}, 
-              {id:'seating',icon:Armchair,l:t.seating},
-              {id:'prizes',icon:Gift,l:t.prizesTab} // 新增獨立獎品頁
-          ].map(i=> (
+        {/* Tabs */}
+        <div className="flex justify-center mb-8 bg-white/5 p-1 rounded-2xl shadow-lg border border-white/10 w-fit backdrop-blur-sm">
+          {[ {id:'scan',icon:ScanLine,l:t.scan}, {id:'list',icon:Users,l:t.list}, {id:'seating',icon:Armchair,l:t.seating} ].map(i=> (
             <button key={i.id} onClick={()=>{setTab(i.id);setIsScan(false);setScanRes(null)}} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all text-sm tracking-wide ${tab===i.id?'bg-red-600 text-white shadow-md':'text-white/50 hover:bg-white/10 hover:text-white'}`}><i.icon size={16}/> {i.l}</button>
           ))}
         </div>
@@ -705,7 +751,10 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
                         {scanRes.p && (
                             <div className="text-center text-white mt-2">
                                 <p className="text-2xl font-bold">{scanRes.p.name}</p>
-                                <div className="flex justify-center gap-4 mt-2 text-sm opacity-90"><span className="bg-white/20 px-3 py-1 rounded-full"><Armchair size={14} className="inline mr-1"/> {scanRes.p.table || '-'}</span><span className="bg-white/20 px-3 py-1 rounded-full">{scanRes.p.seat || '-'}</span></div>
+                                <div className="flex justify-center gap-4 mt-2 text-sm opacity-90">
+                                    <span className="bg-white/20 px-3 py-1 rounded-full"><Armchair size={14} className="inline mr-1"/> {scanRes.p.table || '-'}</span>
+                                    <span className="bg-white/20 px-3 py-1 rounded-full">{scanRes.p.seat || '-'}</span>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -721,12 +770,45 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
             </div>
           )}
           
-          {/* 2. 名單管理 */}
+          {/* 2. 名單管理 (含獎品設定) */}
           {tab === 'list' && (
             <div className="h-full w-full flex flex-col">
-              <div className="p-4 bg-black/20 border-b border-white/10 flex justify-between items-center gap-4">
-                 <div className="font-bold text-white flex items-center gap-3"><span className="text-white/50 text-sm font-normal">{t.total}: {attendees.length}</span> <span className="w-[1px] h-4 bg-white/20"></span> <span className="text-emerald-400">{t.arrived}: {attendees.filter(x=>x.checkedIn).length}</span></div>
-                 <button onClick={()=>{const csv="Name,Phone,Email,Table,Seat,Status\n"+attendees.map(p=>`${p.name},${p.phone},${p.email},${p.table},${p.seat},${p.checkedIn?'Checked':'Pending'}`).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:'text/csv'}));a.download="list.csv";a.click();}} className="text-xs font-bold bg-white/10 border border-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/20 flex items-center gap-2 transition-colors"><Download size={14}/> CSV</button>
+              <div className="p-4 bg-black/20 border-b border-white/10 flex flex-col gap-4">
+                 {/* 獎品設定 */}
+                 <div className="w-full bg-white/5 border border-white/10 p-3 rounded-lg flex flex-col gap-2">
+                    <div className="flex justify-between items-center text-xs"><span className="text-white/50 uppercase tracking-widest flex items-center gap-1"><Gift size={12}/> {t.prizeTitle}</span><span className="text-yellow-400 font-bold">{currentPrize || "---"}</span></div>
+                    <form onSubmit={handleAddPrize} className="flex gap-2"><input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-1 bg-black/50 border border-white/20 rounded-md px-2 py-1 text-xs text-white focus:border-red-500 outline-none"/><button className="bg-white/10 hover:bg-white/20 px-2 py-1 rounded-md text-xs font-bold transition-colors"><Plus size={14}/></button></form>
+                    <div className="flex gap-2"><label className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md px-2 py-1 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Upload size={12}/> {t.importCSV}<input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label><button onClick={()=>downloadTemplate('prize')} className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-md px-2 py-1 text-xs transition-colors flex items-center justify-center gap-1"><FileText size={12}/> {t.downloadTemp}</button></div>
+                    <div className="flex flex-col gap-1 max-h-24 overflow-y-auto pr-1 custom-scroll">
+                        {prizes.map(p=>{
+                            // 🔥 核心修改：在獎品清單中顯示得主
+                            const winnerForThisPrize = drawHistory.find(h => h.prize === p.name);
+                            return (
+                                <div key={p.id} className={`flex items-center justify-between p-1.5 rounded-md border transition-all ${currentPrize===p.name?'bg-green-500/20 border-green-500/50':'bg-white/5 border-white/10'}`}>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-bold">{p.name}</span>
+                                        {winnerForThisPrize && <span className="bg-yellow-500 text-black text-[10px] px-1.5 rounded font-bold">🏆 {winnerForThisPrize.name}</span>}
+                                    </div>
+                                    <div className="flex gap-1">
+                                        {currentPrize!==p.name&&<button onClick={()=>handleSelectPrize(p.name)} className="p-1 bg-white/10 hover:bg-green-600 rounded text-[10px]" title={t.activate}><Play size={10}/></button>}
+                                        {currentPrize===p.name&&<CheckCircle size={12} className="text-green-500 mr-1"/>}
+                                        {/* 如果有得主，提供移除得主按鈕 */}
+                                        {winnerForThisPrize ? (
+                                            <button onClick={()=>toggleWinnerStatus(null, winnerForThisPrize)} className="p-1 bg-white/10 hover:bg-yellow-600 rounded text-[10px]" title={t.resetWinner}><RotateCcw size={10}/></button>
+                                        ) : (
+                                            <button onClick={()=>handleDeletePrize(p.id)} className="p-1 bg-white/10 hover:bg-red-600 rounded text-[10px]" title={t.delete}><Trash2 size={10}/></button>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                 </div>
+                 
+                 <div className="flex justify-between items-center">
+                    <div className="font-bold text-white flex items-center gap-3"><span className="text-white/50 text-sm font-normal">{t.total}: {attendees.length}</span> <span className="w-[1px] h-4 bg-white/20"></span> <span className="text-emerald-400">{t.arrived}: {attendees.filter(x=>x.checkedIn).length}</span></div>
+                    <button onClick={()=>{const csv="Name,Phone,Email,Table,Seat,Status\n"+attendees.map(p=>`${p.name},${p.phone},${p.email},${p.table},${p.seat},${p.checkedIn?'Checked':'Pending'}`).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:'text/csv'}));a.download="list.csv";a.click();}} className="text-xs font-bold bg-white/10 border border-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/20 flex items-center gap-2 transition-colors"><Download size={14}/> CSV</button>
+                 </div>
               </div>
               <div className="flex-1 overflow-y-auto p-4">
                 <table className="w-full text-left border-collapse">
@@ -742,13 +824,29 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
                                 {winnerRecord && <div className="text-[10px] text-yellow-500 flex items-center gap-1"><Trophy size={10}/> {winnerRecord.prize}</div>}
                             </td>
                             <td className="p-4 text-white/60 text-sm font-mono hidden md:table-cell">{p.phone}</td>
-                            <td className="p-4 text-white/80 text-sm font-mono cursor-pointer hover:text-red-400" onClick={()=>{const newTable = prompt("Edit Table", p.table); if(newTable) handleUpdateSeat(p.id, newTable, prompt("Edit Seat", p.seat));}}>{p.table || '-'}/{p.seat || '-'} <Edit3 size={12} className="inline ml-1 opacity-50"/></td>
+                            
+                            <td className="p-4 text-white/80 text-sm font-mono cursor-pointer hover:text-red-400" onClick={()=>{
+                                const newTable = prompt("Edit Table No.", p.table || "");
+                                if(newTable !== null) {
+                                    const newSeat = prompt("Edit Seat No.", p.seat || "");
+                                    if(newSeat !== null) handleUpdateSeat(p.id, newTable, newSeat);
+                                }
+                            }}>
+                                {p.table || '-'}/{p.seat || '-'} <Edit3 size={12} className="inline ml-1 opacity-50"/>
+                            </td>
+
                             <td className="p-4 text-center">
                                 {!p.checkedIn && <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-3 py-1 rounded-lg text-xs font-bold hover:bg-emerald-600 hover:text-white transition-colors flex items-center justify-center gap-1 w-full"><UserCheck size={14}/> {t.checkin}</button>}
                                 {p.checkedIn && <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-3 py-1 rounded-lg text-xs font-bold hover:bg-red-500/20 hover:text-red-400 hover:border-red-500/50 transition-colors flex items-center justify-center gap-1 w-full"><UserX size={14}/> {t.cancel}</button>}
                             </td>
-                            <td className="p-4 text-center"><button onClick={()=>toggleWinnerStatus(p, winnerRecord)} className={`p-2 rounded-lg transition-colors ${winnerRecord ? 'text-yellow-400 hover:bg-yellow-500/20' : 'text-white/20 hover:text-yellow-400 hover:bg-white/10'}`}>{winnerRecord ? <Star size={18} fill="currentColor"/> : <StarOff size={18}/>}</button></td>
-                            <td className="p-4 text-right"><button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={16}/></button></td>
+                            <td className="p-4 text-center">
+                                <button onClick={()=>toggleWinnerStatus(p, winnerRecord)} className={`p-2 rounded-lg transition-colors ${winnerRecord ? 'text-yellow-400 hover:bg-yellow-500/20' : 'text-white/20 hover:text-yellow-400 hover:bg-white/10'}`}>
+                                    {winnerRecord ? <Star size={18} fill="currentColor"/> : <StarOff size={18}/>}
+                                </button>
+                            </td>
+                            <td className="p-4 text-right">
+                              <button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={16}/></button>
+                            </td>
                           </tr>
                         );
                     })}
@@ -771,6 +869,7 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
                       </label>
                       <button onClick={()=>downloadTemplate('seating')} className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-4 py-2 text-xs transition-colors flex items-center justify-center gap-2"><FileText size={16} className="text-blue-500"/><span className="font-bold">{t.downloadTemp}</span></button>
                   </div>
+                  
                   <div className="mb-6 flex gap-2 flex-wrap bg-white/5 p-3 rounded-xl border border-white/5">
                       <input className="flex-1 bg-black/30 border border-white/10 text-white p-2 rounded-lg outline-none focus:border-red-500 text-sm" value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} placeholder={t.name} />
                       <input className="w-32 bg-black/30 border border-white/10 text-white p-2 rounded-lg outline-none focus:border-red-500 text-sm" value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} placeholder={t.phone} />
@@ -779,6 +878,7 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
                       <input className="w-16 bg-black/30 border border-white/10 text-white p-2 rounded-lg outline-none focus:border-red-500 text-sm text-center" value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} placeholder={t.seat} />
                       <button onClick={handleAddSeating} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold text-xs">{t.addSeat}</button>
                   </div>
+
                   <div className="flex-1 overflow-y-auto bg-black/20 rounded-xl border border-white/10 p-4">
                       {seatingPlan.length === 0 ? <div className="text-white/30 text-center py-10">No preset seats</div> : (
                           <div className="grid gap-2">
@@ -800,46 +900,6 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
                               {filteredSeating.length === 0 && searchSeat && <div className="text-center text-white/30 py-4">No results for "{searchSeat}"</div>}
                           </div>
                       )}
-                  </div>
-              </div>
-          )}
-
-          {/* 4. 獨立：獎品管理 (Prizes Tab) */}
-          {tab === 'prizes' && (
-              <div className="h-full w-full flex flex-col p-8">
-                  <div className="w-full max-w-2xl mx-auto flex flex-col gap-6">
-                      <div className="flex justify-between items-center text-sm border-b border-white/10 pb-4">
-                          <span className="text-white/50 uppercase tracking-widest flex items-center gap-2"><Gift size={18}/> {t.prizeTitle}</span>
-                          <span className="text-yellow-400 font-bold text-lg">Current: {currentPrize || "---"}</span>
-                      </div>
-                      
-                      {/* 上方工具列 */}
-                      <div className="flex gap-4">
-                          <form onSubmit={handleAddPrize} className="flex-1 flex gap-2">
-                              <input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-1 bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-white focus:border-red-500 outline-none"/>
-                              <button className="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-xl font-bold transition-colors"><Plus size={20}/></button>
-                          </form>
-                          <label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-6 py-3 cursor-pointer transition-colors flex items-center justify-center gap-2">
-                              <Upload size={18} className="text-blue-400"/>
-                              <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/>
-                          </label>
-                          <button onClick={()=>downloadTemplate('prize')} className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-4 py-3 transition-colors text-white/50 hover:text-white"><FileText size={18}/></button>
-                      </div>
-
-                      {/* 獎品列表 */}
-                      <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto pr-2 custom-scroll">
-                          {prizes.map(prize => (
-                              <div key={prize.id} className={`flex items-center justify-between p-4 rounded-xl border transition-all ${currentPrize === prize.name ? 'bg-green-900/20 border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.1)]' : 'bg-white/5 border-white/10'}`}>
-                                  <span className={`font-bold ${currentPrize === prize.name ? 'text-green-400 text-lg' : 'text-white'}`}>{prize.name}</span>
-                                  <div className="flex gap-3">
-                                      {currentPrize !== prize.name && <button onClick={()=>handleSelectPrize(prize.name)} className="px-4 py-2 bg-white/10 hover:bg-green-600 rounded-lg text-xs font-bold transition-colors flex items-center gap-2 uppercase tracking-wider"><Play size={12}/> {t.activate}</button>}
-                                      {currentPrize === prize.name && <div className="px-4 py-2 bg-green-500/20 text-green-400 rounded-lg text-xs font-bold flex items-center gap-2 border border-green-500/50"><CheckCircle size={14}/> ACTIVE</div>}
-                                      <button onClick={()=>handleDeletePrize(prize.id)} className="p-2 bg-white/5 hover:bg-red-600/20 hover:text-red-500 rounded-lg transition-colors"><Trash2 size={16}/></button>
-                                  </div>
-                              </div>
-                          ))}
-                          {prizes.length === 0 && <div className="text-white/20 text-center py-20 italic">No prizes in the pool</div>}
-                      </div>
                   </div>
               </div>
           )}
@@ -892,7 +952,7 @@ export default function App() {
             <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity"><ImageIcon size={80} className="text-white"/></div>
             <h3 className="text-3xl font-bold text-white mb-2">{t.guestMode}</h3>
             <p className="text-white/50 text-sm">{t.guestDesc}</p>
-            <div className="mt-8 flex items-center text-black font-bold text-sm group-hover:translate-x-2 transition-transform bg-yellow-500 w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
+            <div className="mt-8 flex items-center text-black font-bold text-sm group-hover:translate-x-2 transition-transform bg-white w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
         </button>
         <button onClick={()=>setView('login_admin')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-8 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
             <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity"><Lock size={80} className="text-white"/></div>
