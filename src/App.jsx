@@ -56,7 +56,7 @@ const StyleInjector = () => {
 const translations = {
   zh: {
     title: "Tesla Annual Dinner",
-    sub: "2025 完美修復版",
+    sub: "2025 自動流程版",
     guestMode: "參加者登記",
     guestDesc: "Guest Registration",
     adminMode: "接待處 (簽到)",
@@ -70,7 +70,7 @@ const translations = {
     enter: "登入",
     wrongPwd: "密碼錯誤",
     regTitle: "賓客登記",
-    regSub: "系統將依 Email/電話 自動分配座位",
+    regSub: "系統將依資料自動分配座位",
     name: "姓名",
     phone: "電話",
     email: "電子郵件",
@@ -136,7 +136,7 @@ const translations = {
   },
   en: {
     title: "Tesla Annual Dinner",
-    sub: "2025 Fixed Edition",
+    sub: "2025 Auto-Flow Edition",
     guestMode: "Guest Registration",
     guestDesc: "For Attendees",
     adminMode: "Reception",
@@ -291,106 +291,87 @@ const SoundController = {
   }
 };
 
-// 🔥 Galaxy Draw (Canvas)
-const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
-    const canvasRef = useRef(null);
-    const [isRunning, setIsRunning] = useState(false);
-    const particles = useRef([]);
-    const animationFrameId = useRef(null);
-    const mode = useRef('mosaic');
-
-    useEffect(() => {
-        if (list.length === 0) return;
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        const cols = Math.ceil(Math.sqrt(list.length * 1.5));
-        const size = Math.max(50, canvas.width / cols);
-
-        particles.current = list.map((p, i) => {
-            const img = new Image();
-            img.src = p.photo || `https://ui-avatars.com/api/?name=${p.name}&background=random`;
-            return {
-                id: p.id,
-                x: (i % cols) * size, 
-                y: Math.floor(i / cols) * size,
-                vx: 0, vy: 0,
-                targetX: (i % cols) * size,
-                targetY: Math.floor(i / cols) * size,
-                size: size,
-                img: img
-            };
-        });
-
-        const render = () => {
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            particles.current.forEach(p => {
-                if (mode.current === 'galaxy') {
-                    p.x += p.vx; p.y += p.vy;
-                    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
-                    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
-                } else {
-                    p.x += (p.targetX - p.x) * 0.1;
-                    p.y += (p.targetY - p.y) * 0.1;
-                }
-                ctx.save();
-                ctx.beginPath(); ctx.arc(p.x + p.size/2, p.y + p.size/2, p.size/2 - 2, 0, Math.PI * 2); ctx.clip();
-                try { ctx.drawImage(p.img, p.x, p.y, p.size, p.size); } catch(e){}
-                ctx.restore();
-                ctx.strokeStyle = mode.current === 'galaxy' ? '#E82127' : '#333';
-                ctx.lineWidth = 2; ctx.stroke();
-            });
-            animationFrameId.current = requestAnimationFrame(render);
-        };
-        render();
-        return () => cancelAnimationFrame(animationFrameId.current);
-    }, [list]);
+// 🔥 馬賽克銀河抽獎 (Mosaic to Galaxy) - 增加獎品顯示
+const MosaicDrawComponent = ({ list, t, onDrawEnd, currentPrize }) => {
+    const [status, setStatus] = useState('mosaic'); 
+    const containerRef = useRef(null);
 
     const start = () => {
-        if(list.length < 2) return;
-        setIsRunning(true);
-        mode.current = 'galaxy';
-        particles.current.forEach(p => { p.vx = (Math.random() - 0.5) * 20; p.vy = (Math.random() - 0.5) * 20; });
+        if (list.length < 2) return;
+        setStatus('galaxy');
         SoundController.startSuspense();
-        setTimeout(stop, 5000);
+        setTimeout(() => { stop(); }, 6000); // 6秒後停
     };
 
     const stop = () => {
-        const winnerIdx = Math.floor(Math.random() * list.length);
-        const winner = list[winnerIdx];
-        setIsRunning(false);
-        mode.current = 'mosaic';
+        setStatus('stopping');
         SoundController.playWin();
-        setTimeout(() => onDrawEnd(winner), 1000);
+        const winnerIdx = Math.floor(Math.random() * list.length);
+        const finalWinner = list[winnerIdx];
+        
+        setTimeout(() => {
+            onDrawEnd(finalWinner);
+            setStatus('mosaic');
+        }, 1000);
     };
 
     useEffect(() => {
-        const handleKey = (e) => { if (e.code === 'Space' && !isRunning) { e.preventDefault(); start(); } };
-        window.addEventListener('keydown', handleKey); return () => window.removeEventListener('keydown', handleKey);
-    }, [isRunning, list]);
+        const handleKey = (e) => {
+            if (e.code === 'Space' && status === 'mosaic') { e.preventDefault(); start(); }
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [status, list]);
 
     return (
-        <div className="fixed inset-0 z-0">
-            <canvas ref={canvasRef} className="block" />
-            {!isRunning && (
-                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-50">
-                    <button onClick={start} className="bg-red-600 text-white px-12 py-4 rounded-full font-bold text-2xl shadow-2xl hover:scale-105 transition-transform border border-white/20 uppercase tracking-widest">{t.drawBtn}</button>
+        <div className="w-full h-full flex flex-col items-center justify-center relative overflow-hidden" ref={containerRef}>
+            
+            {/* 抽獎時顯示大大的獎品名稱 */}
+            {status !== 'mosaic' && (
+                <div className="absolute top-10 z-50 text-center w-full animate-in fade-in slide-in-from-top-10 duration-1000">
+                    <h3 className="text-xl text-yellow-400 font-bold tracking-[0.5em] uppercase mb-2">{t.currentPrize}</h3>
+                    <h1 className="text-6xl md:text-8xl font-black text-white drop-shadow-[0_0_50px_rgba(234,179,8,0.8)] animate-pulse">{currentPrize}</h1>
                 </div>
             )}
-            {isRunning && (
-                <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
-                    <h1 className="text-8xl font-black text-white drop-shadow-[0_0_30px_rgba(232,33,39,0.8)] animate-pulse uppercase tracking-widest">{t.running}</h1>
+
+            {status === 'mosaic' && (
+                <div className="absolute inset-0 flex flex-wrap content-start overflow-hidden opacity-100 transition-opacity duration-500">
+                    {list.map((p, i) => (
+                        <div key={p.id} className="relative aspect-square flex-grow-0 flex-shrink-0" style={{ width: `${Math.max(4, 100 / Math.ceil(Math.sqrt(list.length)))}%`, transition: 'all 0.5s ease-in-out' }}>
+                            {p.photo ? <img src={p.photo} className="w-full h-full object-cover border-[0.5px] border-black/50 grayscale hover:grayscale-0 transition-all"/> : <div className="w-full h-full bg-white/10 flex items-center justify-center text-[8px] text-white/50">{p.name.slice(0,1)}</div>}
+                        </div>
+                    ))}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black pointer-events-none"></div>
                 </div>
             )}
+            {(status === 'galaxy' || status === 'stopping') && (
+                <div className="absolute inset-0">
+                    {list.map((p, i) => { 
+                         const isEven = i % 2 === 0;
+                         const duration = Math.random() * 2 + 1 + 's';
+                         const delay = Math.random() * 1 + 's';
+                         const keyframe = isEven ? 'fly1' : 'fly2';
+                         return (
+                             <div key={p.id} className={`absolute w-24 h-24 rounded-full border-2 border-white/40 overflow-hidden shadow-[0_0_25px_rgba(255,255,255,0.4)] ${status === 'stopping' ? 'opacity-0 scale-150 transition-all duration-500' : 'animate-fly opacity-90'}`} style={{ left: Math.random() * 90 + '%', top: Math.random() * 90 + '%', animation: status === 'galaxy' ? `${keyframe} ${duration} infinite alternate ease-in-out` : 'none', animationDelay: delay }}>
+                                 {p.photo ? <img src={p.photo} className="w-full h-full object-cover"/> : <div className="w-full h-full bg-red-600 flex items-center justify-center text-lg font-bold">{p.name.slice(0,1)}</div>}
+                             </div>
+                         )
+                    })}
+                </div>
+            )}
+            {status === 'mosaic' && (
+                <div className="z-10 bg-black/60 backdrop-blur-md p-8 rounded-3xl border border-white/20 text-center shadow-2xl animate-pulse">
+                    <Trophy className="text-yellow-400 mx-auto mb-4" size={64}/>
+                    <p className="text-white/60 text-sm tracking-widest uppercase mb-2">Ready to Draw</p>
+                    <button onClick={start} className="bg-white text-black px-12 py-3 rounded-full font-bold text-xl hover:scale-105 transition-transform">{t.drawBtn}</button>
+                </div>
+            )}
+            <style>{`@keyframes fly1 { 0% { transform: translate(0, 0) scale(0.8) rotate(0deg); } 100% { transform: translate(100px, -100px) scale(1.2) rotate(20deg); } } @keyframes fly2 { 0% { transform: translate(0, 0) scale(1.2) rotate(0deg); } 100% { transform: translate(-100px, 50px) scale(0.8) rotate(-20deg); } }`}</style>
         </div>
     );
 };
 
-// ... (LoginView 保持不變) ...
+// ... (LoginView, GuestView 保持不變) ...
 const LoginView = ({ t, onLogin, onBack }) => {
     const [pwd, setPwd] = useState('');
     const handleSubmit = (e) => { e.preventDefault(); if(pwd === ADMIN_PASSWORD) onLogin(); else { alert(t.wrongPwd); setPwd(''); } };
@@ -409,8 +390,6 @@ const LoginView = ({ t, onLogin, onBack }) => {
       </div>
     );
 };
-
-// ... (GuestView 保持 V41, 確保 Email 寫入) ...
 const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({name:'',phone:'',email:'',company:'',table:'',seat:''});
@@ -422,40 +401,10 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
-
   const startCamera = async () => { setErr(''); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } }); setIsCameraOpen(true); setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100); } catch (e) { fileInputRef.current.click(); } };
   const takePhoto = async () => { if(!videoRef.current) return; const canvas = document.createElement('canvas'); const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const xOffset = (videoRef.current.videoWidth - size) / 2; const yOffset = (videoRef.current.videoHeight - size) / 2; ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size); const rawBase64 = canvas.toDataURL('image/jpeg'); const stream = videoRef.current.srcObject; if(stream) stream.getTracks().forEach(track => track.stop()); setIsCameraOpen(false); const compressed = await compressImage(rawBase64, false); setPhoto(compressed); };
   const handleFileChange = async (e) => { const file = e.target.files[0]; if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); } };
-  const handleSubmit = async (e) => { 
-      e.preventDefault(); setErr(''); 
-      if(!photo) { setErr(t.errPhoto); return; } 
-      setLoading(true); 
-      const cleanPhone = normalizePhone(form.phone); 
-      const cleanEmail = normalizeEmail(form.email); 
-      const dup = checkDuplicate(cleanPhone, cleanEmail); 
-      if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } 
-      if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } 
-
-      // 座位匹配邏輯
-      let assignedTable = ""; let assignedSeat = ""; 
-      const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail); 
-      const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); 
-      if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; } 
-      else if(phoneMatch) { assignedTable = phoneMatch.table; assignedSeat = phoneMatch.seat; } 
-      setMatchSeat({ table: assignedTable, seat: assignedSeat }); 
-      
-      try { 
-          if (!db) throw new Error("Firebase not initialized"); 
-          const docRef = await addDoc(collection(db, "attendees"), { 
-              name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, 
-              table: assignedTable, seat: assignedSeat, photo: photo, 
-              checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() 
-          }); 
-          setNewId(docRef.id); setStep(2); 
-      } catch (error) { console.error(error); setErr("Network Error."); } 
-      setLoading(false); 
-  };
-
+  const handleSubmit = async (e) => { e.preventDefault(); setErr(''); if(!photo) { setErr(t.errPhoto); return; } setLoading(true); const cleanPhone = normalizePhone(form.phone); const cleanEmail = normalizeEmail(form.email); const dup = checkDuplicate(cleanPhone, cleanEmail); if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } let assignedTable = ""; let assignedSeat = ""; const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail); const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; } else if(phoneMatch) { assignedTable = phoneMatch.table; assignedSeat = phoneMatch.seat; } setMatchSeat({ table: assignedTable, seat: assignedSeat }); try { if (!db) throw new Error("Firebase not initialized"); const docRef = await addDoc(collection(db, "attendees"), { name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, table: assignedTable, seat: assignedSeat, photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() }); setNewId(docRef.id); setStep(2); } catch (error) { console.error(error); setErr("Network Error."); } setLoading(false); };
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black pointer-events-none"></div>
@@ -500,22 +449,21 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   );
 };
 
-// 🔥 Projector View (Updated)
+// 🔥 Projector View (Updated: Auto Next Prize)
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes }) => {
     const [winner, setWinner] = useState(null);
     const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
-    const presentCount = attendees.filter(p => p.checkedIn).length;
-    const eligibleCount = eligible.length;
 
     useEffect(() => {
         const handleKey = async (e) => { 
             if (winner && e.key === 'Enter') {
                 setWinner(null);
-                // 自動跳下一獎
+                // 自動跳下一獎 (Auto Advance)
                 if (currentPrize && prizes.length > 0) {
                     const currentIndex = prizes.findIndex(p => p.name === currentPrize);
-                    // 尋找下一個未有得主的獎品
-                    const nextAvailablePrize = prizes.find(p => !drawHistory.some(h => h.prize === p.name));
+                    // 尋找下一個未有得主的獎品 (從當前索引開始往後找)
+                    const nextAvailablePrize = prizes.find((p, idx) => idx > currentIndex && !drawHistory.some(h => h.prize === p.name));
+                    
                     if (nextAvailablePrize && db) {
                         await setDoc(doc(db, "config", "settings"), { currentPrize: nextAvailablePrize.name }, { merge: true });
                     }
@@ -528,7 +476,17 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
 
     const handleDrawEnd = async (winner) => {
         setWinner(winner);
-        if (db) await addDoc(collection(db, "winners"), { attendeeId: winner.id, name: winner.name, phone: winner.phone, photo: winner.photo, table: winner.table, seat: winner.seat, prize: currentPrize || "Lucky Draw", wonAt: new Date().toISOString() });
+        // 寫入中獎資料 (包含獎品名稱)
+        if (db) await addDoc(collection(db, "winners"), { 
+            attendeeId: winner.id, 
+            name: winner.name, 
+            phone: winner.phone, 
+            photo: winner.photo, 
+            table: winner.table, 
+            seat: winner.seat, 
+            prize: currentPrize || "Lucky Draw", 
+            wonAt: new Date().toISOString() 
+        });
     };
 
     const ConfettiInner = () => {
@@ -549,22 +507,33 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
 
             <div className="relative z-10 w-full h-full flex flex-col items-center justify-center p-10">
                 <div className="mb-6 text-center animate-in fade-in slide-in-from-top-4">
+                    {/* 顯示當前獎品，如果沒獎品則顯示提示 */}
                     <h3 className="text-xl text-yellow-500 uppercase tracking-widest mb-1 font-bold">{t.currentPrize}</h3>
-                    <h1 className="text-6xl font-black text-white tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">{currentPrize || "LUCKY DRAW"}</h1>
-                    <div className="flex justify-center gap-8 mt-4 text-sm text-white/40">
-                        <span>{t.total}: {attendees.length}</span>
-                        <span>{t.arrived}: {presentCount}</span>
-                        <span className="text-emerald-500">{t.eligible}: {eligibleCount}</span>
-                    </div>
+                    <h1 className="text-6xl font-black text-white tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">{currentPrize || "---"}</h1>
                 </div>
 
                 <div className="flex-1 w-full max-w-7xl flex flex-col items-center justify-center min-h-[500px]">
                     {eligible.length < 2 ? (
                         <div className="text-center text-white/30"><Trophy size={100} className="mx-auto mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p></div>
                     ) : (
-                        <GalaxyCanvas list={eligible} t={t} onDrawEnd={handleDrawEnd} />
+                        <MosaicDrawComponent list={eligible} t={t} onDrawEnd={handleDrawEnd} currentPrize={currentPrize} />
                     )}
                 </div>
+                
+                {/* 投影頁面中獎名單 (自動橫向捲動) */}
+                {drawHistory.length > 0 && (
+                    <div className="w-full max-w-7xl mt-12 overflow-x-auto pb-4 px-4">
+                        <div className="flex flex-nowrap gap-4 justify-center">
+                            {drawHistory.map((h, i) => (
+                                <div key={h.id} className="bg-white/10 backdrop-blur-md border border-white/10 px-6 py-3 rounded-full flex items-center gap-3 flex-shrink-0 animate-in fade-in slide-in-from-bottom-4">
+                                    <span className="text-yellow-400 font-bold text-sm border-r border-white/20 pr-3 mr-1">{h.prize}</span>
+                                    {h.photo && <img src={h.photo} className="w-8 h-8 rounded-full border border-white/50 object-cover"/>}
+                                    <span className="font-bold tracking-wide">{h.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {winner && (
@@ -593,7 +562,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     );
 };
 
-// 🔥 Reception Dashboard (Updated with Seating Import)
+// 🔥 Reception Dashboard (Check-in + Seat Search)
 const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
@@ -674,8 +643,8 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan 
            )}
            {tab === 'list' && (
              <div className="h-full w-full flex flex-col">
-               <div className="p-4 bg-black/20 border-b border-white/10 flex justify-between items-center gap-4"><div className="font-bold text-white flex items-center gap-3"><span className="text-white/50 text-sm font-normal">{t.total}: {attendees.length}</span> <span className="w-[1px] h-4 bg-white/20"></span> <span className="text-emerald-400">{t.arrived}: {attendees.filter(x=>x.checkedIn).length}</span></div><button className="text-xs font-bold bg-white/10 border border-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/20 flex items-center gap-2 transition-colors"><Download size={14}/> CSV</button></div>
-               <div className="flex-1 overflow-y-auto p-4"><table className="w-full text-left border-collapse"><thead className="text-xs text-white/40 uppercase tracking-widest border-b border-white/10"><tr><th className="p-4 pl-6">Name</th><th className="p-4 hidden md:table-cell">Phone</th><th className="p-4">Table</th><th className="p-4 text-center">Status</th><th className="p-4 text-right">Action</th></tr></thead><tbody className="divide-y divide-white/5">{attendees.map(p=>(<tr key={p.id} className="hover:bg-white/5"><td className="p-4 pl-6 font-bold text-white flex items-center gap-2">{p.name} {p.winner && <Trophy size={14} className="text-yellow-500"/>}</td><td className="p-4 text-white/60 hidden md:table-cell">{p.phone}</td><td className="p-4 text-white/80">{p.table}/{p.seat}</td><td className="p-4 text-center">{!p.checkedIn && <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-3 py-1 rounded-lg text-xs font-bold">{t.checkin}</button>}{p.checkedIn && <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-3 py-1 rounded-lg text-xs font-bold">{t.cancel}</button>}</td><td className="p-4 text-right"><button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"><Trash2 size={16}/></button></td></tr>))}</tbody></table></div>
+               <div className="p-4 bg-black/20 border-b border-white/10 flex justify-between items-center gap-4"><div className="font-bold text-white flex items-center gap-3"><span className="text-white/50 text-sm font-normal">{t.total}: {attendees.length}</span> <span className="w-[1px] h-4 bg-white/20"></span> <span className="text-emerald-400">{t.arrived}: {attendees.filter(x=>x.checkedIn).length}</span></div><button onClick={()=>{const csv="Name,Phone,Email,Table,Seat,Status\n"+attendees.map(p=>`${p.name},${p.phone},${p.email},${p.table},${p.seat},${p.checkedIn?'Checked':'Pending'}`).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:'text/csv'}));a.download="list.csv";a.click();}} className="text-xs font-bold bg-white/10 border border-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/20 flex items-center gap-2 transition-colors"><Download size={14}/> CSV</button></div>
+               <div className="flex-1 overflow-y-auto p-4"><table className="w-full text-left border-collapse"><thead className="text-xs text-white/40 uppercase tracking-widest border-b border-white/10"><tr><th className="p-4 pl-6">Name</th><th className="p-4 hidden md:table-cell">Phone</th><th className="p-4">Table</th><th className="p-4 text-center">Prize</th><th className="p-4 text-right">Action</th></tr></thead><tbody className="divide-y divide-white/5">{attendees.map(p=>(<tr key={p.id} className="hover:bg-white/5"><td className="p-4 pl-6 font-bold text-white">{p.name}</td><td className="p-4 text-white/60 hidden md:table-cell">{p.phone}</td><td className="p-4 text-white/80">{p.table}/{p.seat}</td><td className="p-4 text-center">{p.winnerPrize && <span className="text-yellow-400 text-xs flex items-center justify-center gap-1"><Trophy size={10}/> {p.winnerPrize}</span>}</td><td className="p-4 text-right">{!p.checkedIn && <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-3 py-1 rounded-lg text-xs font-bold">{t.checkin}</button>}{p.checkedIn && <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-3 py-1 rounded-lg text-xs font-bold">{t.cancel}</button>}</td></tr>))}</tbody></table></div>
              </div>
            )}
            {tab === 'seating' && (
@@ -690,7 +659,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan 
   );
 };
 
-// 🔥 Prize Dashboard (Stage Control)
+// 🔥 Prize Dashboard
 const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, setCurrentPrize }) => {
   const [prizes, setPrizes] = useState([]); 
   const [newPrizeName, setNewPrizeName] = useState("");
@@ -722,13 +691,19 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
 
   const handleSelectPrize = async (prizeName) => { if(db) await setDoc(doc(db, "config", "settings"), { currentPrize: prizeName }, { merge: true }); };
   const handleDeletePrize = async (id) => { if(confirm('Delete prize?')) await deleteDoc(doc(db, "prizes", id)); };
+  
+  // 🔥 重置中獎者功能 (同時更新賓客名單)
   const toggleWinnerStatus = async (winnerRecord) => { 
       if(confirm('Reset this prize? Winner will be removed.')) {
+          // 1. 刪除 winners 紀錄
           await deleteDoc(doc(db, "winners", winnerRecord.id));
-          // Auto switch to this prize
+          // 2. 清除 attendees 表中的 winnerPrize 欄位 (數據連動)
+          await updateDoc(doc(db, "attendees", winnerRecord.attendeeId), { winnerPrize: null });
+          // 3. 切換回該獎項
           await setDoc(doc(db, "config", "settings"), { currentPrize: winnerRecord.prize }, { merge: true });
       }
   };
+  
   const handleImportPrizes = async (e) => {
       const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
       const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l, createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!");
@@ -745,7 +720,6 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
       </header>
       <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col items-center">
         <div className="w-full grid md:grid-cols-2 gap-8 h-full">
-            {/* Left: Prize List */}
             <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex flex-col h-[700px]">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Gift size={20} className="text-red-500"/> {t.prizeList}</h3>
                 <form onSubmit={handleAddPrize} className="flex gap-2 mb-4">
@@ -778,8 +752,6 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
                     })}
                 </div>
             </div>
-
-            {/* Right: Current Status & Winners */}
             <div className="flex flex-col gap-6">
                 <div className="bg-gradient-to-br from-neutral-800 to-black border border-white/20 p-8 rounded-3xl text-center shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-3 opacity-30"><MonitorPlay size={100} className="text-white"/></div>
@@ -791,7 +763,6 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
                         <div className="text-center"><div className="text-2xl font-bold text-white">{attendees.filter(p=>p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id)).length}</div><div className="text-xs text-white/40">Eligible</div></div>
                     </div>
                 </div>
-
                 <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex-1 h-[350px] overflow-hidden flex flex-col">
                     <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Trophy size={20} className="text-yellow-500"/> {t.winnersList}</h3>
                     <div className="flex-1 overflow-y-auto custom-scroll flex flex-col gap-2">
@@ -820,7 +791,6 @@ export default function App() {
   const [drawHistory, setDrawHistory] = useState([]);
   const [currentPrize, setCurrentPrize] = useState("");
   const [seatingPlan, setSeatingPlan] = useState([]); 
-  const [prizes, setPrizes] = useState([]);
 
   useEffect(() => {
     if (!db) return;
@@ -828,8 +798,7 @@ export default function App() {
     const unsubWinners = onSnapshot(collection(db, "winners"), (snapshot) => { setDrawHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
     const unsubConfig = onSnapshot(doc(db, "config", "settings"), (doc) => { if (doc.exists()) setCurrentPrize(doc.data().currentPrize); });
     const unsubSeating = onSnapshot(collection(db, "seating_plan"), (snapshot) => { setSeatingPlan(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
-    const unsubPrizes = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => { setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
-    return () => { unsubAttendees(); unsubWinners(); unsubConfig(); unsubSeating(); unsubPrizes(); };
+    return () => { unsubAttendees(); unsubWinners(); unsubConfig(); unsubSeating(); };
   }, []);
 
   const checkDuplicate = (p, e) => {
@@ -837,7 +806,6 @@ export default function App() {
     if(attendees.some(x => normalizeEmail(x.email) === normalizeEmail(e))) return 'email';
     return null;
   };
-
   const handleLoginSuccess = (targetView) => setView(targetView);
 
   if(view === 'landing') return (
