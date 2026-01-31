@@ -2,8 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 強制全域背景為黑色，避免加載時閃白 */
+/* 強制網頁背景為黑色，字體為白色 */
 body {
   background-color: #0a0a0a;
   color: white;
+  margin: 0;
+  padding: 0;
 }
