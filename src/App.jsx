@@ -3,248 +3,241 @@ import {
   Users, QrCode, Trophy, Download, Plus, CheckCircle, 
   XCircle, Search, Trash2, ScanLine, Camera, 
   ArrowRight, UserPlus, LogOut, Globe, Mail,
-  Lock, ChevronLeft, AlertTriangle, Loader2
+  Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
+  Cloud, RefreshCw
 } from 'lucide-react';
 
-// --- 1. 設定 ---
+// --- Firebase 模組 ---
+import { initializeApp } from "firebase/app";
+import { 
+  getFirestore, collection, addDoc, updateDoc, 
+  doc, onSnapshot, query, orderBy, deleteDoc 
+} from "firebase/firestore";
+
+// =================================================================
+// ✅ 已整合您的 Firebase 設定
+// =================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyDUZeeaWvQZJORdDv4PdAHQK-SqXFIDsy4",
+  authDomain: "eventpass-77522.firebaseapp.com",
+  projectId: "eventpass-77522",
+  storageBucket: "eventpass-77522.firebasestorage.app",
+  messagingSenderId: "504395632009",
+  appId: "1:504395632009:web:3c13603d03203dece8a558",
+  measurementId: "G-SP74GNKJFQ"
+};
+
+// 初始化 Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
 const ADMIN_PASSWORD = "admin"; 
 
 const translations = {
   zh: {
-    title: "EventPass V14",
-    sub: "嚴格數據清洗版",
+    title: "EventPass V17",
+    sub: "雲端即時同步版",
     guestMode: "參加者登記",
-    guestDesc: "自助獲取入場憑證",
+    guestDesc: "手機登記，後台即時顯示",
     adminMode: "工作人員後台",
-    adminDesc: "連續掃描與管理",
+    adminDesc: "多裝置同步管理",
     login: "系統登入",
     pwdPlace: "輸入後台密碼",
     enter: "進入系統",
     wrongPwd: "密碼錯誤",
     regTitle: "活動登記",
-    regSub: "請填寫資料以獲取入場碼",
+    regSub: "資料將自動上傳至雲端",
     name: "姓名",
     phone: "電話號碼",
     email: "電子郵件",
     company: "公司/備註 (選填)",
-    generateBtn: "確認並生成入場證",
+    generateBtn: "送出登記",
     back: "返回",
     yourCode: "您的入場憑證",
-    showToStaff: "請截圖保存，入場時出示",
+    showToStaff: "資料已同步雲端！請出示此碼掃描簽到",
     next: "登記下一位",
     scan: "極速掃描",
     draw: "幸運轉盤",
-    list: "名單管理",
+    list: "雲端名單",
     total: "總人數",
     arrived: "已到場",
     scanCam: "啟動連續掃描",
     stopCam: "停止掃描",
     manual: "手動輸入 ID",
-    processing: "處理中...",
-    success: "簽到成功",
-    duplicate: "注意：資料重複 (已自動合併)",
+    success: "簽到成功 (雲端同步)",
+    duplicate: "注意：已簽到過",
     error: "無效代碼",
-    welcome: "歡迎回來 (已補簽到)",
-    regSuccess: "新用戶登記成功",
+    regSuccess: "登記成功",
     notFound: "查無此人",
-    errPhone: "此電話已被註冊！",
-    errEmail: "此 Email 已被註冊！",
-    errIncomplete: "請填寫完整資料",
+    errPhone: "錯誤：此電話號碼已存在！",
+    errEmail: "錯誤：此 Email 已存在！",
+    errIncomplete: "請填寫所有必填欄位",
     drawBtn: "開始轉動 (空白鍵)",
     spinning: "好運轉動中...",
     winner: "✨ 恭喜中獎 ✨",
     claim: "確認領獎 (Enter)",
-    needMore: "需要至少 2 位符合資格者",
+    needMore: "需要至少 2 位已簽到者",
     export: "導出名單",
     checkin: "簽到",
     cancel: "取消",
-    logout: "登出"
+    logout: "登出",
+    cloudStatus: "雲端連線正常"
   },
   en: {
-    title: "EventPass V14",
-    sub: "Strict Data Clean Version",
+    title: "EventPass V17",
+    sub: "Cloud Sync Version",
     guestMode: "Guest Registration",
-    guestDesc: "Get your entry pass",
+    guestDesc: "Register on phone, sync to admin",
     adminMode: "Admin Dashboard",
-    adminDesc: "Continuous Scan & Mgmt",
+    adminDesc: "Multi-device Sync",
     login: "Admin Login",
     pwdPlace: "Password",
     enter: "Login",
     wrongPwd: "Wrong Password",
     regTitle: "Registration",
-    regSub: "Fill details to get QR pass",
+    regSub: "Data uploads to cloud instantly",
     name: "Full Name",
     phone: "Phone Number",
     email: "Email Address",
     company: "Company (Optional)",
-    generateBtn: "Generate Pass",
+    generateBtn: "Submit",
     back: "Back",
     yourCode: "Your Entry Pass",
-    showToStaff: "Screenshot this for entry",
+    showToStaff: "Synced! Show QR to check-in",
     next: "Next Person",
     scan: "Speed Scan",
     draw: "Lucky Draw",
-    list: "Guest List",
+    list: "Cloud List",
     total: "Total",
     arrived: "Arrived",
     scanCam: "Start Speed Scan",
     stopCam: "Stop Scan",
     manual: "Manual Input",
-    processing: "Processing...",
-    success: "Success",
-    duplicate: "Duplicate (Merged)",
+    success: "Synced & Checked-in",
+    duplicate: "Already Checked-in",
     error: "Invalid Code",
-    welcome: "Welcome Back (Checked-in)",
-    regSuccess: "New User Registered",
+    regSuccess: "Registration Successful",
     notFound: "Not Found",
-    errPhone: "Phone already taken!",
-    errEmail: "Email already taken!",
+    errPhone: "Error: Phone already exists!",
+    errEmail: "Error: Email already exists!",
     errIncomplete: "Fill all fields",
     drawBtn: "Spin (Space)",
     spinning: "Spinning...",
     winner: "✨ WINNER ✨",
     claim: "Confirm (Enter)",
-    needMore: "Need 2+ eligible guests",
+    needMore: "Need 2+ checked-in guests",
     export: "Export CSV",
     checkin: "Check-in",
     cancel: "Cancel",
-    logout: "Logout"
+    logout: "Logout",
+    cloudStatus: "Cloud Connected"
   }
 };
 
-// --- 2. 核心工具：數據清洗 (Normalize) ---
-// 這是解決重複登記的關鍵，強制統一格式
-const normalizePhone = (p) => String(p).replace(/[^0-9]/g, ''); // 只保留數字
-const normalizeEmail = (e) => String(e).trim().toLowerCase();   // 去空格轉小寫
+// --- 工具 ---
+const normalizePhone = (p) => String(p).replace(/[^0-9]/g, '');
+const normalizeEmail = (e) => String(e).trim().toLowerCase();
 
-// --- 3. 基礎組件 ---
+// --- 組件 ---
 const Confetti = () => {
   const canvasRef = useRef(null);
   useEffect(() => {
     const c = canvasRef.current;
     const ctx = c.getContext('2d');
     c.width = window.innerWidth; c.height = window.innerHeight;
-    const p = Array.from({length:300}).map(()=>({
-        x:Math.random()*c.width, y:Math.random()*c.height,
-        c:['#FFD700', '#FF4500', '#00BFFF', '#32CD32', '#FF69B4', '#FFFFFF'][Math.floor(Math.random()*6)],
-        s:Math.random()*8+2, d:Math.random()*5
-    }));
-    const draw = () => { 
-        ctx.clearRect(0,0,c.width,c.height); 
-        p.forEach(i=>{
-            i.y+=i.s; i.x+=Math.sin(i.d); 
-            if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}
-            ctx.fillStyle=i.c; ctx.beginPath(); ctx.arc(i.x, i.y, i.s/2, 0, Math.PI*2); ctx.fill();
-        }); 
-        requestAnimationFrame(draw); 
-    };
+    const p = Array.from({length:300}).map(()=>({x:Math.random()*c.width, y:Math.random()*c.height,c:['#FFD700', '#FF4500', '#00BFFF', '#32CD32', '#FF69B4', '#FFFFFF'][Math.floor(Math.random()*6)],s:Math.random()*8+2,d:Math.random()*5}));
+    const draw = () => { ctx.clearRect(0,0,c.width,c.height); p.forEach(i=>{i.y+=i.s;i.x+=Math.sin(i.d);if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}ctx.fillStyle=i.c;ctx.beginPath();ctx.arc(i.x,i.y,i.s/2,0,Math.PI*2);ctx.fill();}); requestAnimationFrame(draw); };
     draw();
   }, []);
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
 };
 
-// --- 4. 獨立頁面 ---
+// --- 獨立頁面 ---
 
-const LoginView = ({ t, onLogin, onBack }) => {
-  const [pwd, setPwd] = useState('');
-  const [err, setErr] = useState(false);
-  return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 bg-[url('https://images.unsplash.com/photo-1519681393798-38e43269d877?auto=format&fit=crop&q=80')] bg-cover bg-center">
-      <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md"></div>
-      <div className="relative bg-black/40 border border-white/10 p-8 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in zoom-in">
-        <button onClick={onBack} className="text-white/60 hover:text-white mb-6 flex items-center transition-colors"><ChevronLeft size={20}/> {t.sub}</button>
-        <h2 className="text-3xl font-bold text-white mb-2">{t.login}</h2>
-        <form onSubmit={e=>{e.preventDefault(); if(pwd===ADMIN_PASSWORD)onLogin(); else setErr(true);}}>
-          <input type="password" autoFocus value={pwd} onChange={e=>{setPwd(e.target.value);setErr(false)}} placeholder={t.pwdPlace} className="w-full bg-white/10 border border-white/10 text-white p-4 rounded-xl mb-4 focus:ring-2 focus:ring-amber-500 outline-none transition-all text-center tracking-widest placeholder:tracking-normal"/>
-          {err && <div className="text-red-400 text-sm text-center mb-4">{t.wrongPwd}</div>}
-          <button className="w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95">{t.enter}</button>
-        </form>
-      </div>
+const LoginView = ({ t, onLogin, onBack }) => (
+  <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 bg-[url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80')] bg-cover bg-center">
+    <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-md"></div>
+    <div className="relative bg-white/10 border border-white/20 p-8 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in zoom-in">
+      <button onClick={onBack} className="text-white/60 hover:text-white mb-6 flex items-center transition-colors"><ChevronLeft size={20}/> {t.sub}</button>
+      <h2 className="text-3xl font-bold text-white mb-2">{t.login}</h2>
+      <div className="flex items-center gap-2 mb-6 text-emerald-400 text-xs font-mono"><Cloud size={14}/> {t.cloudStatus}</div>
+      <form onSubmit={e=>{e.preventDefault(); if(e.target[0].value===ADMIN_PASSWORD)onLogin(); else alert(t.wrongPwd);}}>
+        <input type="password" autoFocus placeholder={t.pwdPlace} className="w-full bg-slate-800/50 border border-white/10 text-white p-4 rounded-xl mb-4 focus:ring-2 focus:ring-emerald-500 outline-none transition-all text-center tracking-widest"/>
+        <button className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95">{t.enter}</button>
+      </form>
     </div>
-  );
-};
+  </div>
+);
 
 const GuestView = ({ t, onBack, checkDuplicate }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({name:'',phone:'',email:'',company:''});
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
+  const [newId, setNewId] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setErr('');
-    setLoading(true);
+    setErr(''); setLoading(true);
 
-    // 模擬網路延遲，防止按鈕連點
-    setTimeout(() => {
-        // 使用嚴格清洗後的數據進行檢查
-        const cleanPhone = normalizePhone(form.phone);
-        const cleanEmail = normalizeEmail(form.email);
+    const cleanPhone = normalizePhone(form.phone);
+    const cleanEmail = normalizeEmail(form.email);
+    
+    // 1. 本地快速檢查 (基於已同步的列表)
+    const dup = checkDuplicate(cleanPhone, cleanEmail);
+    if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; }
+    if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; }
 
-        const dup = checkDuplicate(cleanPhone, cleanEmail);
+    try {
+        // 2. 寫入 Firebase
+        const docRef = await addDoc(collection(db, "attendees"), {
+            name: form.name,
+            phone: cleanPhone,
+            email: cleanEmail,
+            company: form.company,
+            checkedIn: false,
+            checkInTime: null,
+            createdAt: new Date().toISOString()
+        });
         
-        if(dup === 'phone') { 
-            setErr(t.errPhone); 
-            setLoading(false);
-            return; 
-        }
-        if(dup === 'email') { 
-            setErr(t.errEmail); 
-            setLoading(false);
-            return; 
-        }
-        
-        // 成功，進入下一步
+        setNewId(docRef.id); // 使用 Firebase 生成的 ID
         setStep(2);
-        setLoading(false);
-    }, 500);
+    } catch (error) {
+        console.error("Error adding document: ", error);
+        setErr("Upload Failed. Check network.");
+    }
+    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
-        <div className="bg-blue-600 p-6 text-white text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-600"></div>
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden border border-slate-200">
+        <div className="bg-gradient-to-r from-blue-600 to-cyan-600 p-6 text-white text-center relative">
           <button onClick={onBack} className="absolute left-6 top-6 text-white/80 hover:text-white z-10"><ChevronLeft/></button>
-          <h2 className="relative z-10 text-2xl font-bold mt-2">{t.regTitle}</h2>
-          <p className="relative z-10 text-blue-100 text-sm">{t.regSub}</p>
+          <h2 className="text-2xl font-bold mt-2">{t.regTitle}</h2>
+          <div className="flex justify-center items-center gap-1 text-blue-100 text-sm mt-1 opacity-90"><Cloud size={14}/> {t.regSub}</div>
         </div>
         <div className="p-8">
           {step === 1 ? (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {err && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center border border-red-100 animate-pulse"><AlertTriangle size={16} className="mr-2"/>{err}</div>}
-              {['name','phone','email','company'].map(f => (
-                <div key={f}>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 block">{t[f]} {f!=='company'&&'*'}</label>
-                  <input 
-                    required={f!=='company'} 
-                    type={f==='email'?'email':f==='phone'?'tel':'text'} 
-                    className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all" 
-                    value={form[f]} 
-                    onChange={e=>{setErr('');setForm({...form,[f]:e.target.value})}} 
-                  />
-                </div>
-              ))}
-              <button disabled={loading} className="w-full bg-slate-900 text-white p-4 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg active:scale-95 mt-4 flex justify-center items-center disabled:opacity-70 disabled:cursor-not-allowed">
-                  {loading ? <Loader2 className="animate-spin mr-2"/> : null}
-                  {t.generateBtn}
-              </button>
+              <div className="space-y-4">
+                <div className="relative"><User className="absolute top-3.5 left-3.5 text-slate-400" size={18}/><input required className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder={t.name + " *"} value={form.name} onChange={e=>{setErr('');setForm({...form,name:e.target.value})}} /></div>
+                <div className="relative"><Phone className="absolute top-3.5 left-3.5 text-slate-400" size={18}/><input required type="tel" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder={t.phone + " *"} value={form.phone} onChange={e=>{setErr('');setForm({...form,phone:e.target.value})}} /></div>
+                <div className="relative"><Mail className="absolute top-3.5 left-3.5 text-slate-400" size={18}/><input required type="email" className="w-full bg-slate-50 border border-slate-200 p-3 pl-10 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder={t.email + " *"} value={form.email} onChange={e=>{setErr('');setForm({...form,email:e.target.value})}} /></div>
+                <input className="w-full bg-slate-50 border border-slate-200 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder={t.company} value={form.company} onChange={e=>setForm({...form,company:e.target.value})} />
+              </div>
+              <button disabled={loading} className="w-full bg-slate-900 text-white p-4 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg active:scale-95 mt-4 flex justify-center items-center disabled:opacity-70">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
             </form>
           ) : (
             <div className="text-center animate-in zoom-in">
-              <div className="bg-white p-4 border-2 border-dashed border-blue-200 rounded-2xl inline-block mb-6 shadow-sm">
-                {/* QR Code 生成時也使用清洗過的數據，確保一致性 */}
-                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({
-                    name: form.name,
-                    phone: normalizePhone(form.phone),
-                    email: normalizeEmail(form.email),
-                    company: form.company,
-                    type:'new_reg',
-                    id:Date.now().toString()
-                }))}`} alt="QR" className="w-48 h-48 object-contain"/>
+              <div className="bg-white p-4 border-2 border-dashed border-blue-200 rounded-2xl inline-block mb-6 shadow-sm relative">
+                {/* 雲端版：只需傳送 ID */}
+                <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({id: newId}))}`} alt="QR" className="w-48 h-48 object-contain"/>
+                <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1"><Cloud size={10}/> CLOUD SAVED</div>
               </div>
-              <h3 className="text-2xl font-bold text-slate-800 mb-1">{form.name}</h3>
-              <p className="text-slate-500 text-sm mb-8">{t.saveTip}</p>
+              <h3 className="text-2xl font-bold text-slate-800 mb-2">{form.name}</h3>
+              <p className="text-slate-500 text-sm mb-8">{t.showToStaff}</p>
               <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:''})}} className="w-full bg-blue-50 text-blue-600 p-4 rounded-xl font-bold hover:bg-blue-100 transition-colors">{t.next}</button>
             </div>
           )}
@@ -259,15 +252,23 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
   const [isScan, setIsScan] = useState(false);
   const [scanRes, setScanRes] = useState(null);
   const [winner, setWinner] = useState(null);
-  
   const lastScanTimeRef = useRef(0);
   const lastScannedCodeRef = useRef('');
 
-  // 掃描處理 (含嚴格數據比對)
-  const handleScan = useCallback((text) => {
+  const playSound = (type) => {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    if(type === 'success') { osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime); gain.gain.setValueAtTime(0.3, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime+0.1); osc.start(); osc.stop(ctx.currentTime+0.1); }
+    else { osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, ctx.currentTime); gain.gain.setValueAtTime(0.3, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime+0.2); osc.start(); osc.stop(ctx.currentTime+0.2); }
+  };
+
+  // Firebase 雲端掃描處理
+  const handleScan = useCallback(async (text) => {
     const now = Date.now();
-    if (now - lastScanTimeRef.current < 1500) return; // 冷卻 1.5s
-    if (text === lastScannedCodeRef.current && now - lastScanTimeRef.current < 5000) return; // 同碼冷卻 5s
+    if (now - lastScanTimeRef.current < 1500) return;
+    if (text === lastScannedCodeRef.current && now - lastScanTimeRef.current < 5000) return;
 
     try {
       let data = JSON.parse(text);
@@ -276,110 +277,108 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
 
       const processResult = (resultType, msg, person) => {
           setScanRes({ type: resultType, msg, p: person });
-          // 自動清除結果
+          playSound(resultType === 'success' ? 'success' : 'error');
           setTimeout(() => setScanRes(null), 2000);
       };
 
-      // 數據清洗：確保掃描進來的資料也是乾淨的
-      const scanPhone = data.phone ? normalizePhone(data.phone) : '';
-      const scanEmail = data.email ? normalizeEmail(data.email) : '';
-      const scanId = data.id;
-
-      // 核心比對邏輯
-      let existingPerson = null;
-
-      // 1. 先找有沒有完全相同的 ID
-      if (scanId) existingPerson = attendees.find(x => x.id === scanId);
-
-      // 2. 如果沒找到 ID，再找電話或 Email (針對自助登記)
-      if (!existingPerson && (scanPhone || scanEmail)) {
-          existingPerson = attendees.find(p => 
-              (scanPhone && normalizePhone(p.phone) === scanPhone) || 
-              (scanEmail && normalizeEmail(p.email) === scanEmail)
-          );
+      // 1. 在雲端資料中尋找 (attendees 已經是即時同步的)
+      let targetId = data.id || data;
+      // 兼容舊格式
+      if (!targetId && data.type === 'new_reg') {
+          const cleanP = normalizePhone(data.phone);
+          const p = attendees.find(x => x.phone === cleanP);
+          if (p) targetId = p.id;
       }
 
-      // 3. 處理結果
-      if (existingPerson) {
-          // 資料已存在
-          if (existingPerson.checkedIn) {
-              // 已經簽到過 -> 報錯 (重複)
-              processResult('duplicate', t.duplicate, existingPerson);
-          } else {
-              // 尚未簽到 -> 執行簽到
-              setAttendees(prev => prev.map(x => x.id === existingPerson.id ? {...x, checkedIn: true, checkInTime: new Date().toISOString()} : x));
-              processResult('success', t.welcome, existingPerson);
-          }
+      const person = attendees.find(x => x.id === targetId);
+
+      if (!person) {
+          processResult('error', t.notFound, null);
+      } else if (person.checkedIn) {
+          processResult('duplicate', t.duplicate, person);
       } else {
-          // 資料不存在 -> 新增 (只針對自助登記類型)
-          if (data.type === 'new_reg') {
-              const newPerson = { 
-                  id: Date.now().toString(), 
-                  name: data.name, 
-                  phone: scanPhone, // 存入清洗後的電話
-                  email: scanEmail, // 存入清洗後的Email
-                  company: data.company, 
-                  checkedIn: true, 
-                  checkInTime: new Date().toISOString() 
-              };
-              setAttendees(prev => [newPerson, ...prev]);
-              processResult('success', t.regSuccess, newPerson);
-          } else {
-              processResult('error', t.notFound, null);
-          }
+          // 2. 更新雲端資料庫
+          const personRef = doc(db, "attendees", person.id);
+          await updateDoc(personRef, {
+              checkedIn: true,
+              checkInTime: new Date().toISOString()
+          });
+          // 不需要手動 setAttendees，onSnapshot 會自動更新畫面
+          processResult('success', t.success, person);
       }
-    } catch (e) {}
-  }, [attendees, setAttendees, t]);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [attendees, t]);
 
   useEffect(() => {
     if (!isScan || tab !== 'scan') return;
     let s;
-    const init = () => {
-      if(!window.Html5QrcodeScanner) return;
-      s = new window.Html5QrcodeScanner("reader", { fps: 15, qrbox: {width:250, height:250}, aspectRatio: 1.0, showTorchButtonIfSupported: true }, false);
-      s.render(handleScan, () => {});
-    };
-    if(window.Html5QrcodeScanner) init();
-    else { const sc = document.createElement('script'); sc.src = "https://unpkg.com/html5-qrcode"; sc.onload = init; document.body.appendChild(sc); }
+    const init = () => { if(!window.Html5QrcodeScanner)return; s=new window.Html5QrcodeScanner("reader",{fps:15,qrbox:{width:250,height:250},aspectRatio:1.0,showTorchButtonIfSupported:true},false); s.render(handleScan,()=>{}); };
+    if(window.Html5QrcodeScanner) init(); else { const sc = document.createElement('script'); sc.src = "https://unpkg.com/html5-qrcode"; sc.onload = init; document.body.appendChild(sc); }
     return () => { if(s) try{s.clear()}catch(e){} };
   }, [isScan, tab, handleScan]);
 
+  // 更新簽到狀態 (Firebase)
+  const toggleCheckIn = async (person) => {
+      const personRef = doc(db, "attendees", person.id);
+      await updateDoc(personRef, {
+          checkedIn: !person.checkedIn,
+          checkInTime: !person.checkedIn ? new Date().toISOString() : null
+      });
+  };
+
+  // 刪除資料 (Firebase)
+  const deletePerson = async (id) => {
+      if(confirm('Delete this user?')) {
+          await deleteDoc(doc(db, "attendees", id));
+      }
+  };
+
+  // 抽獎邏輯 (Firebase)
   const Wheel = ({ list }) => {
     const [rot, setRot] = useState(0);
     const [spin, setSpin] = useState(false);
-    useEffect(() => {
-      const k = (e) => { if(e.code==='Space' && !spin && list.length>=2) { e.preventDefault(); run(); }};
-      window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
-    }, [spin, list]);
-    const run = () => {
+    useEffect(() => { const k=(e)=>{if(e.code==='Space'&&!spin&&list.length>=2){e.preventDefault();run()}}; window.addEventListener('keydown',k); return ()=>window.removeEventListener('keydown',k); }, [spin, list]);
+    
+    const run = async () => {
       setSpin(true);
-      const winIdx = Math.floor(Math.random() * list.length);
+      const winIdx = Math.floor(Math.random()*list.length);
       const angle = 360/list.length;
-      setRot(rot + 1800 + (360 - winIdx*angle) + (Math.random()-0.5)*angle*0.8);
-      setTimeout(() => { setSpin(false); setWinner(list[winIdx]); setDrawHistory(prev=>[list[winIdx], ...prev]); }, 4500);
+      setRot(rot+1800+(360-winIdx*angle)+(Math.random()-0.5)*angle*0.8);
+      
+      // 動畫結束後
+      setTimeout(async () => {
+          setSpin(false);
+          const winner = list[winIdx];
+          setWinner(winner);
+          
+          // 寫入中獎紀錄到 Firebase
+          await addDoc(collection(db, "winners"), {
+              attendeeId: winner.id,
+              name: winner.name,
+              phone: winner.phone,
+              wonAt: new Date().toISOString()
+          });
+      }, 4500);
     };
+
     return (
       <div className="flex flex-col items-center justify-center h-full">
         <div className="relative w-[300px] h-[300px] lg:w-[500px] lg:h-[500px] rounded-full border-[12px] border-amber-400 shadow-[0_0_50px_rgba(251,191,36,0.4)] overflow-hidden bg-white transition-all duration-500 box-content">
           <div className="absolute inset-0 rounded-full border-4 border-dashed border-white/50 pointer-events-none z-10 opacity-50"></div>
           <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 z-20 w-0 h-0 border-l-[20px] border-l-transparent border-r-[20px] border-r-transparent border-t-[40px] border-t-red-600 drop-shadow-xl filter"></div>
           <svg width="100%" height="100%" viewBox="0 0 300 300" style={{transform:`rotate(${rot}deg)`, transition: spin?'transform 4.5s cubic-bezier(0.2,0.8,0.2,1)':'none'}}>
-            {list.map((p,i)=>{
-               const a = 360/list.length; const s = i*a, e = (i+1)*a;
-               const x1=150+150*Math.cos((s-90)*Math.PI/180), y1=150+150*Math.sin((s-90)*Math.PI/180);
-               const x2=150+150*Math.cos((e-90)*Math.PI/180), y2=150+150*Math.sin((e-90)*Math.PI/180);
-               const colors = ['#FF4136', '#FF851B', '#FFDC00', '#2ECC40', '#0074D9', '#B10DC9'];
-               return <path key={i} d={`M 150 150 L ${x1} ${y1} A 150 150 0 ${e-s<=180?0:1} 1 ${x2} ${y2} Z`} fill={colors[i%colors.length]} stroke="#fff" strokeWidth="2"/>
-            })}
+            {list.map((p,i)=>{ const a=360/list.length;const s=i*a,e=(i+1)*a;const x1=150+150*Math.cos((s-90)*Math.PI/180),y1=150+150*Math.sin((s-90)*Math.PI/180);const x2=150+150*Math.cos((e-90)*Math.PI/180),y2=150+150*Math.sin((e-90)*Math.PI/180);const c=['#FF4136','#FF851B','#FFDC00','#2ECC40','#0074D9','#B10DC9'];return <path key={i} d={`M 150 150 L ${x1} ${y1} A 150 150 0 ${e-s<=180?0:1} 1 ${x2} ${y2} Z`} fill={c[i%6]} stroke="#fff" strokeWidth="2"/> })}
           </svg>
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-gradient-to-br from-amber-300 to-amber-600 rounded-full shadow-lg flex items-center justify-center border-4 border-white"><Trophy size={24} className="text-white"/></div>
         </div>
-        <button disabled={spin} onClick={run} className="mt-10 bg-gradient-to-r from-slate-900 to-slate-800 text-white px-12 py-4 rounded-full font-bold text-2xl shadow-2xl hover:scale-105 transition-transform disabled:opacity-50 disabled:scale-100 border border-slate-700">{spin?t.spinning:t.drawBtn}</button>
+        <button disabled={spin} onClick={run} className="mt-10 bg-gradient-to-r from-slate-900 to-slate-800 text-white px-12 py-4 rounded-full font-bold text-2xl shadow-2xl hover:scale-105 transition-transform disabled:opacity-50 border border-slate-700">{spin?t.spinning:t.drawBtn}</button>
       </div>
     );
   };
 
-  const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.id===p.id));
+  const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
@@ -396,7 +395,6 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
         </div>
 
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 min-h-[600px] overflow-hidden relative">
-          
           {tab === 'scan' && (
             <div className="h-full flex flex-col items-center justify-center p-8 min-h-[600px]">
               {isScan ? (
@@ -419,7 +417,6 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
                   <span className="font-bold text-slate-500 group-hover:text-emerald-600">{t.scanCam}</span>
                 </button>
               )}
-              {!isScan && <div className="mt-8 w-full max-w-md"><input onKeyDown={e=>{if(e.key==='Enter')handleScan(e.target.value)}} placeholder={t.manual} className="w-full bg-slate-50 border border-slate-200 p-4 rounded-xl text-center outline-none focus:ring-2 focus:ring-emerald-500"/></div>}
             </div>
           )}
 
@@ -432,13 +429,13 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
           {tab === 'list' && (
             <div className="h-full flex flex-col">
               <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
-                <div className="font-bold text-slate-600">{t.total}: {attendees.length} | <span className="text-emerald-600">{t.arrived}: {attendees.filter(x=>x.checkedIn).length}</span></div>
+                <div className="font-bold text-slate-600 flex items-center gap-2"><Cloud size={16} className="text-blue-500"/> {t.total}: {attendees.length} | <span className="text-emerald-600">{t.arrived}: {attendees.filter(x=>x.checkedIn).length}</span></div>
                 <button onClick={()=>{const csv="Name,Phone,Email,Status\n"+attendees.map(p=>`${p.name},${p.phone},${p.email},${p.checkedIn?'Checked':'Pending'}`).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:'text/csv'}));a.download="list.csv";a.click();}} className="text-xs font-bold bg-white border px-3 py-2 rounded-lg hover:bg-slate-50 flex items-center gap-2"><Download size={14}/> CSV</button>
               </div>
               <div className="flex-1 overflow-y-auto p-2">
                 <table className="w-full text-left border-collapse">
                   <thead className="text-xs text-slate-400 uppercase bg-slate-50 sticky top-0"><tr><th className="p-3 pl-4">{t.name}</th><th className="p-3">{t.phone}</th><th className="p-3">{t.email}</th><th className="p-3 text-right">{t.checkin}</th></tr></thead>
-                  <tbody className="divide-y divide-slate-100">{attendees.map(p=>(<tr key={p.id} className="hover:bg-slate-50"><td className="p-3 pl-4 font-bold text-slate-700">{p.name}</td><td className="p-3 text-slate-500 text-sm font-mono">{p.phone}</td><td className="p-3 text-slate-500 text-sm">{p.email}</td><td className="p-3 text-right"><button onClick={()=>setAttendees(attendees.map(x=>x.id===p.id?{...x,checkedIn:!x.checkedIn}:x))} className={`px-4 py-1 rounded-full text-xs font-bold border ${p.checkedIn?'bg-emerald-50 text-emerald-600 border-emerald-200':'bg-white text-slate-400 border-slate-200'}`}>{p.checkedIn?t.checkin:t.cancel}</button><button onClick={()=>setAttendees(attendees.filter(x=>x.id!==p.id))} className="ml-2 p-2 text-slate-300 hover:text-red-500"><Trash2 size={14}/></button></td></tr>))}</tbody>
+                  <tbody className="divide-y divide-slate-100">{attendees.map(p=>(<tr key={p.id} className="hover:bg-slate-50"><td className="p-3 pl-4 font-bold text-slate-700">{p.name}</td><td className="p-3 text-slate-500 text-sm font-mono">{p.phone}</td><td className="p-3 text-slate-500 text-sm">{p.email}</td><td className="p-3 text-right"><button onClick={()=>toggleCheckIn(p)} className={`px-4 py-1 rounded-full text-xs font-bold border ${p.checkedIn?'bg-emerald-50 text-emerald-600 border-emerald-200':'bg-white text-slate-400 border-slate-200'}`}>{p.checkedIn?t.checkin:t.cancel}</button><button onClick={()=>deletePerson(p.id)} className="ml-2 p-2 text-slate-300 hover:text-red-500"><Trash2 size={14}/></button></td></tr>))}</tbody>
                 </table>
               </div>
             </div>
@@ -469,15 +466,35 @@ export default function App() {
   const [attendees, setAttendees] = useState([]);
   const [drawHistory, setDrawHistory] = useState([]);
 
-  useEffect(() => { const d=localStorage.getItem('ep_data'); if(d)setAttendees(JSON.parse(d)); const h=localStorage.getItem('ep_hist'); if(h)setDrawHistory(JSON.parse(h)); }, []);
-  useEffect(() => { localStorage.setItem('ep_data', JSON.stringify(attendees)); }, [attendees]);
-  useEffect(() => { localStorage.setItem('ep_hist', JSON.stringify(drawHistory)); }, [drawHistory]);
+  // --- Firebase 即時監聽 (Realtime Listeners) ---
+  useEffect(() => {
+    if (!db) return;
+    
+    // 1. 監聽參加者名單 (按時間排序)
+    const q = query(collection(db, "attendees"), orderBy("createdAt", "desc"));
+    const unsubAttendees = onSnapshot(q, (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setAttendees(list);
+    });
+
+    // 2. 監聽中獎名單
+    const unsubWinners = onSnapshot(collection(db, "winners"), (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setDrawHistory(list);
+    });
+
+    return () => { unsubAttendees(); unsubWinners(); };
+  }, []);
 
   const checkDuplicate = (p, e) => {
-    // 這裡也使用 normalize 函數，確保比對時標準一致
     if(attendees.some(x => normalizePhone(x.phone) === normalizePhone(p))) return 'phone';
     if(attendees.some(x => normalizeEmail(x.email) === normalizeEmail(e))) return 'email';
     return null;
+  };
+
+  // onRegister 傳遞給 GuestView 來寫入 Firebase
+  const handleGuestRegister = async (newPerson) => {
+      // 這裡實際上是由 GuestView 內部的 addDoc 完成的，這裡只是佔位或做額外處理
   };
 
   if(view === 'landing') return (
@@ -491,7 +508,7 @@ export default function App() {
       </div>
     </div>
   );
-  if(view === 'guest') return <GuestView t={t} onBack={()=>setView('landing')} checkDuplicate={checkDuplicate} />;
+  if(view === 'guest') return <GuestView t={t} onBack={()=>setView('landing')} onRegister={handleGuestRegister} checkDuplicate={checkDuplicate} />;
   if(view === 'login') return <LoginView t={t} onLogin={()=>setView('admin')} onBack={()=>setView('landing')} />;
   if(view === 'admin') return <AdminDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} setAttendees={setAttendees} drawHistory={drawHistory} setDrawHistory={setDrawHistory} />;
 }
