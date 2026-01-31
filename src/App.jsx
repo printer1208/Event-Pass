@@ -5,7 +5,7 @@ import {
   ArrowRight, UserPlus, LogOut, Globe, Mail,
   Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
   Cloud, Zap, Image as ImageIcon, MonitorPlay, Aperture, Gift,
-  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Save
+  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText
 } from 'lucide-react';
 
 // --- Firebase 模組 ---
@@ -56,7 +56,7 @@ const StyleInjector = () => {
 const translations = {
   zh: {
     title: "Tesla Annual Dinner",
-    sub: "2025 智能座位版",
+    sub: "2025 全方位座位版",
     guestMode: "參加者登記",
     guestDesc: "Guest Registration",
     adminMode: "工作人員入口",
@@ -68,7 +68,7 @@ const translations = {
     enter: "登入",
     wrongPwd: "密碼錯誤",
     regTitle: "賓客登記",
-    regSub: "系統將依 Email 自動分配座位",
+    regSub: "系統將依資料自動分配座位",
     name: "姓名 (Name)",
     phone: "電話 (Mobile)",
     email: "電子郵件 (Email)",
@@ -82,7 +82,7 @@ const translations = {
     scan: "極速掃描",
     draw: "頭像轉盤",
     list: "賓客名單",
-    seating: "座位表設定",
+    seating: "座位表查詢",
     total: "總人數",
     arrived: "已到場",
     scanCam: "啟動掃描鏡頭",
@@ -108,7 +108,7 @@ const translations = {
     logout: "登出",
     cloudStatus: "雲端連線正常",
     winnersList: "中獎名單",
-    prizeTitle: "當前獎項",
+    prizeTitle: "獎品池",
     setPrize: "設定",
     prizePlace: "輸入獎品 (如: 頭獎 Model 3)",
     currentPrize: "正在抽取",
@@ -117,13 +117,16 @@ const translations = {
     delete: "刪除",
     table: "桌號",
     seat: "座位",
-    addSeat: "新增座位分配",
-    emailMatch: "匹配 Email",
-    seatTBD: "待定 (請洽櫃台)"
+    addSeat: "新增",
+    searchSeat: "搜尋姓名/電話/桌號...",
+    seatTBD: "待定 (請洽櫃台)",
+    importCSV: "導入 CSV",
+    downloadTemp: "下載範本",
+    importSuccess: "導入成功！"
   },
   en: {
     title: "Tesla Annual Dinner",
-    sub: "2025 Smart Seating",
+    sub: "2025 Full Seating",
     guestMode: "Guest Registration",
     guestDesc: "For Attendees",
     adminMode: "Staff Portal",
@@ -135,7 +138,7 @@ const translations = {
     enter: "Login",
     wrongPwd: "Wrong Password",
     regTitle: "Registration",
-    regSub: "Seat assigned by Email",
+    regSub: "Seat assigned automatically",
     name: "Full Name",
     phone: "Phone Number",
     email: "Email Address",
@@ -175,7 +178,7 @@ const translations = {
     logout: "Logout",
     cloudStatus: "Connected",
     winnersList: "Winners List",
-    prizeTitle: "Current Prize",
+    prizeTitle: "Prize Pool",
     setPrize: "Set",
     prizePlace: "Enter Prize Name",
     currentPrize: "Drawing For",
@@ -184,9 +187,12 @@ const translations = {
     delete: "Delete",
     table: "Table",
     seat: "Seat",
-    addSeat: "Add Assignment",
-    emailMatch: "Match Email",
-    seatTBD: "TBD (Ask Staff)"
+    addSeat: "Add",
+    searchSeat: "Search Name/Phone/Table...",
+    seatTBD: "TBD (Ask Staff)",
+    importCSV: "Import CSV",
+    downloadTemp: "Template",
+    importSuccess: "Import Successful!"
   }
 };
 
@@ -287,15 +293,15 @@ const LoginView = ({ t, onLogin, onBack }) => {
     );
 };
 
-// --- Guest View (V39: 智能匹配座位) ---
+// --- Guest View ---
 const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState({name:'',phone:'',email:'',company:''});
+  const [form, setForm] = useState({name:'',phone:'',email:'',company:'',table:'',seat:''});
   const [photo, setPhoto] = useState(null);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
   const [newId, setNewId] = useState(null);
-  const [matchedSeat, setMatchSeat] = useState(null); // 儲存匹配到的座位
+  const [matchedSeat, setMatchSeat] = useState(null); 
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -328,7 +334,6 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
       const file = e.target.files[0];
       if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); }
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault(); setErr(''); 
     if(!photo) { setErr(t.errPhoto); return; }
@@ -338,22 +343,13 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
     if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; }
     if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; }
 
-    // 🔥 智能匹配座位
-    let assignedTable = "";
-    let assignedSeat = "";
-    // 優先匹配 Email
+    let assignedTable = ""; let assignedSeat = "";
+    // 優先匹配 Email，次要匹配電話
     const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail);
-    if(emailMatch) {
-        assignedTable = emailMatch.table;
-        assignedSeat = emailMatch.seat;
-    } else {
-        // 次要匹配 Phone (防止沒填 Email)
-        const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); // 假設座位表也有 phone 欄位
-        if(phoneMatch) {
-            assignedTable = phoneMatch.table;
-            assignedSeat = phoneMatch.seat;
-        }
-    }
+    const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone);
+
+    if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; }
+    else if(phoneMatch) { assignedTable = phoneMatch.table; assignedSeat = phoneMatch.seat; }
     
     setMatchSeat({ table: assignedTable, seat: assignedSeat });
 
@@ -361,14 +357,13 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
         if (!db) throw new Error("Firebase not initialized");
         const docRef = await addDoc(collection(db, "attendees"), { 
             name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, 
-            table: assignedTable, seat: assignedSeat, // 寫入匹配結果
+            table: assignedTable, seat: assignedSeat,
             photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() 
         });
         setNewId(docRef.id); setStep(2);
     } catch (error) { console.error(error); setErr("Network Error."); }
     setLoading(false);
   };
-
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black pointer-events-none"></div>
@@ -380,9 +375,9 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
         </div>
         <div className="p-8">
           {step === 1 ? (
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {err && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm flex items-center animate-pulse"><AlertTriangle size={16} className="mr-2"/>{err}</div>}
-              <div className="flex flex-col items-center mb-6">
+              <div className="flex flex-col items-center mb-4">
                   {isCameraOpen ? (
                       <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black border-2 border-red-500 shadow-2xl">
                           <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" />
@@ -402,7 +397,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
                   <input type="file" accept="image/*" capture="user" ref={fileInputRef} className="hidden" onChange={handleFileChange}/>
               </div>
               {!isCameraOpen && (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {['name', 'phone', 'email'].map((field) => (
                         <div key={field} className="relative group">
                             <div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div>
@@ -421,16 +416,13 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
                 <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full shadow-lg flex items-center gap-1 font-bold tracking-wider"><Cloud size={10}/> SAVED</div>
               </div>
               <h3 className="text-2xl font-bold text-white mb-1">{form.name}</h3>
-              
-              {/* 顯示匹配到的座位 */}
               <div className="text-red-400 text-lg font-bold mb-4 flex justify-center items-center gap-2 bg-white/5 p-2 rounded-lg border border-red-500/30">
                  <Armchair size={18}/> 
                  {matchedSeat && matchedSeat.table ? `${t.table} ${matchedSeat.table}` : t.seatTBD} 
                  {matchedSeat && matchedSeat.seat ? ` / ${t.seat} ${matchedSeat.seat}` : ""}
               </div>
-
               <p className="text-white/50 text-sm mb-8 leading-relaxed">{t.showToStaff}</p>
-              <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm">{t.next}</button>
+              <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:'',table:'',seat:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm">{t.next}</button>
             </div>
           )}
         </div>
@@ -439,7 +431,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   );
 };
 
-// ... Projector View 保持不變 ...
+// --- Projector View ---
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize }) => {
     const [winner, setWinner] = useState(null);
     const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
@@ -517,38 +509,79 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize }) => {
     );
 };
 
-// 🔥 Admin Dashboard (New Seating Plan Tab)
+// 🔥 Admin Dashboard
 const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, setDrawHistory, currentPrize, setCurrentPrize, seatingPlan, setSeatingPlan }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
   const [scanRes, setScanRes] = useState(null);
   const [newPrizeName, setNewPrizeName] = useState("");
   const [adminForm, setAdminForm] = useState({ name: '', phone: '', email: '', table: '', seat: '' });
-  const [seatForm, setSeatForm] = useState({ email: '', table: '', seat: '' }); // 座位表表單
+  const [seatForm, setSeatForm] = useState({ name: '', phone: '', email: '', table: '', seat: '' }); // 新增 Name, Phone
+  const [searchSeat, setSearchSeat] = useState(""); // 搜尋關鍵字
 
   const lastScanTimeRef = useRef(0);
   const lastScannedCodeRef = useRef('');
 
-  // 新增座位預設
+  // CSV Import for Seating (Updated format: Name, Phone, Email, Table, Seat)
+  const handleImportSeating = async (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      const text = await file.text();
+      const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
+      // Skip header if first row contains "Email"
+      const startIdx = lines[0].toLowerCase().includes("email") ? 1 : 0;
+      
+      const batch = []; // For batch write if needed, here just loop
+      for(let i=startIdx; i<lines.length; i++) {
+          const cols = lines[i].split(',');
+          // Format: Name, Phone, Email, Table, Seat
+          if(cols.length >= 4) {
+              await addDoc(collection(db, "seating_plan"), { 
+                  name: cols[0].trim(),
+                  phone: normalizePhone(cols[1]),
+                  email: normalizeEmail(cols[2]), 
+                  table: cols[3].trim(), 
+                  seat: cols[4]?.trim() || '' 
+              });
+          }
+      }
+      alert(t.importSuccess);
+  };
+  
+  const downloadTemplate = (type) => {
+      const content = type === 'prize' ? "\uFEFFName\nGrand Prize\nSecond Prize" : "\uFEFFName,Phone,Email,Table,Seat\nElon Musk,0912345678,elon@tesla.com,1,A";
+      const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = type === 'prize' ? "prize_template.csv" : "seating_template.csv";
+      link.click();
+  };
+
   const handleAddSeating = async (e) => {
       e.preventDefault();
-      if(!seatForm.email || !seatForm.table) return;
+      if(!seatForm.table) return;
       if(db) await addDoc(collection(db, "seating_plan"), { 
+          name: seatForm.name,
+          phone: normalizePhone(seatForm.phone),
           email: normalizeEmail(seatForm.email), 
           table: seatForm.table, 
           seat: seatForm.seat 
       });
-      setSeatForm({ email: '', table: '', seat: '' });
-      alert("Seating Added!");
+      setSeatForm({ name:'', phone:'', email: '', table: '', seat: '' });
   };
 
   const handleDeleteSeating = async (id) => {
       if(confirm('Delete this seating?')) await deleteDoc(doc(db, "seating_plan", id));
   };
 
-  const handleUpdateSeat = async (id, table, seat) => {
-      if(db) await updateDoc(doc(db, "attendees", id), { table, seat });
-  };
+  // Filter Seating Plan
+  const filteredSeating = seatingPlan.filter(s => {
+      const term = searchSeat.toLowerCase();
+      return (s.name && s.name.toLowerCase().includes(term)) || 
+             (s.phone && s.phone.includes(term)) || 
+             (s.email && s.email.includes(term)) || 
+             (s.table && s.table.includes(term));
+  });
 
   const handleSetPrize = async (e) => {
       e.preventDefault();
@@ -612,7 +645,9 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
       }
   };
 
-  const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
+  const handleUpdateSeat = async (id, table, seat) => {
+      if(db) await updateDoc(doc(db, "attendees", id), { table, seat });
+  };
 
   return (
     <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
@@ -667,13 +702,6 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
           {tab === 'list' && (
             <div className="h-full w-full flex flex-col">
               <div className="p-4 bg-black/20 border-b border-white/10 flex flex-col gap-4">
-                 {/* 獎品設定 */}
-                 <div className="flex gap-2 items-center text-xs text-white/50">
-                    <span className="uppercase tracking-widest">{t.prizeTitle}: <span className="text-yellow-400 font-bold">{currentPrize || "---"}</span></span>
-                    <input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="bg-white/5 border border-white/10 rounded px-2 py-1 w-40 text-white focus:border-red-500 outline-none"/>
-                    <button onClick={handleSetPrize} className="bg-white/10 hover:bg-white/20 px-2 py-1 rounded">{t.setPrize}</button>
-                 </div>
-                 
                  <div className="flex justify-between items-center">
                     <div className="font-bold text-white flex items-center gap-3"><span className="text-white/50 text-sm font-normal">{t.total}: {attendees.length}</span> <span className="w-[1px] h-4 bg-white/20"></span> <span className="text-emerald-400">{t.arrived}: {attendees.filter(x=>x.checkedIn).length}</span></div>
                     <button onClick={()=>{const csv="Name,Phone,Email,Table,Seat,Status\n"+attendees.map(p=>`${p.name},${p.phone},${p.email},${p.table},${p.seat},${p.checkedIn?'Checked':'Pending'}`).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:'text/csv'}));a.download="list.csv";a.click();}} className="text-xs font-bold bg-white/10 border border-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/20 flex items-center gap-2 transition-colors"><Download size={14}/> CSV</button>
@@ -725,40 +753,68 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
             </div>
           )}
 
-          {/* 3. 新增：座位表設定 (Seating Plan) */}
+          {/* 3. 座位表設定 (含 CSV) */}
           {tab === 'seating' && (
               <div className="h-full w-full flex flex-col p-8">
-                  <div className="mb-6 flex gap-2 items-end">
-                      <div className="flex-1">
-                          <label className="text-xs text-white/50 block mb-1">{t.emailMatch}</label>
-                          <input className="w-full bg-white/5 border border-white/10 text-white p-2 rounded-lg outline-none focus:border-red-500" value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} placeholder="user@example.com" />
+                  {/* 新增：搜尋與工具列 */}
+                  <div className="mb-6 flex gap-4 flex-wrap">
+                      <div className="flex-1 relative">
+                          <Search className="absolute top-3 left-3 text-white/30" size={16}/>
+                          <input 
+                            placeholder={t.searchSeat} 
+                            value={searchSeat} 
+                            onChange={e=>setSearchSeat(e.target.value)} 
+                            className="w-full bg-white/5 border border-white/10 text-white pl-10 pr-4 py-2.5 rounded-xl outline-none focus:border-red-500"
+                          />
                       </div>
-                      <div className="w-20">
-                          <label className="text-xs text-white/50 block mb-1">{t.table}</label>
-                          <input className="w-full bg-white/5 border border-white/10 text-white p-2 rounded-lg outline-none focus:border-red-500" value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} placeholder="1" />
-                      </div>
-                      <div className="w-20">
-                          <label className="text-xs text-white/50 block mb-1">{t.seat}</label>
-                          <input className="w-full bg-white/5 border border-white/10 text-white p-2 rounded-lg outline-none focus:border-red-500" value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} placeholder="A" />
-                      </div>
-                      <button onClick={handleAddSeating} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold h-[42px]">{t.addSeat}</button>
+                      <label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-4 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-2">
+                          <Upload size={16} className="text-red-500"/>
+                          <span className="font-bold">{t.importCSV}</span>
+                          <input type="file" accept=".csv" className="hidden" onChange={handleImportSeating}/>
+                      </label>
+                      <button onClick={()=>downloadTemplate('seating')} className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-4 py-2 text-xs transition-colors flex items-center justify-center gap-2">
+                          <FileText size={16} className="text-blue-500"/>
+                          <span className="font-bold">{t.downloadTemp}</span>
+                      </button>
                   </div>
                   
+                  {/* 新增座位表單 */}
+                  <div className="mb-6 flex gap-2 flex-wrap bg-white/5 p-3 rounded-xl border border-white/5">
+                      <input className="flex-1 bg-black/30 border border-white/10 text-white p-2 rounded-lg outline-none focus:border-red-500 text-sm" value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} placeholder={t.name} />
+                      <input className="w-32 bg-black/30 border border-white/10 text-white p-2 rounded-lg outline-none focus:border-red-500 text-sm" value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} placeholder={t.phone} />
+                      <input className="flex-1 bg-black/30 border border-white/10 text-white p-2 rounded-lg outline-none focus:border-red-500 text-sm" value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} placeholder="Email (Optional)" />
+                      <input className="w-16 bg-black/30 border border-white/10 text-white p-2 rounded-lg outline-none focus:border-red-500 text-sm text-center" value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} placeholder={t.table} />
+                      <input className="w-16 bg-black/30 border border-white/10 text-white p-2 rounded-lg outline-none focus:border-red-500 text-sm text-center" value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} placeholder={t.seat} />
+                      <button onClick={handleAddSeating} className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold text-xs">{t.addSeat}</button>
+                  </div>
+
+                  {/* 座位列表 */}
                   <div className="flex-1 overflow-y-auto bg-black/20 rounded-xl border border-white/10 p-4">
                       {seatingPlan.length === 0 ? <div className="text-white/30 text-center py-10">No preset seats</div> : (
                           <div className="grid gap-2">
-                              {seatingPlan.map(s => (
-                                  <div key={s.id} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-white/5">
-                                      <div className="flex items-center gap-3">
-                                          <Mail size={16} className="text-white/30"/>
-                                          <span className="font-mono text-sm">{s.email}</span>
+                              {filteredSeating.map(s => (
+                                  <div key={s.id} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-white/5 hover:bg-white/10 transition-colors">
+                                      <div className="flex items-center gap-4">
+                                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center text-xs font-bold text-white/50">{s.table}</div>
+                                          <div>
+                                              <div className="font-bold text-white text-sm">{s.name || 'Unknown'}</div>
+                                              <div className="text-xs text-white/40 flex gap-2">
+                                                  {s.phone && <span>{s.phone}</span>}
+                                                  {s.email && <span>{s.email}</span>}
+                                              </div>
+                                          </div>
                                       </div>
                                       <div className="flex items-center gap-4">
-                                          <span className="text-emerald-400 font-bold"><Armchair size={14} className="inline mr-1"/> T: {s.table} / S: {s.seat}</span>
-                                          <button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500"><Trash2 size={14}/></button>
+                                          <span className="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded text-xs border border-emerald-500/30">
+                                              Table {s.table} {s.seat ? `/ Seat ${s.seat}` : ''}
+                                          </span>
+                                          <button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
                                       </div>
                                   </div>
                               ))}
+                              {filteredSeating.length === 0 && searchSeat && (
+                                  <div className="text-center text-white/30 py-4">No results found for "{searchSeat}"</div>
+                              )}
                           </div>
                       )}
                   </div>
@@ -832,7 +888,6 @@ export default function App() {
       </div>
     </div>
   );
-  // 將 seatingPlan 傳遞給 GuestView 進行自動匹配
   if(view === 'guest') return <><StyleInjector/><GuestView t={t} onBack={()=>setView('landing')} checkDuplicate={checkDuplicate} seatingPlan={seatingPlan} /></>;
   if(view === 'login_admin') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('admin')} onBack={()=>setView('landing')} /></>;
   if(view === 'login_projector') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('projector')} onBack={()=>setView('landing')} /></>;
