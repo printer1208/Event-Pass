@@ -15,7 +15,7 @@ import {
   doc, onSnapshot, query, orderBy, deleteDoc 
 } from "firebase/firestore";
 
-// ✅ Firebase Config
+// ✅ Firebase Config (您的設定)
 const firebaseConfig = {
   apiKey: "AIzaSyDUZeeaWvQZJORdDv4PdAHQK-SqXFIDsy4",
   authDomain: "eventpass-77522.firebaseapp.com",
@@ -36,7 +36,7 @@ try {
 
 const ADMIN_PASSWORD = "admin"; 
 
-// --- 🔥 強制樣式注入器 ---
+// --- 🔥 強制樣式注入器 (確保黑底) ---
 const StyleInjector = () => {
   useEffect(() => {
     document.body.style.backgroundColor = "#000000";
@@ -343,9 +343,11 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
     if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; }
     if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; }
 
+    // 智能匹配座位
     let assignedTable = ""; let assignedSeat = "";
-    // 優先匹配 Email，次要匹配電話
+    // 1. Email 匹配
     const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail);
+    // 2. Phone 匹配 (如果 Email 沒找到)
     const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone);
 
     if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; }
@@ -516,25 +518,25 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
   const [scanRes, setScanRes] = useState(null);
   const [newPrizeName, setNewPrizeName] = useState("");
   const [adminForm, setAdminForm] = useState({ name: '', phone: '', email: '', table: '', seat: '' });
-  const [seatForm, setSeatForm] = useState({ name: '', phone: '', email: '', table: '', seat: '' }); // 新增 Name, Phone
-  const [searchSeat, setSearchSeat] = useState(""); // 搜尋關鍵字
+  const [seatForm, setSeatForm] = useState({ name: '', phone: '', email: '', table: '', seat: '' });
+  const [searchSeat, setSearchSeat] = useState(""); 
+  const fileInputRef = useRef(null);
 
   const lastScanTimeRef = useRef(0);
   const lastScannedCodeRef = useRef('');
 
-  // CSV Import for Seating (Updated format: Name, Phone, Email, Table, Seat)
+  // CSV Import (5 Columns: Name, Phone, Email, Table, Seat)
   const handleImportSeating = async (e) => {
       const file = e.target.files[0];
       if(!file) return;
       const text = await file.text();
       const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
-      // Skip header if first row contains "Email"
+      // Try to detect header
       const startIdx = lines[0].toLowerCase().includes("email") ? 1 : 0;
       
-      const batch = []; // For batch write if needed, here just loop
       for(let i=startIdx; i<lines.length; i++) {
           const cols = lines[i].split(',');
-          // Format: Name, Phone, Email, Table, Seat
+          // Expecting 4 or 5 columns
           if(cols.length >= 4) {
               await addDoc(collection(db, "seating_plan"), { 
                   name: cols[0].trim(),
@@ -574,7 +576,6 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
       if(confirm('Delete this seating?')) await deleteDoc(doc(db, "seating_plan", id));
   };
 
-  // Filter Seating Plan
   const filteredSeating = seatingPlan.filter(s => {
       const term = searchSeat.toLowerCase();
       return (s.name && s.name.toLowerCase().includes(term)) || 
@@ -756,7 +757,6 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
           {/* 3. 座位表設定 (含 CSV) */}
           {tab === 'seating' && (
               <div className="h-full w-full flex flex-col p-8">
-                  {/* 新增：搜尋與工具列 */}
                   <div className="mb-6 flex gap-4 flex-wrap">
                       <div className="flex-1 relative">
                           <Search className="absolute top-3 left-3 text-white/30" size={16}/>
