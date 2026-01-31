@@ -33,18 +33,16 @@ try {
   console.error("Firebase Init Error:", error);
 }
 
+// 🔑 設定後台密碼
 const ADMIN_PASSWORD = "admin"; 
 
-// --- 🔥 關鍵修復：強制樣式注入器 (找回黑底與動畫) ---
+// --- 🔥 強制樣式注入器 (確保黑底) ---
 const StyleInjector = () => {
   useEffect(() => {
-    // 1. 強制設定 Body 樣式為全黑
     document.body.style.backgroundColor = "#000000";
     document.body.style.color = "#ffffff";
     document.body.style.margin = "0";
     document.body.style.minHeight = "100vh";
-    
-    // 2. 確保 Tailwind CDN 存在
     if (!document.querySelector('#tailwind-cdn')) {
       const script = document.createElement('script');
       script.id = 'tailwind-cdn';
@@ -58,7 +56,7 @@ const StyleInjector = () => {
 const translations = {
   zh: {
     title: "Tesla Annual Dinner",
-    sub: "2025 全功能整合版",
+    sub: "",
     guestMode: "參加者登記",
     guestDesc: "Guest Registration",
     adminMode: "工作人員入口",
@@ -116,7 +114,7 @@ const translations = {
   },
   en: {
     title: "Tesla Annual Dinner",
-    sub: "2025 All-in-One",
+    sub: "",
     guestMode: "Guest Registration",
     guestDesc: "For Attendees",
     adminMode: "Staff Portal",
@@ -213,14 +211,12 @@ const Confetti = () => {
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
 };
 
-// --- 獨立輪盤組件 (包含獎品顯示) ---
+// --- 獨立輪盤組件 ---
 const WheelComponent = ({ list, t, onDrawEnd }) => {
     const [rot, setRot] = useState(0);
     const [spin, setSpin] = useState(false);
     const WHEEL_RADIUS = list.length > 30 ? 280 : 200; 
-    
     useEffect(() => { const k=(e)=>{if(e.code==='Space'&&!spin&&list.length>=2){e.preventDefault();run()}}; window.addEventListener('keydown',k); return ()=>window.removeEventListener('keydown',k); }, [spin, list]);
-    
     const run = async () => {
       setSpin(true);
       const winIdx = Math.floor(Math.random()*list.length);
@@ -228,7 +224,6 @@ const WheelComponent = ({ list, t, onDrawEnd }) => {
       setRot(rot + 1800 + (360 - winIdx * angle));
       setTimeout(async () => { setSpin(false); onDrawEnd(list[winIdx]); }, 4500);
     };
-
     return (
       <div className="flex flex-col items-center justify-center h-full w-full relative">
         <div className="relative flex items-center justify-center transition-all duration-500" style={{ width: WHEEL_RADIUS*2 + 100, height: WHEEL_RADIUS*2 + 100 }}>
@@ -255,21 +250,40 @@ const WheelComponent = ({ list, t, onDrawEnd }) => {
     );
 };
 
-const LoginView = ({ t, onLogin, onBack }) => (
-  <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
-    <div className="absolute top-[-20%] left-[-20%] w-[600px] h-[600px] bg-red-700/30 rounded-full blur-[120px] pointer-events-none"></div>
-    <div className="absolute bottom-[-20%] right-[-20%] w-[600px] h-[600px] bg-neutral-800/30 rounded-full blur-[120px] pointer-events-none"></div>
-    <div className="relative bg-neutral-900/60 border border-white/10 p-10 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in duration-500">
-      <button onClick={onBack} className="text-white/50 hover:text-white mb-8 flex items-center transition-colors text-sm uppercase tracking-widest"><ChevronLeft size={16} className="mr-1"/> {t.back}</button>
-      <div className="text-center mb-8"><h2 className="text-3xl font-bold text-white mb-2 tracking-tight">{t.login}</h2></div>
-      <form onSubmit={e=>{e.preventDefault(); if(e.target[0].value===ADMIN_PASSWORD)onLogin(); else alert(t.wrongPwd);}}>
-        <input type="password" autoFocus placeholder={t.pwdPlace} className="w-full bg-white/5 border border-white/10 text-white p-4 rounded-xl mb-6 focus:ring-1 focus:ring-red-600 focus:border-red-600 outline-none transition-all text-center tracking-[0.3em] placeholder:tracking-normal placeholder:text-white/20"/>
-        <button className="w-full bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-900/40 transition-all active:scale-95 uppercase tracking-widest text-sm">{t.enter}</button>
-      </form>
-    </div>
-  </div>
-);
+// 🔥 Login View (修復輸入問題)
+const LoginView = ({ t, onLogin, onBack }) => {
+    const [pwd, setPwd] = useState('');
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if(pwd === ADMIN_PASSWORD) onLogin();
+        else { alert(t.wrongPwd); setPwd(''); }
+    };
 
+    return (
+      <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
+        <div className="absolute top-[-20%] left-[-20%] w-[600px] h-[600px] bg-red-700/30 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="absolute bottom-[-20%] right-[-20%] w-[600px] h-[600px] bg-neutral-800/30 rounded-full blur-[120px] pointer-events-none"></div>
+        <div className="relative bg-neutral-900/60 border border-white/10 p-10 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in duration-500">
+          <button onClick={onBack} className="text-white/50 hover:text-white mb-8 flex items-center transition-colors text-sm uppercase tracking-widest"><ChevronLeft size={16} className="mr-1"/> {t.back}</button>
+          <div className="text-center mb-8"><h2 className="text-3xl font-bold text-white mb-2 tracking-tight">{t.login}</h2></div>
+          <form onSubmit={handleSubmit}>
+            <input 
+                type="password" 
+                autoFocus 
+                value={pwd}
+                onChange={e => setPwd(e.target.value)}
+                placeholder={t.pwdPlace} 
+                className="w-full bg-white/5 border border-white/10 text-white p-4 rounded-xl mb-6 focus:ring-1 focus:ring-red-600 focus:border-red-600 outline-none transition-all text-center tracking-[0.3em] placeholder:tracking-normal placeholder:text-white/20"
+            />
+            <button type="submit" className="w-full bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-900/40 transition-all active:scale-95 uppercase tracking-widest text-sm">{t.enter}</button>
+          </form>
+          <p className="text-center text-white/20 text-xs mt-4">Default: {ADMIN_PASSWORD}</p>
+        </div>
+      </div>
+    );
+};
+
+// ... (GuestView 保持不變，省略) ...
 const GuestView = ({ t, onBack, checkDuplicate }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({name:'',phone:'',email:'',company:''});
@@ -280,7 +294,6 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
-
   const startCamera = async () => {
       setErr('');
       try {
@@ -324,7 +337,6 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
     } catch (error) { console.error(error); setErr("Network Error."); }
     setLoading(false);
   };
-
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black pointer-events-none"></div>
@@ -386,7 +398,81 @@ const GuestView = ({ t, onBack, checkDuplicate }) => {
   );
 };
 
-// 🔥 Admin Dashboard (Updated)
+
+// ... (ProjectorView, AdminDashboard, App 主程式保持 V33 邏輯，整合如下) ...
+
+const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize }) => {
+    const [winner, setWinner] = useState(null);
+    const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
+
+    useEffect(() => {
+        const handleKey = (e) => { if (winner && e.key === 'Enter') setWinner(null); };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [winner]);
+
+    const handleDrawEnd = async (winner) => {
+        setWinner(winner);
+        if (db) await addDoc(collection(db, "winners"), { attendeeId: winner.id, name: winner.name, phone: winner.phone, photo: winner.photo, prize: currentPrize || "Lucky Draw", wonAt: new Date().toISOString() });
+    };
+
+    const ConfettiInner = () => {
+        const canvasRef = useRef(null);
+        useEffect(() => {
+            const c = canvasRef.current; const ctx = c.getContext('2d'); c.width = window.innerWidth; c.height = window.innerHeight;
+            const p = Array.from({length:200}).map(()=>({x:Math.random()*c.width, y:Math.random()*c.height,c:['#E82127','#FFFFFF','#808080'][Math.floor(Math.random()*3)],s:Math.random()*8+2,d:Math.random()*5}));
+            const draw = () => { ctx.clearRect(0,0,c.width,c.height); p.forEach(i=>{i.y+=i.s;i.x+=Math.sin(i.d);if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}ctx.fillStyle=i.c;ctx.beginPath();ctx.arc(i.x,i.y,i.s/2,0,Math.PI*2);ctx.fill();}); requestAnimationFrame(draw); };
+            draw();
+        }, []);
+        return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
+    };
+
+    return (
+        <div className="min-h-screen bg-black text-white relative overflow-hidden flex flex-col items-center justify-center">
+            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black pointer-events-none"></div>
+            <button onClick={onBack} className="absolute top-6 left-6 text-white/30 hover:text-white z-50 transition-colors"><ChevronLeft size={24}/></button>
+            <div className="relative z-10 w-full h-full flex flex-col items-center justify-center p-10">
+                <div className="mb-6 text-center animate-in fade-in slide-in-from-top-4">
+                    <h3 className="text-xl text-yellow-500 uppercase tracking-widest mb-1 font-bold">{t.currentPrize}</h3>
+                    <h1 className="text-6xl font-black text-white tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">{currentPrize || "LUCKY DRAW"}</h1>
+                </div>
+                <div className="flex-1 w-full max-w-4xl flex flex-col items-center justify-center min-h-[500px]">
+                    {eligible.length < 2 ? (
+                        <div className="text-center text-white/30"><Trophy size={100} className="mx-auto mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p><p className="text-sm mt-2 font-mono">Current: {eligible.length}</p></div>
+                    ) : (
+                        <WheelComponent list={eligible} t={t} onDrawEnd={handleDrawEnd} />
+                    )}
+                </div>
+                {drawHistory.length > 0 && (
+                    <div className="w-full max-w-7xl mt-12 overflow-x-auto pb-4 px-4">
+                        <div className="flex flex-wrap gap-4 justify-center">
+                            {drawHistory.map((h, i) => (
+                                <div key={h.id} className="bg-white/10 backdrop-blur-md border border-white/10 px-6 py-3 rounded-full flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
+                                    <span className="text-yellow-400 font-bold text-sm border-r border-white/20 pr-3 mr-1">{h.prize || "Prize"}</span>
+                                    {h.photo && <img src={h.photo} className="w-8 h-8 rounded-full border border-white/50 object-cover"/>}
+                                    <span className="font-bold tracking-wide">{h.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+            {winner && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 animate-in fade-in duration-500 backdrop-blur-xl">
+                    <div className="absolute inset-0 pointer-events-none"><ConfettiInner/></div>
+                    <div className="relative text-center w-full max-w-5xl px-4 animate-in zoom-in-50 duration-500 flex flex-col items-center">
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-red-600/20 rounded-full blur-[120px] pointer-events-none"></div>
+                        <h3 className="text-4xl font-bold text-yellow-400 mb-6 tracking-widest uppercase animate-pulse">{currentPrize || "WINNER"}</h3>
+                        {winner.photo && <img src={winner.photo} className="w-80 h-80 rounded-full border-[10px] border-yellow-400 object-cover shadow-[0_0_50px_rgba(234,179,8,0.5)] mb-8 animate-in zoom-in duration-700"/>}
+                        <h1 className="text-7xl md:text-9xl font-black text-white mb-8 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] scale-110">{winner.name}</h1>
+                        <p className="text-white/30 text-sm mt-8">Press ENTER to continue</p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, setDrawHistory, currentPrize, setCurrentPrize }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
@@ -395,7 +481,6 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
   const lastScanTimeRef = useRef(0);
   const lastScannedCodeRef = useRef('');
 
-  // 更新獎品設定
   const handleSetPrize = async (e) => {
       e.preventDefault();
       if(newPrizeName && db) {
@@ -448,7 +533,6 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
         <button onClick={onLogout} className="text-white/50 hover:text-red-500 text-sm flex items-center gap-2 transition-colors"><LogOut size={16}/> {t.logout}</button>
       </header>
       <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col items-center">
-        {/* 獎品管理區 */}
         <div className="w-full max-w-md mb-6 bg-white/5 border border-white/10 p-4 rounded-xl flex flex-col gap-2">
             <div className="flex justify-between items-center text-sm"><span className="text-white/50 uppercase tracking-widest">{t.prizeTitle}</span><span className="text-yellow-400 font-bold">{currentPrize || "---"}</span></div>
             <form onSubmit={handleSetPrize} className="flex gap-2">
@@ -456,7 +540,6 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
                 <button className="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg text-sm font-bold transition-colors">{t.setPrize}</button>
             </form>
         </div>
-
         <div className="flex justify-center mb-8 bg-white/5 p-1 rounded-2xl shadow-lg border border-white/10 w-fit backdrop-blur-sm">
           {[ {id:'scan',icon:ScanLine,l:t.scan}, {id:'list',icon:Users,l:t.list} ].map(i=> (
             <button key={i.id} onClick={()=>{setTab(i.id);setIsScan(false);setScanRes(null)}} className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all text-sm tracking-wide ${tab===i.id?'bg-red-600 text-white shadow-md':'text-white/50 hover:bg-white/10 hover:text-white'}`}><i.icon size={16}/> {i.l}</button>
@@ -522,92 +605,6 @@ const AdminDashboard = ({ t, onLogout, attendees, setAttendees, drawHistory, set
       </main>
     </div>
   );
-};
-
-// 🔥 Projector View (Updated)
-const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize }) => {
-    const [winner, setWinner] = useState(null);
-    const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
-
-    useEffect(() => {
-        const handleKey = (e) => { if (winner && e.key === 'Enter') setWinner(null); };
-        window.addEventListener('keydown', handleKey);
-        return () => window.removeEventListener('keydown', handleKey);
-    }, [winner]);
-
-    const handleDrawEnd = async (winner) => {
-        setWinner(winner);
-        if (db) await addDoc(collection(db, "winners"), { 
-            attendeeId: winner.id, 
-            name: winner.name, 
-            phone: winner.phone, 
-            photo: winner.photo, 
-            prize: currentPrize || "Grand Prize", // 寫入獎品
-            wonAt: new Date().toISOString() 
-        });
-    };
-
-    const ConfettiInner = () => {
-        const canvasRef = useRef(null);
-        useEffect(() => {
-            const c = canvasRef.current; const ctx = c.getContext('2d'); c.width = window.innerWidth; c.height = window.innerHeight;
-            const p = Array.from({length:200}).map(()=>({x:Math.random()*c.width, y:Math.random()*c.height,c:['#E82127','#FFFFFF','#808080'][Math.floor(Math.random()*3)],s:Math.random()*8+2,d:Math.random()*5}));
-            const draw = () => { ctx.clearRect(0,0,c.width,c.height); p.forEach(i=>{i.y+=i.s;i.x+=Math.sin(i.d);if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}ctx.fillStyle=i.c;ctx.beginPath();ctx.arc(i.x,i.y,i.s/2,0,Math.PI*2);ctx.fill();}); requestAnimationFrame(draw); };
-            draw();
-        }, []);
-        return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
-    };
-
-    return (
-        <div className="min-h-screen bg-black text-white relative overflow-hidden flex flex-col items-center justify-center">
-            <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-900 via-black to-black pointer-events-none"></div>
-            <button onClick={onBack} className="absolute top-6 left-6 text-white/30 hover:text-white z-50 transition-colors"><ChevronLeft size={24}/></button>
-
-            <div className="relative z-10 w-full h-full flex flex-col items-center justify-center p-10">
-                {/* 顯示當前獎品 */}
-                <div className="mb-6 text-center animate-in fade-in slide-in-from-top-4">
-                    <h3 className="text-xl text-yellow-500 uppercase tracking-widest mb-1 font-bold">{t.currentPrize}</h3>
-                    <h1 className="text-6xl font-black text-white tracking-tighter drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">{currentPrize || "LUCKY DRAW"}</h1>
-                </div>
-
-                <div className="flex-1 w-full max-w-4xl flex flex-col items-center justify-center min-h-[500px]">
-                    {eligible.length < 2 ? (
-                        <div className="text-center text-white/30"><Trophy size={100} className="mx-auto mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p><p className="text-sm mt-2 font-mono">Current: {eligible.length}</p></div>
-                    ) : (
-                        <WheelComponent list={eligible} t={t} onDrawEnd={handleDrawEnd} />
-                    )}
-                </div>
-                
-                {/* 中獎名單 (含獎品名稱) */}
-                {drawHistory.length > 0 && (
-                    <div className="w-full max-w-7xl mt-12 overflow-x-auto pb-4 px-4">
-                        <div className="flex flex-wrap gap-4 justify-center">
-                            {drawHistory.map((h, i) => (
-                                <div key={h.id} className="bg-white/10 backdrop-blur-md border border-white/10 px-6 py-3 rounded-full flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
-                                    <span className="text-yellow-400 font-bold text-sm border-r border-white/20 pr-3 mr-1">{h.prize || "Prize"}</span>
-                                    {h.photo && <img src={h.photo} className="w-8 h-8 rounded-full border border-white/50 object-cover"/>}
-                                    <span className="font-bold tracking-wide">{h.name}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {winner && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 animate-in fade-in duration-500 backdrop-blur-xl">
-                    <div className="absolute inset-0 pointer-events-none"><ConfettiInner/></div>
-                    <div className="relative text-center w-full max-w-5xl px-4 animate-in zoom-in-50 duration-500 flex flex-col items-center">
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-red-600/20 rounded-full blur-[120px] pointer-events-none"></div>
-                        <h3 className="text-4xl font-bold text-yellow-400 mb-6 tracking-widest uppercase animate-pulse">{currentPrize || "WINNER"}</h3>
-                        {winner.photo && <img src={winner.photo} className="w-80 h-80 rounded-full border-[10px] border-yellow-400 object-cover shadow-[0_0_50px_rgba(234,179,8,0.5)] mb-8 animate-in zoom-in duration-700"/>}
-                        <h1 className="text-7xl md:text-9xl font-black text-white mb-8 drop-shadow-[0_0_30px_rgba(255,255,255,0.3)] scale-110">{winner.name}</h1>
-                        <p className="text-white/30 text-sm mt-8">Press ENTER to continue</p>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
 };
 
 export default function App() {
