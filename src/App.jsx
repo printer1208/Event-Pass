@@ -5,10 +5,10 @@ import {
   ArrowRight, UserPlus, LogOut, Globe, Mail,
   Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
   Cloud, Zap, Image as ImageIcon, MonitorPlay, Aperture, Gift,
-  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid
+  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw
 } from 'lucide-react';
 
-// --- Firebase ---
+// --- Firebase 模組 ---
 import { initializeApp } from "firebase/app";
 import { 
   getFirestore, collection, addDoc, updateDoc, setDoc,
@@ -36,11 +36,13 @@ try {
 
 const ADMIN_PASSWORD = "admin"; 
 
+// --- 🔥 強制樣式注入器 ---
 const StyleInjector = () => {
   useEffect(() => {
     document.body.style.backgroundColor = "#000000";
     document.body.style.color = "#ffffff";
     document.body.style.margin = "0";
+    document.body.style.minHeight = "100vh";
     if (!document.querySelector('#tailwind-cdn')) {
       const script = document.createElement('script');
       script.id = 'tailwind-cdn';
@@ -51,15 +53,16 @@ const StyleInjector = () => {
   return null;
 };
 
+// --- 翻譯與工具 ---
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 名單修復版",
-    guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
+    title: "Tesla Annual Dinner", sub: "2025 完整修復版",
+    guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台 (抽獎)", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
-    regTitle: "賓客登記", regSub: "自拍以參與抽獎",
+    regTitle: "賓客登記", regSub: "資料將即時同步至後台",
     name: "姓名", phone: "電話", email: "Email",
     photoBtn: "開啟相機 / 自拍", generateBtn: "確認登記",
-    yourCode: "入場憑證", showToStaff: "請截圖並出示給工作人員",
+    yourCode: "入場憑證", showToStaff: "請出示給工作人員掃描",
     next: "完成", scan: "極速掃描", draw: "抽獎控制", prizeList: "獎品管理",
     list: "賓客名單", seating: "座位查詢", total: "總人數", arrived: "已到場",
     scanCam: "開啟鏡頭", stopCam: "停止", manual: "手動輸入",
@@ -70,16 +73,16 @@ const translations = {
     markWin: "設為得主", resetWinner: "重置", select: "選取",
     importCSV: "導入 CSV", downloadTemp: "範本", importSuccess: "成功",
     table: "桌號", seat: "座位", addSeat: "新增座位", searchSeat: "搜尋姓名/電話/桌號...",
-    addGuest: "新增賓客", notFound: "查無此人"
+    notFound: "查無此人"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 List Fixed",
+    title: "Tesla Annual Dinner", sub: "2025 Full Fixed",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
-    regTitle: "Register", regSub: "Selfie for Lucky Draw",
+    regTitle: "Register", regSub: "Syncs to cloud instantly",
     name: "Name", phone: "Phone", email: "Email",
     photoBtn: "Photo", generateBtn: "Submit",
-    yourCode: "Entry Pass", showToStaff: "Screenshot this",
+    yourCode: "Entry Pass", showToStaff: "Show to Staff",
     next: "Finish", scan: "Scan", draw: "Control", prizeList: "Prize Manager",
     list: "Guest List", seating: "Seating", total: "Total", arrived: "Arrived",
     scanCam: "Scan", stopCam: "Stop", manual: "Manual Input",
@@ -90,7 +93,7 @@ const translations = {
     markWin: "Mark Win", resetWinner: "Reset", select: "Select",
     importCSV: "Import", downloadTemp: "Template", importSuccess: "Done",
     table: "Table", seat: "Seat", addSeat: "Add Seat", searchSeat: "Search...",
-    addGuest: "Add Guest", notFound: "Not Found"
+    notFound: "Not Found"
   }
 };
 
@@ -130,7 +133,7 @@ const Confetti = () => {
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
 };
 
-// --- Sound ---
+// --- 音效與動畫組件 ---
 const SoundController = {
   ctx: null, oscList: [],
   init: function() { const AC = window.AudioContext || window.webkitAudioContext; if (AC) this.ctx = new AC(); },
@@ -167,7 +170,6 @@ const SoundController = {
   }
 };
 
-// --- Galaxy Canvas ---
 const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
     const canvasRef = useRef(null);
     const [isRunning, setIsRunning] = useState(false);
@@ -188,23 +190,11 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
         particles.current = list.map((p, i) => {
             const img = new Image();
             img.src = p.photo || `https://ui-avatars.com/api/?name=${p.name}&background=random&color=fff&size=128`;
-            return {
-                id: p.id,
-                x: (i % cols) * size, 
-                y: Math.floor(i / cols) * size,
-                targetX: (i % cols) * size,
-                targetY: Math.floor(i / cols) * size,
-                vx: 0, vy: 0,
-                size: size,
-                img: img,
-                data: p
-            };
+            return { id: p.id, x: (i % cols) * size, y: Math.floor(i / cols) * size, targetX: (i % cols) * size, targetY: Math.floor(i / cols) * size, vx: 0, vy: 0, size: size, img: img, data: p };
         });
 
         const render = () => {
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+            ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, canvas.width, canvas.height);
             particles.current.forEach(p => {
                 if (mode.current === 'galaxy') {
                     p.x += p.vx; p.y += p.vy;
@@ -213,8 +203,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
                 } else {
                     p.x += (p.targetX - p.x) * 0.1; p.y += (p.targetY - p.y) * 0.1;
                 }
-                ctx.save();
-                ctx.beginPath(); ctx.arc(p.x + p.size/2, p.y + p.size/2, p.size/2 - 2, 0, Math.PI * 2); ctx.clip();
+                ctx.save(); ctx.beginPath(); ctx.arc(p.x + p.size/2, p.y + p.size/2, p.size/2 - 2, 0, Math.PI * 2); ctx.clip();
                 if (p.img.complete) ctx.drawImage(p.img, p.x, p.y, p.size, p.size);
                 else { ctx.fillStyle = '#333'; ctx.fillRect(p.x, p.y, p.size, p.size); }
                 ctx.restore();
@@ -230,6 +219,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
         setIsRunning(true);
         mode.current = 'galaxy';
         particles.current.forEach(p => { p.vx = (Math.random() - 0.5) * 25; p.vy = (Math.random() - 0.5) * 25; });
+        SoundController.startSuspense();
         setTimeout(stop, 5000);
     };
 
@@ -238,6 +228,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
         const winner = list[winnerIdx];
         setIsRunning(false);
         mode.current = 'mosaic';
+        SoundController.playWin();
         setTimeout(() => onDrawEnd(winner), 800);
     };
 
@@ -256,73 +247,9 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
     );
 };
 
-// --- Projector View ---
-const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes }) => {
-    const [winner, setWinner] = useState(null);
-    const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h => h.attendeeId === p.id));
+// --- 所有 View 組件 ---
 
-    useEffect(() => {
-        const handleKey = async (e) => {
-            if (winner && e.key === 'Enter') {
-                setWinner(null);
-                if (currentPrize && prizes.length > 0) {
-                    const currentIdx = prizes.findIndex(p => p.name === currentPrize);
-                    const nextAvailablePrize = prizes.find((p, idx) => idx > currentIdx && !drawHistory.some(h => h.prize === p.name));
-                    if (nextAvailablePrize && db) {
-                        await setDoc(doc(db, "config", "settings"), { currentPrize: nextAvailablePrize.name }, { merge: true });
-                    }
-                }
-            }
-        };
-        window.addEventListener('keydown', handleKey);
-        return () => window.removeEventListener('keydown', handleKey);
-    }, [winner, prizes, drawHistory, currentPrize]);
-
-    const handleDrawEnd = async (w) => {
-        setWinner(w);
-        if (db) await addDoc(collection(db, "winners"), { attendeeId: w.id, name: w.name, phone: w.phone, photo: w.photo, table: w.table, seat: w.seat, prize: currentPrize || "Grand Prize", wonAt: new Date().toISOString() });
-    };
-
-    return (
-        <div className="min-h-screen bg-black text-white relative overflow-hidden flex flex-col items-center justify-center">
-            <button onClick={onBack} className="absolute top-6 left-6 text-white/30 hover:text-white z-50 transition-colors"><ChevronLeft size={24}/></button>
-            <div className="absolute top-10 left-0 right-0 z-40 text-center">
-                 <h3 className="text-xl text-yellow-500 uppercase tracking-widest font-bold mb-1">{t.currentPrize}</h3>
-                 <h1 className="text-6xl font-black text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">{currentPrize || "WAITING..."}</h1>
-            </div>
-            <div className="absolute inset-0 z-10">
-                {eligible.length > 0 ? <GalaxyCanvas list={eligible} t={t} onDrawEnd={handleDrawEnd} /> : <div className="w-full h-full flex flex-col items-center justify-center text-white/30"><Trophy size={100} className="mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p></div>}
-            </div>
-            {/* 中獎名單 (跑馬燈) */}
-            {drawHistory.length > 0 && (
-                <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black to-transparent z-40 flex items-center overflow-x-auto px-10">
-                    <div className="flex gap-4">
-                        {drawHistory.map(h => (
-                            <div key={h.id} className="bg-white/10 px-4 py-2 rounded-full flex items-center gap-2 border border-white/10 shrink-0">
-                                <span className="text-yellow-400 font-bold text-xs">{h.prize}</span>
-                                <div className="w-[1px] h-3 bg-white/20"></div>
-                                <span className="font-bold text-sm">{h.name}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-            {winner && (
-                <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center animate-in zoom-in duration-300">
-                    <Confetti/>
-                    <Trophy className="text-yellow-400 mb-6 drop-shadow-[0_0_50px_rgba(250,204,21,0.8)] animate-bounce" size={100} />
-                    <h2 className="text-3xl font-bold text-white/80 mb-6 tracking-[0.5em]">{t.winner}</h2>
-                    {winner.photo ? <img src={winner.photo} className="w-80 h-80 rounded-full border-8 border-yellow-400 object-cover shadow-[0_0_100px_rgba(234,179,8,0.5)] mb-8"/> : <div className="w-64 h-64 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={100}/></div>}
-                    <h1 className="text-8xl font-black text-white mb-4">{winner.name}</h1>
-                    {winner.table && <div className="bg-white/20 px-8 py-3 rounded-full text-2xl font-bold border border-white/30 flex items-center gap-3"><Armchair/> Table {winner.table}</div>}
-                    <p className="mt-10 text-white/30 text-sm">Press ENTER to continue</p>
-                </div>
-            )}
-        </div>
-    );
-};
-
-// 🔥 Reception Dashboard (V51: Full List Restoration)
+// 1. Reception (Check-in) Dashboard
 const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan, drawHistory }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
@@ -331,7 +258,6 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   const [adminForm, setAdminForm] = useState({name:'',phone:'',email:'',table:'',seat:''});
   const lastTime = useRef(0);
 
-  const filteredList = attendees.filter(p => p.name.includes(search) || p.phone.includes(search));
   const filteredSeat = seatingPlan.filter(s => (s.name||'').includes(search) || (s.phone||'').includes(search) || s.table.includes(search));
 
   const handleScan = useCallback((text) => {
@@ -382,6 +308,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   };
 
   const toggleCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: !person.checkedIn, checkInTime: !person.checkedIn ? new Date().toISOString() : null }); };
+  const toggleCancelCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: false, checkInTime: null }); };
   const deletePerson = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "attendees", id)); };
 
   return (
@@ -401,7 +328,6 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
 
           {tab==='list' && (
               <div className="w-full flex-1 flex flex-col h-[70vh]">
-                  {/* 手動新增賓客 */}
                   <div className="p-4 bg-white/5 rounded-t-xl border-b border-white/10">
                       <form onSubmit={handleAddGuest} className="flex gap-2 flex-wrap">
                           <input placeholder="Name" value={adminForm.name} onChange={e=>setAdminForm({...adminForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-sm outline-none"/>
@@ -450,7 +376,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                   <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2">
                       {filteredSeat.map(s=>(
                           <div key={s.id} className="flex justify-between p-3 border-b border-white/10">
-                              <div><div className="font-bold">{s.name}</div><div className="text-xs text-white/50">{s.phone}</div></div>
+                              <div><div className="font-bold">{s.name}</div><div className="text-xs text-white/50">{s.email}</div></div>
                               <div className="text-right text-blue-400 font-mono font-bold">T-{s.table}</div>
                           </div>
                       ))}
@@ -462,7 +388,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   );
 };
 
-// ... (PrizeDashboard, LoginView, GuestView, App - 保持 V48 邏輯) ...
+// 2. Prize Control Dashboard
 const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, setCurrentPrize }) => {
   const [prizes, setPrizes] = useState([]); 
   const [newPrizeName, setNewPrizeName] = useState("");
@@ -498,6 +424,7 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
   const toggleWinnerStatus = async (winnerRecord) => { 
       if(confirm('Reset this prize? Winner will be removed.')) {
           await deleteDoc(doc(db, "winners", winnerRecord.id));
+          await updateDoc(doc(db, "attendees", winnerRecord.attendeeId), { winnerPrize: null });
           await setDoc(doc(db, "config", "settings"), { currentPrize: winnerRecord.prize }, { merge: true });
       }
   };
@@ -506,7 +433,7 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
       const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split('\n').map(l=>l.trim()).filter(l=>l);
       const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l, createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!");
   };
-  
+
   const filteredPrizes = prizes.filter(p => p.name.toLowerCase().includes(prizeSearch.toLowerCase()));
 
   return (
@@ -524,11 +451,6 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
                     <input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} className="w-16 bg-black/50 border border-white/20 rounded-xl px-2 py-3 text-sm text-center text-white focus:border-red-500 outline-none"/>
                     <button className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-colors"><Plus size={20}/></button>
                 </form>
-                <div className="flex gap-2 mb-4 relative">
-                    <Search className="absolute top-3 left-3 text-white/30" size={16}/>
-                    <input value={prizeSearch} onChange={e=>setPrizeSearch(e.target.value)} placeholder="Search Prize..." className="w-full bg-black/30 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none"/>
-                    <label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Upload size={12}/> CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label>
-                </div>
                 <div className="flex-1 overflow-y-auto pr-2 custom-scroll flex flex-col gap-2">
                     {filteredPrizes.map(p=>{
                         const winnerRecord = drawHistory.find(h => h.prize === p.name);
@@ -580,7 +502,83 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
     </div>
   );
 };
-// ... GuestView, LoginView 保持不變 (直接復用 V48 邏輯) ...
+
+// 3. Projector View (Big Screen)
+const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes }) => {
+    const [winner, setWinner] = useState(null);
+    const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id));
+
+    useEffect(() => {
+        const handleKey = async (e) => { 
+            if (winner && e.key === 'Enter') {
+                setWinner(null);
+                // Auto next prize
+                if (currentPrize && prizes.length > 0) {
+                    const currentIdx = prizes.findIndex(p => p.name === currentPrize);
+                    const nextAvailablePrize = prizes.find((p, idx) => idx > currentIdx && !drawHistory.some(h => h.prize === p.name));
+                    if (nextAvailablePrize && db) {
+                        await setDoc(doc(db, "config", "settings"), { currentPrize: nextAvailablePrize.name }, { merge: true });
+                    }
+                }
+            }
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [winner, prizes, drawHistory, currentPrize]);
+
+    const handleDrawEnd = async (w) => {
+        setWinner(w);
+        if (db) {
+            await addDoc(collection(db, "winners"), { attendeeId: w.id, name: w.name, phone: w.phone, photo: w.photo, table: w.table, seat: w.seat, prize: currentPrize || "Grand Prize", wonAt: new Date().toISOString() });
+            // 更新 user 狀態顯示中獎
+            await updateDoc(doc(db, "attendees", w.id), { winnerPrize: currentPrize });
+        }
+    };
+
+    return (
+        <div className="min-h-screen bg-black text-white relative overflow-hidden flex flex-col items-center justify-center">
+            <button onClick={onBack} className="absolute top-6 left-6 text-white/30 hover:text-white z-50 transition-colors"><ChevronLeft size={24}/></button>
+            <div className="absolute top-10 left-0 right-0 z-40 text-center">
+                 <h3 className="text-xl text-yellow-500 uppercase tracking-widest font-bold mb-1">{t.currentPrize}</h3>
+                 <h1 className="text-6xl font-black text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]">{currentPrize || "WAITING..."}</h1>
+            </div>
+            <div className="absolute inset-0 z-10">
+                {eligible.length > 0 ? <GalaxyCanvas list={eligible} t={t} onDrawEnd={handleDrawEnd} /> : <div className="w-full h-full flex flex-col items-center justify-center text-white/30"><Trophy size={100} className="mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p></div>}
+            </div>
+            {drawHistory.length > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black to-transparent z-40 flex items-center overflow-x-auto px-10">
+                    <div className="flex gap-4">{drawHistory.map(h => (<div key={h.id} className="bg-white/10 px-4 py-2 rounded-full flex items-center gap-2 border border-white/10 shrink-0"><span className="text-yellow-400 font-bold text-xs">{h.prize}</span><div className="w-[1px] h-3 bg-white/20"></div><span className="font-bold text-sm">{h.name}</span></div>))}</div>
+                </div>
+            )}
+            {winner && (
+                <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center animate-in zoom-in duration-300">
+                    <Confetti/>
+                    <Trophy className="text-yellow-400 mb-6 drop-shadow-[0_0_50px_rgba(250,204,21,0.8)] animate-bounce" size={100} />
+                    <h2 className="text-3xl font-bold text-white/80 mb-6 tracking-[0.5em]">{t.winner}</h2>
+                    {winner.photo ? <img src={winner.photo} className="w-80 h-80 rounded-full border-8 border-yellow-400 object-cover shadow-[0_0_100px_rgba(234,179,8,0.5)] mb-8"/> : <div className="w-64 h-64 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={100}/></div>}
+                    <h1 className="text-8xl font-black text-white mb-4">{winner.name}</h1>
+                    {winner.table && <div className="bg-white/20 px-8 py-3 rounded-full text-2xl font-bold border border-white/30 flex items-center gap-3"><Armchair/> Table {winner.table}</div>}
+                    <p className="mt-10 text-white/30 text-sm">Press ENTER to continue</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// 4. Guest & Login Views
+const LoginView = ({ t, onLogin, onBack }) => {
+    const [pwd, setPwd] = useState('');
+    const handleSubmit = (e) => { e.preventDefault(); if(pwd === ADMIN_PASSWORD) onLogin(); else { alert(t.wrongPwd); setPwd(''); } };
+    return (
+      <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
+        <div className="relative bg-neutral-900/80 border border-white/20 p-10 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in duration-500 z-50">
+          <button onClick={onBack} className="text-white/50 hover:text-white mb-8 flex items-center transition-colors text-sm uppercase tracking-widest"><ChevronLeft size={16} className="mr-1"/> {t.back}</button>
+          <div className="text-center mb-8"><h2 className="text-3xl font-bold text-white mb-2 tracking-tight">{t.login}</h2></div>
+          <form onSubmit={handleSubmit}><input type="password" autoFocus value={pwd} onChange={(e) => setPwd(e.target.value)} placeholder={t.pwdPlace} className="w-full bg-white/5 border border-white/10 text-white p-4 rounded-xl mb-6 focus:ring-1 focus:ring-red-600 focus:border-red-600 outline-none transition-all text-center tracking-[0.3em] placeholder:tracking-normal placeholder:text-white/20"/><button type="submit" className="w-full bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-900/40 transition-all active:scale-95 uppercase tracking-widest text-sm">{t.enter}</button></form>
+        </div>
+      </div>
+    );
+};
 const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({name:'',phone:'',email:'',company:'',table:'',seat:''});
@@ -639,13 +637,14 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   );
 };
 
+// --- App Main ---
 export default function App() {
   const [lang, setLang] = useState('zh'); const t = translations[lang];
   const [view, setView] = useState('landing');
   const [attendees, setAttendees] = useState([]);
   const [drawHistory, setDrawHistory] = useState([]);
   const [currentPrize, setCurrentPrize] = useState("");
-  const [seatingPlan, setSeatingPlan] = useState([]); 
+  const [seatingPlan, setSeatingPlan] = useState([]);
   const [prizes, setPrizes] = useState([]);
 
   useEffect(() => {
@@ -678,29 +677,25 @@ export default function App() {
         <p className="text-white/40 text-xl font-light tracking-[0.3em] uppercase">{t.sub}</p>
       </div>
       <div className="grid md:grid-cols-4 gap-4 w-full max-w-7xl z-10 px-4">
-        {/* Guest */}
-        <button onClick={()=>setView('guest')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><ImageIcon size={60} className="text-white"/></div>
+        <button onClick={()=>setView('guest')} className="group bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10"><ImageIcon size={60} className="text-white"/></div>
             <h3 className="text-xl font-bold text-white mb-1">{t.guestMode}</h3><p className="text-white/50 text-xs">{t.guestDesc}</p>
-            <div className="mt-8 flex items-center text-black font-bold text-sm group-hover:translate-x-2 transition-transform bg-white w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
+            <div className="mt-8 flex items-center text-black font-bold text-sm bg-white w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
         </button>
-        {/* Admin (Reception) */}
-        <button onClick={()=>setView('login_admin')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><UserCheck size={60} className="text-white"/></div>
+        <button onClick={()=>setView('login_admin')} className="group bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10"><UserCheck size={60} className="text-white"/></div>
             <h3 className="text-xl font-bold text-white mb-1">{t.adminMode}</h3><p className="text-white/50 text-xs">{t.adminDesc}</p>
-            <div className="mt-8 flex items-center text-white font-bold text-sm group-hover:translate-x-2 transition-transform bg-red-600 w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
+            <div className="mt-8 flex items-center text-white font-bold text-sm bg-red-600 w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
         </button>
-        {/* Prize Mgr (New) */}
-        <button onClick={()=>setView('login_prize')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
-            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Gift size={60} className="text-white"/></div>
+        <button onClick={()=>setView('login_prize')} className="group bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-10"><Gift size={60} className="text-white"/></div>
             <h3 className="text-xl font-bold text-white mb-1">{t.prizeMode}</h3><p className="text-white/50 text-xs">{t.prizeDesc}</p>
-            <div className="mt-8 flex items-center text-white font-bold text-sm group-hover:translate-x-2 transition-transform bg-indigo-600 w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
+            <div className="mt-8 flex items-center text-white font-bold text-sm bg-indigo-600 w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
         </button>
-        {/* Projector */}
-        <button onClick={()=>setView('login_projector')} className="group relative overflow-hidden bg-gradient-to-br from-neutral-800 to-black hover:from-neutral-700 border border-white/20 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm">
-            <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-30 transition-opacity"><MonitorPlay size={60} className="text-yellow-500"/></div>
+        <button onClick={()=>setView('login_projector')} className="group bg-gradient-to-br from-neutral-800 to-black hover:from-neutral-700 border border-white/20 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-20"><MonitorPlay size={60} className="text-yellow-500"/></div>
             <h3 className="text-xl font-bold text-yellow-500 mb-1">{t.projectorMode}</h3><p className="text-white/50 text-xs">{t.projectorDesc}</p>
-            <div className="mt-8 flex items-center text-black font-bold text-sm group-hover:translate-x-2 transition-transform bg-yellow-500 w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
+            <div className="mt-8 flex items-center text-black font-bold text-sm bg-yellow-500 w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div>
         </button>
       </div>
     </div>
