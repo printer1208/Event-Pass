@@ -54,7 +54,7 @@ const StyleInjector = () => {
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 獎品管理清空版",
+    title: "Tesla Annual Dinner", sub: "2025 最終穩定版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
@@ -72,11 +72,11 @@ const translations = {
     markWin: "設為得主", resetWinner: "重置", select: "選取",
     importCSV: "導入 CSV", downloadTemp: "範本", importSuccess: "成功",
     table: "桌號", seat: "座號", addSeat: "新增座位", searchSeat: "搜尋姓名/電話/桌號...",
-    searchList: "搜尋名單...", seatTBD: "待定 (請洽櫃台)", wonPrize: "獲獎紀錄",
+    searchList: "搜尋名單...", seatTBD: "待定", wonPrize: "獲獎紀錄",
     addGuest: "新增賓客", clearAll: "清空所有得獎者"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Prize Reset",
+    title: "Tesla Annual Dinner", sub: "2025 Stable",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Auto seat assignment",
@@ -282,7 +282,16 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
 
     const handleDrawEnd = async (w) => {
         setWinner(w);
-        if (db) await addDoc(collection(db, "winners"), { attendeeId: w.id, name: w.name, phone: w.phone, photo: w.photo, table: w.table, seat: w.seat, prize: currentPrize || "Grand Prize", wonAt: new Date().toISOString() });
+        if (db) await addDoc(collection(db, "winners"), { 
+            attendeeId: w.id, 
+            name: w.name, 
+            phone: w.phone, 
+            photo: w.photo, 
+            table: w.table || "", // Fix undefined table
+            seat: w.seat || "",   // Fix undefined seat
+            prize: currentPrize || "Grand Prize", 
+            wonAt: new Date().toISOString() 
+        });
     };
 
     return (
@@ -319,7 +328,8 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                     <h2 className="text-3xl font-bold text-white/80 mb-6 tracking-[0.5em]">{t.winner}</h2>
                     {winner.photo ? <img src={winner.photo} className="w-80 h-80 rounded-full border-8 border-yellow-400 object-cover shadow-[0_0_100px_rgba(234,179,8,0.5)] mb-8"/> : <div className="w-64 h-64 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={100}/></div>}
                     <h1 className="text-8xl font-black text-white mb-4">{winner.name}</h1>
-                    {winner.table && <div className="bg-white/20 px-8 py-3 rounded-full text-2xl font-bold border border-white/30 flex items-center gap-3"><Armchair/> Table {winner.table}</div>}
+                    {/* Fixed undefined check for table/seat display */}
+                    {(winner.table || winner.seat) && <div className="bg-white/20 px-8 py-3 rounded-full text-2xl font-bold border border-white/30 flex items-center gap-3"><Armchair/> Table {winner.table || '-'} / Seat {winner.seat || '-'}</div>}
                     <p className="mt-10 text-white/30 text-sm">Press ENTER to continue</p>
                 </div>
             )}
@@ -436,6 +446,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                           <Search className="absolute top-2.5 left-3 text-white/30" size={16}/>
                           <input placeholder={t.searchList} value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-white/10 rounded-lg pl-9 pr-4 py-2 text-sm outline-none"/>
                       </div>
+                      
                       <form onSubmit={handleAddGuest} className="flex gap-2 flex-wrap mb-4 bg-white/5 p-2 rounded-lg">
                           <div className="w-full text-xs text-white/40 mb-1">{t.addGuest}</div>
                           <input placeholder="Name" value={adminForm.name} onChange={e=>setAdminForm({...adminForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]"/>
@@ -446,12 +457,27 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                           <input placeholder="S" value={adminForm.seat} onChange={e=>setAdminForm({...adminForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/>
                           <button className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
                       </form>
-                      <div className="flex justify-between text-xs text-white/50"><span>Total: {attendees.length}</span><span className="text-emerald-400">Arrived: {attendees.filter(x=>x.checkedIn).length}</span></div>
+                      
+                      <div className="flex justify-between text-xs text-white/50">
+                          <span>Total: {attendees.length}</span>
+                          <span className="text-emerald-400">Arrived: {attendees.filter(x=>x.checkedIn).length}</span>
+                      </div>
                   </div>
+
                   <div className="flex-1 overflow-y-auto bg-white/5 rounded-b-xl p-2">
                       <table className="w-full text-left border-collapse">
                           <thead className="text-xs text-white/40 uppercase border-b border-white/10">
-                              <tr><th className="p-2">Name</th><th className="p-2 hidden md:table-cell">Phone</th><th className="p-2 hidden md:table-cell">Email</th><th className="p-2 hidden md:table-cell">Dept</th><th className="p-2">Table</th><th className="p-2">Seat</th><th className="p-2 text-yellow-500">{t.wonPrize}</th><th className="p-2 text-center">Status</th><th className="p-2 text-right">Del</th></tr>
+                              <tr>
+                                  <th className="p-2">Name</th>
+                                  <th className="p-2 hidden md:table-cell">Phone</th>
+                                  <th className="p-2 hidden md:table-cell">Email</th>
+                                  <th className="p-2 hidden md:table-cell">Dept</th>
+                                  <th className="p-2">Table</th>
+                                  <th className="p-2">Seat</th>
+                                  <th className="p-2 text-yellow-500">{t.wonPrize}</th>
+                                  <th className="p-2 text-center">Status</th>
+                                  <th className="p-2 text-right">Del</th>
+                              </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
                               {filteredList.map(p=>{
@@ -459,7 +485,14 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   return (
                                       <tr key={p.id} className="hover:bg-white/5 text-sm">
                                           <td className="p-2 font-bold flex items-center gap-2">{p.photo ? <img src={p.photo} className="w-6 h-6 rounded-full object-cover"/> : <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center"><User size={12}/></div>}{p.name}</td>
-                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.phone}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.email}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.dept}</td><td className="p-2 font-mono text-blue-400">{p.table}</td><td className="p-2 font-mono">{p.seat}</td><td className="p-2 text-xs text-yellow-400 font-bold">{winnerRec ? winnerRec.prize : '-'}</td><td className="p-2 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-1 rounded text-[10px]">{t.checkin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-2 py-1 rounded text-[10px]">{t.cancel}</button>}</td><td className="p-2 text-right"><button onClick={()=>deletePerson(p.id)} className="p-1 text-white/30 hover:text-red-500"><Trash2 size={14}/></button></td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.phone}</td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.email}</td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.dept}</td>
+                                          <td className="p-2 font-mono text-blue-400">{p.table}</td>
+                                          <td className="p-2 font-mono">{p.seat}</td>
+                                          <td className="p-2 text-xs text-yellow-400 font-bold">{winnerRec ? winnerRec.prize : '-'}</td>
+                                          <td className="p-2 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-1 rounded text-[10px]">{t.checkin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-2 py-1 rounded text-[10px]">{t.cancel}</button>}</td>
+                                          <td className="p-2 text-right"><button onClick={()=>deletePerson(p.id)} className="p-1 text-white/30 hover:text-red-500"><Trash2 size={14}/></button></td>
                                       </tr>
                                   );
                               })}
@@ -491,7 +524,15 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                   <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2">
                       <table className="w-full text-left border-collapse">
                           <thead className="text-xs text-white/40 uppercase border-b border-white/10">
-                              <tr><th className="p-2">Name</th><th className="p-2 hidden md:table-cell">Phone</th><th className="p-2 hidden md:table-cell">Email</th><th className="p-2 hidden md:table-cell">Dept</th><th className="p-2">Table</th><th className="p-2">Seat</th><th className="p-2 text-right">Del</th></tr>
+                              <tr>
+                                  <th className="p-2">Name</th>
+                                  <th className="p-2 hidden md:table-cell">Phone</th>
+                                  <th className="p-2 hidden md:table-cell">Email</th>
+                                  <th className="p-2 hidden md:table-cell">Dept</th>
+                                  <th className="p-2">Table</th>
+                                  <th className="p-2">Seat</th>
+                                  <th className="p-2 text-right">Del</th>
+                              </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
                               {filteredSeat.map(s=>(
@@ -527,7 +568,7 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
   const handleSelectPrize = async (prizeName) => { if(db) await setDoc(doc(db, "config", "settings"), { currentPrize: prizeName }, { merge: true }); };
   const handleDeletePrize = async (id) => { if(confirm('Delete prize?')) await deleteDoc(doc(db, "prizes", id)); };
   const toggleWinnerStatus = async (winnerRecord) => { if(confirm('Reset this prize? Winner will be removed.')) { await deleteDoc(doc(db, "winners", winnerRecord.id)); await setDoc(doc(db, "config", "settings"), { currentPrize: winnerRecord.prize }, { merge: true }); } };
-  const handleResetAllWinners = async () => { if (confirm('確定要清空所有中獎紀錄嗎？此操作無法復原。\nAre you sure you want to clear ALL winners?')) { const batch = writeBatch(db); drawHistory.forEach(win => { batch.delete(doc(db, "winners", win.id)); }); await batch.commit(); } };
+  const handleResetAllWinners = async () => { if (confirm('確定要清空所有中獎紀錄嗎？此操作無法復原。\nAre you sure you want to clear ALL winners?')) { const batch = writeBatch(db); drawHistory.forEach(win => { batch.delete(doc(db, "winners", win.id)); }); batch.commit(); } };
   const handleImportPrizes = async (e) => { const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split(/\r\n|\n/).filter(l=>l); const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l.trim(), createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!"); };
   const filteredPrizes = prizes.filter(p => p.name.toLowerCase().includes(prizeSearch.toLowerCase()));
   return (
@@ -642,7 +683,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
             <div className="text-center animate-in zoom-in duration-300">
               <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)] relative"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({id: newId}))}`} alt="QR" className="w-48 h-48 object-contain"/><div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full shadow-lg flex items-center gap-1 font-bold tracking-wider"><Cloud size={10}/> SAVED</div></div>
               <h3 className="text-2xl font-bold text-white mb-1">{form.name}</h3>
-              <div className="text-red-400 text-lg font-bold mb-4 flex justify-center items-center gap-2 bg-white/5 p-2 rounded-lg border border-red-500/30"><Armchair size={18}/> {matchedSeat && matchedSeat.table ? `${t.table} ${matchedSeat.table}` : t.seatTBD} {matchedSeat && matchedSeat.seat ? ` / ${t.seat} ${matchedSeat.seat}` : ""}</div>
+              <div className="text-red-400 text-lg font-bold mb-4 flex justify-center items-center gap-2 bg-white/5 p-2 rounded-lg border border-red-500/30"><Armchair size={18}/> {matchedSeat && matchedSeat.table ? `${t.table} ${matchedSeat.table}` : form.table ? `${t.table} ${form.table}` : t.seatTBD} {matchedSeat && matchedSeat.seat ? ` / ${t.seat} ${matchedSeat.seat}` : form.seat ? ` / ${t.seat} ${form.seat}` : ""}</div>
               <p className="text-white/50 text-sm mb-8 leading-relaxed">{t.showToStaff}</p>
               <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:'',table:'',seat:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm">{t.next}</button>
             </div>
