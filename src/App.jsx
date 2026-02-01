@@ -5,7 +5,7 @@ import {
   ArrowRight, UserPlus, LogOut, Globe, Mail,
   Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
   Cloud, Zap, Image as ImageIcon, MonitorPlay, Aperture, Gift,
-  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid, Briefcase, Hash
+  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid, Briefcase
 } from 'lucide-react';
 
 // --- Firebase ---
@@ -36,63 +36,7 @@ try {
 
 const ADMIN_PASSWORD = "admin"; 
 
-// ==========================================
-// 2. 翻譯與資料 (Translations)
-// ==========================================
-
-const translations = {
-  zh: {
-    title: "Tesla Annual Dinner", sub: "2025 最終穩定版",
-    guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台 (抽獎)", projectorMode: "大螢幕投影",
-    login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
-    regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
-    name: "姓名", phone: "電話", email: "電郵", dept: "部門",
-    generateBtn: "確認登記", back: "返回", yourCode: "入場憑證", yourSeat: "您的座位",
-    showToStaff: "請出示給工作人員掃描", next: "完成",
-    scan: "極速掃描", draw: "抽獎控制", prizeList: "獎品管理",
-    list: "賓客名單", seating: "座位查詢", total: "總人數", arrived: "已到場",
-    scanCam: "啟動掃描", stopCam: "停止", manual: "手動輸入 ID",
-    success: "簽到成功", duplicate: "已入場", error: "無效代碼", regSuccess: "登記成功", notFound: "查無此人",
-    errPhone: "電話已存在", errEmail: "Email已存在", errPhoto: "需照片", errIncomplete: "請填寫完整",
-    drawBtn: "啟動 (Space)", running: "抽獎中...", winner: "✨ 恭喜中獎 ✨", claim: "確認 (Enter)",
-    needMore: "等待中...", export: "導出", checkin: "簽到", cancel: "取消", logout: "登出",
-    prizeTitle: "獎品池", setPrize: "新增", prizePlace: "獎品名稱", currentPrize: "正在抽取",
-    markWin: "設為得主", resetWinner: "重置", select: "選取",
-    importCSV: "導入 CSV", downloadTemp: "範本", importSuccess: "成功",
-    table: "桌號", seat: "座號", addSeat: "新增座位", searchSeat: "搜尋姓名/電話/桌號...",
-    searchList: "搜尋名單...", seatTBD: "待定 (請洽櫃台)", wonPrize: "獲獎紀錄",
-    addGuest: "新增賓客", clearAll: "清空所有得獎者",
-    drawn: "已抽出", winnerIs: "得主"
-  },
-  en: {
-    title: "Tesla Annual Dinner", sub: "2025 Stable",
-    guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
-    login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
-    regTitle: "Register", regSub: "Auto seat assignment",
-    name: "Name", phone: "Phone", email: "Email", dept: "Dept",
-    generateBtn: "Submit", back: "Back", yourCode: "Entry Pass", yourSeat: "Your Seat",
-    showToStaff: "Show to Staff", next: "Finish",
-    scan: "Scanner", draw: "Control", prizeList: "Prizes",
-    list: "Guest List", seating: "Seating", total: "Total", arrived: "Arrived",
-    scanCam: "Scan", stopCam: "Stop", manual: "Manual Input",
-    success: "Success", duplicate: "Duplicate", error: "Invalid", regSuccess: "Registered", notFound: "Not Found",
-    errPhone: "Phone exists", errEmail: "Email exists", errPhoto: "Photo required", errIncomplete: "Fill all",
-    drawBtn: "Start (Space)", running: "Running...", winner: "WINNER", claim: "Confirm (Enter)",
-    needMore: "Waiting...", export: "Export", checkin: "Check-in", cancel: "Cancel", logout: "Logout",
-    prizeTitle: "Prizes", setPrize: "Add", prizePlace: "Prize Name", currentPrize: "Drawing",
-    markWin: "Mark Win", resetWinner: "Reset", select: "Select",
-    importCSV: "Import", downloadTemp: "Template", importSuccess: "Done",
-    table: "Table", seat: "Seat", addSeat: "Add Seat", searchSeat: "Search...",
-    searchList: "Search...", seatTBD: "TBD", wonPrize: "Prize",
-    addGuest: "Add Guest", clearAll: "Clear All Winners",
-    drawn: "Drawn", winnerIs: "Winner"
-  }
-};
-
-// ==========================================
-// 3. 工具函數 (Helpers)
-// ==========================================
-
+// --- Helpers ---
 const normalizePhone = (p) => String(p || '').replace(/[^0-9]/g, '');
 const normalizeEmail = (e) => String(e || '').trim().toLowerCase();
 const compressImage = (source, isFile = true) => {
@@ -116,10 +60,7 @@ const compressImage = (source, isFile = true) => {
     });
 };
 
-// ==========================================
-// 4. 基礎組件 (Base Components)
-// ==========================================
-
+// --- Components ---
 const StyleInjector = () => {
   useEffect(() => {
     document.body.style.backgroundColor = "#000000";
@@ -146,6 +87,55 @@ const Confetti = () => {
     draw();
   }, []);
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
+};
+
+const translations = {
+  zh: {
+    title: "Tesla Annual Dinner", sub: "2025 穩定版",
+    guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台 (抽獎)", projectorMode: "大螢幕投影",
+    login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
+    regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
+    name: "姓名", phone: "電話", email: "電郵", dept: "部門",
+    generateBtn: "確認登記", back: "返回", yourCode: "入場憑證", yourSeat: "您的座位",
+    showToStaff: "請出示給工作人員掃描", next: "完成",
+    scan: "極速掃描", draw: "抽獎控制", prizeList: "獎品管理",
+    list: "賓客名單", seating: "座位查詢", total: "總人數", arrived: "已到場",
+    scanCam: "啟動掃描", stopCam: "停止", manual: "手動輸入 ID",
+    success: "簽到成功", duplicate: "已入場", error: "無效代碼", regSuccess: "登記成功", notFound: "查無此人",
+    errPhone: "電話已存在", errEmail: "Email已存在", errPhoto: "需照片", errIncomplete: "請填寫完整",
+    drawBtn: "啟動 (Space)", running: "抽獎中...", winner: "✨ 恭喜中獎 ✨", claim: "確認 (Enter)",
+    needMore: "等待中...", export: "導出", checkin: "簽到", cancel: "取消", logout: "登出",
+    prizeTitle: "獎品池", setPrize: "新增", prizePlace: "獎品名稱", currentPrize: "正在抽取",
+    markWin: "設為得主", resetWinner: "重置", select: "選取",
+    importCSV: "導入 CSV", downloadTemp: "範本", importSuccess: "成功",
+    table: "桌號", seat: "座號", addSeat: "新增座位", searchSeat: "搜尋姓名/電話/桌號...",
+    searchList: "搜尋名單...", seatTBD: "待定", wonPrize: "獲獎紀錄",
+    addGuest: "新增賓客", clearAll: "清空所有得獎者",
+    drawn: "已抽出", winnerIs: "得主"
+  },
+  en: {
+    title: "Tesla Annual Dinner", sub: "2025 Stable",
+    guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
+    login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
+    regTitle: "Register", regSub: "Auto seat assignment",
+    name: "Name", phone: "Phone", email: "Email", dept: "Dept",
+    generateBtn: "Submit", back: "Back", yourCode: "Entry Pass", yourSeat: "Your Seat",
+    showToStaff: "Show to Staff", next: "Finish",
+    scan: "Scanner", draw: "Control", prizeList: "Prizes",
+    list: "Guest List", seating: "Seating", total: "Total", arrived: "Arrived",
+    scanCam: "Scan", stopCam: "Stop", manual: "Manual Input",
+    success: "Success", duplicate: "Duplicate", error: "Invalid", regSuccess: "Registered", notFound: "Not Found",
+    errPhone: "Phone exists", errEmail: "Email exists", errPhoto: "Photo required", errIncomplete: "Fill all",
+    drawBtn: "Start (Space)", running: "Running...", winner: "WINNER", claim: "Confirm (Enter)",
+    needMore: "Waiting...", export: "Export", checkin: "Check-in", cancel: "Cancel", logout: "Logout",
+    prizeTitle: "Prizes", setPrize: "Add", prizePlace: "Prize Name", currentPrize: "Drawing",
+    markWin: "Mark Win", resetWinner: "Reset", select: "Select",
+    importCSV: "Import", downloadTemp: "Template", importSuccess: "Done",
+    table: "Table", seat: "Seat", addSeat: "Add Seat", searchSeat: "Search...",
+    searchList: "Search...", seatTBD: "TBD", wonPrize: "Prize",
+    addGuest: "Add Guest", clearAll: "Clear All Winners",
+    drawn: "Drawn", winnerIs: "Winner"
+  }
 };
 
 const SoundController = {
@@ -184,7 +174,6 @@ const SoundController = {
   }
 };
 
-// --- Galaxy Canvas (Visuals Fix: Square Mosaic) ---
 const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
     const canvasRef = useRef(null);
     const [isRunning, setIsRunning] = useState(false);
@@ -205,7 +194,8 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
 
         particles.current = list.map((p, i) => {
             const img = new Image();
-            img.src = p.photo || `https://ui-avatars.com/api/?name=${p.name}&background=random&color=fff&size=128`;
+            // 🔥 V68 Fix: 加入 p.id 避免同名人員的頭像網址重複，導致快取問題
+            img.src = p.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=random&color=fff&size=128&id=${p.id}`;
             const col = i % cols;
             const row = Math.floor(i / cols);
             return {
@@ -227,14 +217,12 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
                     p.x += (p.targetX - p.x) * 0.1;
                     p.y += (p.targetY - p.y) * 0.1;
                 }
-                
-                // 🔥 修改：改用正方形繪製 (Square Mosaic)
                 ctx.save();
-                // 留一點間隙 gap
+                // Square Mosaic
                 const gap = 2;
                 const drawSize = p.size - gap;
                 ctx.beginPath(); 
-                ctx.rect(p.x, p.y, drawSize, drawSize); // 使用 rect 畫正方形
+                ctx.rect(p.x, p.y, drawSize, drawSize); 
                 ctx.clip();
                 if (p.img.complete) ctx.drawImage(p.img, p.x, p.y, drawSize, drawSize);
                 else { ctx.fillStyle = '#333'; ctx.fillRect(p.x, p.y, drawSize, drawSize); }
@@ -364,13 +352,9 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                     {winner.photo ? <img src={winner.photo} className="w-80 h-80 rounded-full border-8 border-yellow-400 object-cover shadow-[0_0_100px_rgba(234,179,8,0.5)] mb-8"/> : <div className="w-64 h-64 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={100}/></div>}
                     <h1 className="text-8xl font-black text-white mb-4">{winner.name}</h1>
                     
-                    {/* 🔥 修正：強制顯示座位資訊，無資料顯示 - */}
-                    <div className="bg-white/20 px-10 py-4 rounded-2xl text-3xl font-bold border border-white/30 flex items-center gap-4 mb-8">
-                        <Armchair size={36} className="text-yellow-400"/> 
-                        <div>
-                             <span className="text-white/70 text-lg uppercase block tracking-wider text-left text-xs">Seating</span>
-                             <span>Table {winner.table || '-'} <span className="mx-2 opacity-50">|</span> Seat {winner.seat || '-'}</span>
-                        </div>
+                    {/* 🔥 V68 Fix: 強制顯示座位，無資料則顯示 - */}
+                    <div className="bg-white/20 px-8 py-3 rounded-full text-2xl font-bold border border-white/30 flex items-center gap-3">
+                        <Armchair/> Table {winner.table || '-'} / Seat {winner.seat || '-'}
                     </div>
                     
                     <p className="mt-10 text-white/30 text-sm">Press ENTER to continue</p>
@@ -407,7 +391,6 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
         lastTime.current = now;
         let targetId = data.id || (data.type==='new_reg' && attendees.find(x=>x.phone===normalizePhone(data.phone))?.id);
         const p = attendees.find(x=>x.id===targetId);
-        
         if(!p) setScanRes({type:'error', msg:t.notFound});
         else if(p.checkedIn) setScanRes({type:'duplicate', msg:t.duplicate, p});
         else {
@@ -598,7 +581,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   );
 };
 
-// ... (PrizeDashboard, LoginView, GuestView - 保持 V66 邏輯) ...
+// ... (PrizeDashboard, LoginView, GuestView - 保持 V67 邏輯) ...
 const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, setCurrentPrize }) => {
   const [prizes, setPrizes] = useState([]); 
   const [newPrizeName, setNewPrizeName] = useState("");
@@ -609,8 +592,9 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
   const handleAddPrize = async (e) => { e.preventDefault(); if(newPrizeName && db) { const q = parseInt(qty) || 1; const batch = writeBatch(db); for(let i=1; i<=q; i++) { const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: q > 1 ? `${newPrizeName} #${i}` : newPrizeName, createdAt: new Date().toISOString() }); } await batch.commit(); setNewPrizeName(""); setQty("1"); } };
   const handleSelectPrize = async (prizeName) => { if(db) await setDoc(doc(db, "config", "settings"), { currentPrize: prizeName }, { merge: true }); };
   const handleDeletePrize = async (id) => { if(confirm('Delete prize?')) await deleteDoc(doc(db, "prizes", id)); };
+  // 🔥 V63 Fix: 新增清空所有得獎者功能
+  const handleResetAllWinners = async () => { if (confirm('確定要清空所有中獎紀錄嗎？此操作無法復原。\nAre you sure you want to clear ALL winners?')) { const batch = writeBatch(db); drawHistory.forEach(win => { batch.delete(doc(db, "winners", win.id)); }); await batch.commit(); } };
   const toggleWinnerStatus = async (winnerRecord) => { if(confirm('Reset this prize? Winner will be removed.')) { await deleteDoc(doc(db, "winners", winnerRecord.id)); await setDoc(doc(db, "config", "settings"), { currentPrize: winnerRecord.prize }, { merge: true }); } };
-  const handleResetAllWinners = async () => { if (confirm('確定要清空所有中獎紀錄嗎？此操作無法復原。\nAre you sure you want to clear ALL winners?')) { const batch = writeBatch(db); drawHistory.forEach(win => { batch.delete(doc(db, "winners", win.id)); }); batch.commit(); } };
   const handleImportPrizes = async (e) => { const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split(/\r\n|\n/).filter(l=>l); const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l.trim(), createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!"); };
   const filteredPrizes = prizes.filter(p => p.name.toLowerCase().includes(prizeSearch.toLowerCase()));
   return (
@@ -643,7 +627,8 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
                 <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex-1 h-[350px] overflow-hidden flex flex-col">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-lg font-bold flex items-center gap-2"><Trophy size={20} className="text-yellow-500"/> {t.winnersList}</h3>
-                        {drawHistory.length > 0 && (<button onClick={() => { if (confirm('確定要清空所有中獎紀錄嗎？此操作無法復原。\nAre you sure you want to clear ALL winners?')) { const batch = writeBatch(db); drawHistory.forEach(win => { batch.delete(doc(db, "winners", win.id)); }); batch.commit(); } }} className="text-xs bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1.5 rounded-lg hover:bg-red-600 hover:text-white transition-colors"><Trash2 size={12} className="inline mr-1"/> {t.clearAll}</button>)}
+                        {/* 🔥 V63 Fix: 清空所有中獎者按鈕 */}
+                        {drawHistory.length > 0 && (<button onClick={handleResetAllWinners} className="text-xs bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1.5 rounded-lg hover:bg-red-600 hover:text-white transition-colors"><Trash2 size={12} className="inline mr-1"/> {t.clearAll}</button>)}
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scroll flex flex-col gap-2">
                         {drawHistory.map(h => (
@@ -660,6 +645,78 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
             </div>
         </div>
       </main>
+    </div>
+  );
+};
+const LoginView = ({ t, onLogin, onBack }) => {
+    const [pwd, setPwd] = useState('');
+    const inputRef = useRef(null);
+    useEffect(() => { const timer = setTimeout(() => { if(inputRef.current) inputRef.current.focus(); }, 100); return () => clearTimeout(timer); }, []);
+    const handleSubmit = (e) => { e.preventDefault(); if(pwd === ADMIN_PASSWORD) onLogin(); else { alert(t.wrongPwd); setPwd(''); } };
+    return (
+      <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
+        <div className="relative bg-neutral-900/80 border border-white/20 p-10 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in duration-500 z-50">
+          <button onClick={onBack} className="text-white/50 hover:text-white mb-8 flex items-center transition-colors text-sm uppercase tracking-widest"><ChevronLeft size={16} className="mr-1"/> {t.back}</button>
+          <div className="text-center mb-8"><h2 className="text-3xl font-bold text-white mb-2 tracking-tight">{t.login}</h2></div>
+          <form onSubmit={handleSubmit}><input ref={inputRef} type="password" autoFocus value={pwd} onChange={(e) => setPwd(e.target.value)} placeholder={t.pwdPlace} className="w-full bg-white/5 border border-white/10 text-white p-4 rounded-xl mb-6 focus:ring-1 focus:ring-red-600 focus:border-red-600 outline-none transition-all text-center tracking-[0.3em] placeholder:tracking-normal placeholder:text-white/20"/><button type="submit" className="w-full bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-900/40 transition-all active:scale-95 uppercase tracking-widest text-sm">{t.enter}</button></form>
+        </div>
+      </div>
+    );
+};
+const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState({name:'',phone:'',email:'',company:'',table:'',seat:''});
+  const [photo, setPhoto] = useState(null);
+  const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [newId, setNewId] = useState(null);
+  const [matchedSeat, setMatchSeat] = useState(null); 
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const videoRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const startCamera = async () => { setErr(''); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } }); setIsCameraOpen(true); setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100); } catch (e) { fileInputRef.current.click(); } };
+  const takePhoto = async () => { if(!videoRef.current) return; const canvas = document.createElement('canvas'); const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const xOffset = (videoRef.current.videoWidth - size) / 2; const yOffset = (videoRef.current.videoHeight - size) / 2; ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size); const rawBase64 = canvas.toDataURL('image/jpeg'); const stream = videoRef.current.srcObject; if(stream) stream.getTracks().forEach(track => track.stop()); setIsCameraOpen(false); const compressed = await compressImage(rawBase64, false); setPhoto(compressed); };
+  const handleFileChange = async (e) => { const file = e.target.files[0]; if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); } };
+  const handleSubmit = async (e) => { e.preventDefault(); setErr(''); if(!photo) { setErr(t.errPhoto); return; } setLoading(true); const cleanPhone = normalizePhone(form.phone); const cleanEmail = normalizeEmail(form.email); const dup = checkDuplicate(cleanPhone, cleanEmail); if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } let assignedTable = ""; let assignedSeat = ""; const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail); const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; } else if(phoneMatch) { assignedTable = phoneMatch.table; assignedSeat = phoneMatch.seat; } setMatchSeat({ table: assignedTable, seat: assignedSeat }); try { if (!db) throw new Error("Firebase not initialized"); const docRef = await addDoc(collection(db, "attendees"), { name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, table: assignedTable, seat: assignedSeat, photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() }); setNewId(docRef.id); setStep(2); } catch (error) { console.error(error); setErr("Network Error."); } setLoading(false); };
+  return (
+    <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
+      <div className="relative bg-neutral-900/80 border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl">
+        <div className="bg-gradient-to-r from-red-700 to-red-900 p-8 text-white text-center relative">
+          {!isCameraOpen && <button onClick={onBack} className="absolute left-6 top-6 text-white/70 hover:text-white z-10"><ChevronLeft/></button>}
+          <h2 className="text-2xl font-bold tracking-wide relative z-10">{t.regTitle}</h2>
+          <p className="text-white/80 text-xs mt-2 uppercase tracking-widest relative z-10">{t.regSub}</p>
+        </div>
+        <div className="p-8">
+          {step === 1 ? (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {err && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm flex items-center animate-pulse"><AlertTriangle size={16} className="mr-2"/>{err}</div>}
+              <div className="flex flex-col items-center mb-4">
+                  {isCameraOpen ? (
+                      <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black border-2 border-red-500 shadow-2xl"><video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" /><button type="button" onClick={takePhoto} className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-white border-4 border-gray-300 hover:scale-110 transition-transform"><Aperture className="w-full h-full p-2 text-black"/></button></div>
+                  ) : (
+                      <div className="flex flex-col items-center gap-3 w-full"><div className={`w-32 h-32 rounded-full border-2 border-dashed flex items-center justify-center overflow-hidden relative shadow-lg ${photo ? 'border-red-500' : 'border-white/30'}`}>{photo ? <img src={photo} alt="Selfie" className="w-full h-full object-cover" /> : <User size={48} className="text-white/20"/>}</div><div className="flex gap-2"><button type="button" onClick={startCamera} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><Camera size={14}/> {t.photoBtn}</button><button type="button" onClick={()=>fileInputRef.current.click()} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><ImageIcon size={14}/> {t.uploadBtn}</button></div></div>
+                  )}
+                  <input type="file" accept="image/*" capture="user" ref={fileInputRef} className="hidden" onChange={handleFileChange}/>
+              </div>
+              {!isCameraOpen && (
+                  <div className="space-y-3">
+                    {['name', 'phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
+                    {/* V58: No Seat Input for Guest */}
+                    <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
+                  </div>
+              )}
+            </form>
+          ) : (
+            <div className="text-center animate-in zoom-in duration-300">
+              <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)] relative"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({id: newId}))}`} alt="QR" className="w-48 h-48 object-contain"/><div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full shadow-lg flex items-center gap-1 font-bold tracking-wider"><Cloud size={10}/> SAVED</div></div>
+              <h3 className="text-2xl font-bold text-white mb-1">{form.name}</h3>
+              <div className="text-red-400 text-lg font-bold mb-4 flex justify-center items-center gap-2 bg-white/5 p-2 rounded-lg border border-red-500/30"><Armchair size={18}/> {matchedSeat && matchedSeat.table ? `${t.table} ${matchedSeat.table}` : form.table ? `${t.table} ${form.table}` : t.seatTBD} {matchedSeat && matchedSeat.seat ? ` / ${t.seat} ${matchedSeat.seat}` : form.seat ? ` / ${t.seat} ${form.seat}` : ""}</div>
+              <p className="text-white/50 text-sm mb-8 leading-relaxed">{t.showToStaff}</p>
+              <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:'',table:'',seat:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm">{t.next}</button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
