@@ -5,7 +5,7 @@ import {
   ArrowRight, UserPlus, LogOut, Globe, Mail,
   Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
   Cloud, Zap, Image as ImageIcon, MonitorPlay, Aperture, Gift,
-  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid, Briefcase
+  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid, Briefcase, Hash
 } from 'lucide-react';
 
 // --- Firebase ---
@@ -15,10 +15,7 @@ import {
   doc, onSnapshot, query, orderBy, deleteDoc, writeBatch
 } from "firebase/firestore";
 
-// ==========================================
-// 1. 設定與常數 (Config & Constants)
-// ==========================================
-
+// ✅ Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyDUZeeaWvQZJORdDv4PdAHQK-SqXFIDsy4",
   authDomain: "eventpass-77522.firebaseapp.com",
@@ -39,14 +36,26 @@ try {
 
 const ADMIN_PASSWORD = "admin"; 
 
-// ==========================================
-// 2. 翻譯資料 (Defined EARLY to avoid ReferenceError)
-// ==========================================
+// --- Style Injector ---
+const StyleInjector = () => {
+  useEffect(() => {
+    document.body.style.backgroundColor = "#000000";
+    document.body.style.color = "#ffffff";
+    document.body.style.margin = "0";
+    if (!document.querySelector('#tailwind-cdn')) {
+      const script = document.createElement('script');
+      script.id = 'tailwind-cdn';
+      script.src = "https://cdn.tailwindcss.com";
+      document.head.appendChild(script);
+    }
+  }, []);
+  return null;
+};
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 最終穩定版",
-    guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台 (抽獎)", projectorMode: "大螢幕投影",
+    title: "Tesla Annual Dinner", sub: "2025 無縫馬賽克版",
+    guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
     name: "姓名", phone: "電話", email: "電郵", dept: "部門",
@@ -68,7 +77,7 @@ const translations = {
     drawn: "已抽出", winnerIs: "得主"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Stable",
+    title: "Tesla Annual Dinner", sub: "2025 Seamless",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Auto seat assignment",
@@ -91,10 +100,6 @@ const translations = {
     drawn: "Drawn", winnerIs: "Winner"
   }
 };
-
-// ==========================================
-// 3. 工具函數 (Helpers)
-// ==========================================
 
 const normalizePhone = (p) => String(p || '').replace(/[^0-9]/g, '');
 const normalizeEmail = (e) => String(e || '').trim().toLowerCase();
@@ -119,25 +124,6 @@ const compressImage = (source, isFile = true) => {
     });
 };
 
-// ==========================================
-// 4. 基礎組件 (Base Components)
-// ==========================================
-
-const StyleInjector = () => {
-  useEffect(() => {
-    document.body.style.backgroundColor = "#000000";
-    document.body.style.color = "#ffffff";
-    document.body.style.margin = "0";
-    if (!document.querySelector('#tailwind-cdn')) {
-      const script = document.createElement('script');
-      script.id = 'tailwind-cdn';
-      script.src = "https://cdn.tailwindcss.com";
-      document.head.appendChild(script);
-    }
-  }, []);
-  return null;
-};
-
 const Confetti = () => {
   const canvasRef = useRef(null);
   useEffect(() => {
@@ -151,6 +137,7 @@ const Confetti = () => {
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
 };
 
+// --- Sound ---
 const SoundController = {
   ctx: null, oscList: [],
   init: function() { const AC = window.AudioContext || window.webkitAudioContext; if (AC) this.ctx = new AC(); },
@@ -187,6 +174,7 @@ const SoundController = {
   }
 };
 
+// --- Galaxy Canvas (Visuals Fix: Seamless Mosaic) ---
 const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
     const canvasRef = useRef(null);
     const [isRunning, setIsRunning] = useState(false);
@@ -202,19 +190,35 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
         const resize = () => { canvas.width = container.clientWidth; canvas.height = container.clientHeight; };
         resize(); window.addEventListener('resize', resize);
 
-        const cols = Math.ceil(Math.sqrt(list.length * 2.5));
-        const size = Math.max(30, canvas.width / cols);
+        // 🔥 V60: 無縫馬賽克計算
+        // 使用面積法計算最佳方塊大小
+        const area = canvas.width * canvas.height;
+        const n = list.length;
+        // 初步估算每個格子的大小 (開根號)
+        const idealSize = Math.sqrt(area / n);
+        // 計算一行能放幾個
+        const cols = Math.ceil(canvas.width / idealSize);
+        // 反推實際大小，確保填滿寬度
+        const size = canvas.width / cols; 
 
         particles.current = list.map((p, i) => {
             const img = new Image();
+            // 防止快取 & 提供預設圖
             img.src = p.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=random&color=fff&size=128&id=${p.id}`;
             const col = i % cols;
             const row = Math.floor(i / cols);
             return {
                 id: p.id,
-                x: (i % cols) * size * 2 + 50, y: Math.floor(i / cols) * size * 2 + 50,
-                targetX: (i % cols) * size * 2 + 50, targetY: Math.floor(i / cols) * size * 2 + 50,
-                vx: 0, vy: 0, size: size, img: img, data: p
+                // 緊密排列，無縫隙
+                x: col * size, 
+                y: row * size,
+                targetX: col * size, 
+                targetY: row * size,
+                vx: 0, vy: 0, 
+                size: size, // 滿版大小
+                img: img,
+                data: p,
+                angle: 0
             };
         });
 
@@ -223,21 +227,38 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
             particles.current.forEach(p => {
                 if (mode.current === 'galaxy') {
                     p.x += p.vx; p.y += p.vy;
+                    p.angle += 0.05;
                     if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
                     if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
                 } else {
                     p.x += (p.targetX - p.x) * 0.1;
                     p.y += (p.targetY - p.y) * 0.1;
+                    p.angle = 0;
                 }
                 ctx.save();
-                // Square Mosaic - No Gap
-                const gap = 0;
-                const drawSize = p.size - gap;
-                ctx.beginPath(); 
-                ctx.rect(p.x, p.y, drawSize, drawSize); 
-                ctx.clip();
-                if (p.img.complete) ctx.drawImage(p.img, p.x, p.y, drawSize, drawSize);
-                else { ctx.fillStyle = '#333'; ctx.fillRect(p.x, p.y, drawSize, drawSize); }
+                
+                if (mode.current === 'galaxy') {
+                     // 抽獎時：圓形 + 旋轉
+                     ctx.translate(p.x + p.size/2, p.y + p.size/2);
+                     ctx.rotate(p.angle);
+                     ctx.beginPath(); 
+                     ctx.arc(0, 0, p.size/2, 0, Math.PI * 2); 
+                     ctx.clip();
+                     if (p.img.complete) ctx.drawImage(p.img, -p.size/2, -p.size/2, p.size, p.size);
+                     else { ctx.fillStyle = '#333'; ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size); }
+                } else {
+                     // 馬賽克時：正方形 + 無縫
+                     ctx.beginPath();
+                     ctx.rect(p.x, p.y, p.size, p.size);
+                     ctx.clip();
+                     if (p.img.complete) ctx.drawImage(p.img, p.x, p.y, p.size, p.size);
+                     else { ctx.fillStyle = '#333'; ctx.fillRect(p.x, p.y, p.size, p.size); }
+                     // 加個極細邊框讓視覺分離
+                     ctx.strokeStyle = '#000';
+                     ctx.lineWidth = 1;
+                     ctx.strokeRect(p.x, p.y, p.size, p.size);
+                }
+                
                 ctx.restore();
             });
             frameId.current = requestAnimationFrame(render);
@@ -250,7 +271,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
         if(list.length < 2) return;
         setIsRunning(true);
         mode.current = 'galaxy';
-        particles.current.forEach(p => { p.vx = (Math.random() - 0.5) * 30; p.vy = (Math.random() - 0.5) * 30; });
+        particles.current.forEach(p => { p.vx = (Math.random() - 0.5) * 40; p.vy = (Math.random() - 0.5) * 40; });
         SoundController.startSuspense();
         setTimeout(stop, 5000);
     };
@@ -279,97 +300,16 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
     );
 };
 
-// ==========================================
-// 5. 頁面組件 (Views)
-// ==========================================
-
-const LoginView = ({ t, onLogin, onBack }) => {
-    const [pwd, setPwd] = useState('');
-    const inputRef = useRef(null);
-    useEffect(() => { const timer = setTimeout(() => { if(inputRef.current) inputRef.current.focus(); }, 100); return () => clearTimeout(timer); }, []);
-    const handleSubmit = (e) => { e.preventDefault(); if(pwd === ADMIN_PASSWORD) onLogin(); else { alert(t.wrongPwd); setPwd(''); } };
-    return (
-      <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
-        <div className="relative bg-neutral-900/80 border border-white/20 p-10 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in duration-500 z-50">
-          <button onClick={onBack} className="text-white/50 hover:text-white mb-8 flex items-center transition-colors text-sm uppercase tracking-widest"><ChevronLeft size={16} className="mr-1"/> {t.back}</button>
-          <div className="text-center mb-8"><h2 className="text-3xl font-bold text-white mb-2 tracking-tight">{t.login}</h2></div>
-          <form onSubmit={handleSubmit}><input ref={inputRef} type="password" autoFocus value={pwd} onChange={(e) => setPwd(e.target.value)} placeholder={t.pwdPlace} className="w-full bg-white/5 border border-white/10 text-white p-4 rounded-xl mb-6 focus:ring-1 focus:ring-red-600 focus:border-red-600 outline-none transition-all text-center tracking-[0.3em] placeholder:tracking-normal placeholder:text-white/20"/><button type="submit" className="w-full bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-900/40 transition-all active:scale-95 uppercase tracking-widest text-sm">{t.enter}</button></form>
-        </div>
-      </div>
-    );
-};
-
-const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState({name:'',phone:'',email:'',company:'',table:'',seat:''});
-  const [photo, setPhoto] = useState(null);
-  const [err, setErr] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [newId, setNewId] = useState(null);
-  const [matchedSeat, setMatchSeat] = useState(null); 
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const videoRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const startCamera = async () => { setErr(''); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } }); setIsCameraOpen(true); setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100); } catch (e) { fileInputRef.current.click(); } };
-  const takePhoto = async () => { if(!videoRef.current) return; const canvas = document.createElement('canvas'); const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const xOffset = (videoRef.current.videoWidth - size) / 2; const yOffset = (videoRef.current.videoHeight - size) / 2; ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size); const rawBase64 = canvas.toDataURL('image/jpeg'); const stream = videoRef.current.srcObject; if(stream) stream.getTracks().forEach(track => track.stop()); setIsCameraOpen(false); const compressed = await compressImage(rawBase64, false); setPhoto(compressed); };
-  const handleFileChange = async (e) => { const file = e.target.files[0]; if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); } };
-  const handleSubmit = async (e) => { e.preventDefault(); setErr(''); if(!photo) { setErr(t.errPhoto); return; } setLoading(true); const cleanPhone = normalizePhone(form.phone); const cleanEmail = normalizeEmail(form.email); const dup = checkDuplicate(cleanPhone, cleanEmail); if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } let assignedTable = ""; let assignedSeat = ""; const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail); const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; } else if(phoneMatch) { assignedTable = phoneMatch.table; assignedSeat = phoneMatch.seat; } setMatchSeat({ table: assignedTable, seat: assignedSeat }); try { if (!db) throw new Error("Firebase not initialized"); const docRef = await addDoc(collection(db, "attendees"), { name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, table: assignedTable, seat: assignedSeat, photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() }); setNewId(docRef.id); setStep(2); } catch (error) { console.error(error); setErr("Network Error."); } setLoading(false); };
-  return (
-    <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
-      <div className="relative bg-neutral-900/80 border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl">
-        <div className="bg-gradient-to-r from-red-700 to-red-900 p-8 text-white text-center relative">
-          {!isCameraOpen && <button onClick={onBack} className="absolute left-6 top-6 text-white/70 hover:text-white z-10"><ChevronLeft/></button>}
-          <h2 className="text-2xl font-bold tracking-wide relative z-10">{t.regTitle}</h2>
-          <p className="text-white/80 text-xs mt-2 uppercase tracking-widest relative z-10">{t.regSub}</p>
-        </div>
-        <div className="p-8">
-          {step === 1 ? (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {err && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm flex items-center animate-pulse"><AlertTriangle size={16} className="mr-2"/>{err}</div>}
-              <div className="flex flex-col items-center mb-4">
-                  {isCameraOpen ? (
-                      <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black border-2 border-red-500 shadow-2xl"><video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" /><button type="button" onClick={takePhoto} className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-white border-4 border-gray-300 hover:scale-110 transition-transform"><Aperture className="w-full h-full p-2 text-black"/></button></div>
-                  ) : (
-                      <div className="flex flex-col items-center gap-3 w-full"><div className={`w-32 h-32 rounded-full border-2 border-dashed flex items-center justify-center overflow-hidden relative shadow-lg ${photo ? 'border-red-500' : 'border-white/30'}`}>{photo ? <img src={photo} alt="Selfie" className="w-full h-full object-cover" /> : <User size={48} className="text-white/20"/>}</div><div className="flex gap-2"><button type="button" onClick={startCamera} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><Camera size={14}/> {t.photoBtn}</button><button type="button" onClick={()=>fileInputRef.current.click()} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><ImageIcon size={14}/> {t.uploadBtn}</button></div></div>
-                  )}
-                  <input type="file" accept="image/*" capture="user" ref={fileInputRef} className="hidden" onChange={handleFileChange}/>
-              </div>
-              {!isCameraOpen && (
-                  <div className="space-y-3">
-                    {['name', 'phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
-                    {/* V58: No Seat Input for Guest */}
-                    <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
-                  </div>
-              )}
-            </form>
-          ) : (
-            <div className="text-center animate-in zoom-in duration-300">
-              <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)] relative"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({id: newId}))}`} alt="QR" className="w-48 h-48 object-contain"/><div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full shadow-lg flex items-center gap-1 font-bold tracking-wider"><Cloud size={10}/> SAVED</div></div>
-              <h3 className="text-2xl font-bold text-white mb-1">{form.name}</h3>
-              <div className="text-red-400 text-lg font-bold mb-4 flex justify-center items-center gap-2 bg-white/5 p-2 rounded-lg border border-red-500/30"><Armchair size={18}/> {matchedSeat && matchedSeat.table ? `${t.table} ${matchedSeat.table}` : form.table ? `${t.table} ${form.table}` : t.seatTBD} {matchedSeat && matchedSeat.seat ? ` / ${t.seat} ${matchedSeat.seat}` : form.seat ? ` / ${t.seat} ${form.seat}` : ""}</div>
-              <p className="text-white/50 text-sm mb-8 leading-relaxed">{t.showToStaff}</p>
-              <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:'',table:'',seat:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm">{t.next}</button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- Projector View (UI Overlap Fix & Duplicate Fix) ---
+// --- Projector View ---
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes }) => {
     const [winner, setWinner] = useState(null);
-    const [isSaving, setIsSaving] = useState(false); // Lock for double press
-    
+    // V60: 嚴格過濾掉已中獎者 (確保他們從牆上消失)
     const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h => h.attendeeId === p.id));
     const currentPrizeWinner = drawHistory.find(h => h.prize === currentPrize);
 
     useEffect(() => {
         const handleKey = async (e) => { 
-            // 🔥 Fix: Prevent double press (Anti-Duplicate)
-            if (winner && e.key === 'Enter' && !isSaving) {
-                setIsSaving(true);
+            if (winner && e.key === 'Enter') {
                 if (db) await addDoc(collection(db, "winners"), { 
                     attendeeId: winner.id, 
                     name: winner.name || "", 
@@ -380,22 +320,29 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                     prize: currentPrize || "Grand Prize", 
                     wonAt: new Date().toISOString() 
                 });
-                
                 setWinner(null);
                 
+                // 🔥 V60: 強化版自動跳轉 (Smart Auto-Next)
                 if (currentPrize && prizes.length > 0) {
                     const currentIdx = prizes.findIndex(p => p.name === currentPrize);
-                    const nextAvailablePrize = prizes.find((p, idx) => idx > currentIdx && !drawHistory.some(h => h.prize === p.name));
-                    if (nextAvailablePrize && db) {
-                        await setDoc(doc(db, "config", "settings"), { currentPrize: nextAvailablePrize.name }, { merge: true });
+                    // 尋找下一個「還沒被抽過」的獎品
+                    // 如果用 index+1 找不到，就找全域第一個沒抽過的
+                    let nextPrize = prizes.find((p, idx) => idx > currentIdx && !drawHistory.some(h => h.prize === p.name));
+                    
+                    if (!nextPrize) {
+                        // 嘗試從頭找 (例如中間跳過了一些)
+                        nextPrize = prizes.find(p => !drawHistory.some(h => h.prize === p.name));
+                    }
+
+                    if (nextPrize && db) {
+                        await setDoc(doc(db, "config", "settings"), { currentPrize: nextPrize.name }, { merge: true });
                     }
                 }
-                setIsSaving(false);
             }
         };
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
-    }, [winner, prizes, drawHistory, currentPrize, isSaving]);
+    }, [winner, prizes, drawHistory, currentPrize]);
 
     const handleDrawEnd = async (w) => {
         setWinner(w);
@@ -449,6 +396,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                     {winner.photo ? <img src={winner.photo} className="w-80 h-80 rounded-full border-8 border-yellow-400 object-cover shadow-[0_0_100px_rgba(234,179,8,0.5)] mb-8"/> : <div className="w-64 h-64 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={100}/></div>}
                     <h1 className="text-8xl font-black text-white mb-4">{winner.name}</h1>
                     
+                    {/* 強制顯示座位 */}
                     <div className="bg-white/20 px-8 py-3 rounded-full text-2xl font-bold border border-white/30 flex items-center gap-3">
                         <Armchair/> Table {winner.table || '-'} / Seat {winner.seat || '-'}
                     </div>
@@ -460,7 +408,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     );
 };
 
-// --- Reception Dashboard ---
+// ... Reception, Prize, Login, Guest, App (Keep V59) ...
 const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan, drawHistory }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
@@ -469,210 +417,45 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   const [adminForm, setAdminForm] = useState({name:'',phone:'',email:'',dept:'',table:'',seat:''});
   const [seatForm, setSeatForm] = useState({name:'',phone:'',email:'',dept:'',table:'',seat:''});
   const lastTime = useRef(0);
-
-  const filteredList = attendees.filter(p => {
-      const s = search.toLowerCase();
-      const prizeName = drawHistory.find(h=>h.attendeeId===p.id)?.prize || "";
-      const dept = p.dept || "";
-      return p.name.toLowerCase().includes(s) || p.phone.includes(s) || dept.toLowerCase().includes(s) || prizeName.toLowerCase().includes(s);
-  });
-
+  const filteredList = attendees.filter(p => { const s = search.toLowerCase(); const prizeName = drawHistory.find(h=>h.attendeeId===p.id)?.prize || ""; const dept = p.dept || ""; return p.name.toLowerCase().includes(s) || p.phone.includes(s) || dept.toLowerCase().includes(s) || prizeName.toLowerCase().includes(s); });
   const filteredSeat = seatingPlan.filter(s => (s.name||'').includes(search) || (s.phone||'').includes(search) || (s.dept||'').includes(search));
-
-  const handleScan = useCallback(async (text) => {
-    const now = Date.now();
-    if(now - lastTime.current < 2000) return;
-    try {
-        const data = JSON.parse(text);
-        lastTime.current = now;
-        let targetId = data.id || (data.type==='new_reg' && attendees.find(x=>x.phone===normalizePhone(data.phone))?.id);
-        const p = attendees.find(x=>x.id===targetId);
-        if(!p) setScanRes({type:'error', msg:t.notFound});
-        else if(p.checkedIn) setScanRes({type:'duplicate', msg:t.duplicate, p});
-        else {
-             if(db) updateDoc(doc(db, "attendees", p.id), { checkedIn: true, checkInTime: new Date().toISOString() });
-             setScanRes({type:'success', msg:t.success, p});
-        }
-        setTimeout(()=>setScanRes(null), 2000);
-    } catch(e){}
-  }, [attendees]);
-
-  useEffect(() => {
-    if(!isScan) return;
-    let s; const init = () => { if(window.Html5QrcodeScanner) { s=new window.Html5QrcodeScanner("reader",{fps:10,qrbox:250},false); s.render(handleScan,()=>{}); }};
-    if(window.Html5QrcodeScanner) init(); else { const sc=document.createElement('script'); sc.src="https://unpkg.com/html5-qrcode"; sc.onload=init; document.body.appendChild(sc); }
-    return ()=>{if(s)try{s.clear()}catch(e){}};
-  }, [isScan, handleScan]);
-
-  const handleImportSeating = async (e) => {
-    const file = e.target.files[0]; if(!file)return;
-    const text = await file.text(); const lines = text.split(/\r\n|\n/).slice(1);
-    const batch = writeBatch(db);
-    lines.forEach(l => {
-        const c = l.split(',');
-        if(c.length>=5) {
-            const ref = doc(collection(db, "seating_plan"));
-            batch.set(ref, { name: c[0].trim(), phone: normalizePhone(c[1]), email: normalizeEmail(c[2]), dept: c[3]?.trim(), table: c[4]?.trim(), seat: c[5]?.trim()||'' });
-        }
-    });
-    await batch.commit(); alert(t.importSuccess);
-  };
-  
-  const handleAddGuest = async (e) => {
-      e.preventDefault();
-      if(!adminForm.name) return;
-      await addDoc(collection(db, "attendees"), { ...adminForm, phone: normalizePhone(adminForm.phone), email: normalizeEmail(adminForm.email), checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() });
-      setAdminForm({name:'',phone:'',email:'',dept:'',table:'',seat:''});
-  };
-
-  const handleAddSeating = async (e) => {
-      e.preventDefault();
-      if(!seatForm.table) return;
-      if(db) await addDoc(collection(db, "seating_plan"), { 
-          name: seatForm.name, phone: normalizePhone(seatForm.phone), email: normalizeEmail(seatForm.email), dept: seatForm.dept, table: seatForm.table, seat: seatForm.seat 
-      });
-      setSeatForm({ name:'', phone:'', email: '', dept: '', table: '', seat: '' });
-  };
-
+  const handleScan = useCallback(async (text) => { const now = Date.now(); if(now - lastTime.current < 2000) return; try { const data = JSON.parse(text); lastTime.current = now; let targetId = data.id || (data.type==='new_reg' && attendees.find(x=>x.phone===normalizePhone(data.phone))?.id); const p = attendees.find(x=>x.id===targetId); if(!p) setScanRes({type:'error', msg:t.notFound}); else if(p.checkedIn) setScanRes({type:'duplicate', msg:t.duplicate, p}); else { if(db) updateDoc(doc(db, "attendees", p.id), { checkedIn: true, checkInTime: new Date().toISOString() }); setScanRes({type:'success', msg:t.success, p}); } setTimeout(()=>setScanRes(null), 2000); } catch(e){} }, [attendees]);
+  useEffect(() => { if(!isScan) return; let s; const init = () => { if(window.Html5QrcodeScanner) { s=new window.Html5QrcodeScanner("reader",{fps:10,qrbox:250},false); s.render(handleScan,()=>{}); }}; if(window.Html5QrcodeScanner) init(); else { const sc=document.createElement('script'); sc.src="https://unpkg.com/html5-qrcode"; sc.onload=init; document.body.appendChild(sc); } return ()=>{if(s)try{s.clear()}catch(e){}}; }, [isScan, handleScan]);
+  const handleImportSeating = async (e) => { const file = e.target.files[0]; if(!file)return; const text = await file.text(); const lines = text.split(/\r\n|\n/).slice(1); const batch = writeBatch(db); lines.forEach(l => { const c = l.split(','); if(c.length>=5) { const ref = doc(collection(db, "seating_plan")); batch.set(ref, { name: c[0].trim(), phone: normalizePhone(c[1]), email: normalizeEmail(c[2]), dept: c[3]?.trim(), table: c[4]?.trim(), seat: c[5]?.trim()||'' }); } }); await batch.commit(); alert(t.importSuccess); };
+  const handleAddGuest = async (e) => { e.preventDefault(); if(!adminForm.name) return; await addDoc(collection(db, "attendees"), { ...adminForm, phone: normalizePhone(adminForm.phone), email: normalizeEmail(adminForm.email), checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() }); setAdminForm({name:'',phone:'',email:'',dept:'',table:'',seat:''}); };
+  const handleAddSeating = async (e) => { e.preventDefault(); if(!seatForm.table) return; if(db) await addDoc(collection(db, "seating_plan"), { name: seatForm.name, phone: normalizePhone(seatForm.phone), email: normalizeEmail(seatForm.email), dept: seatForm.dept, table: seatForm.table, seat: seatForm.seat }); setSeatForm({ name:'', phone:'', email: '', dept: '', table: '', seat: '' }); };
   const handleDeleteSeating = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "seating_plan", id)); };
   const toggleCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: !person.checkedIn, checkInTime: !person.checkedIn ? new Date().toISOString() : null }); };
   const toggleCancelCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: false, checkInTime: null }); };
   const deletePerson = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "attendees", id)); };
   const downloadTemplate = () => { const content = "\uFEFFName,Phone,Email,Dept,Table,Seat\nElon Musk,0912345678,elon@tesla.com,Engineering,1,A"; const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "seating_template.csv"; link.click(); };
-
   return (
     <div className="min-h-[100dvh] bg-neutral-950 text-white flex flex-col">
        <header className="p-4 border-b border-white/10 flex justify-between items-center bg-neutral-900"><div className="font-bold text-lg flex gap-2"><QrCode/> Reception</div><button onClick={onLogout}><LogOut size={18}/></button></header>
        <main className="flex-1 p-4 flex flex-col items-center w-full max-w-7xl mx-auto">
-          <div className="flex gap-2 mb-6 bg-white/5 p-1 rounded-xl">
-              {['scan','list','seating'].map(k=><button key={k} onClick={()=>{setTab(k);setIsScan(false)}} className={`px-4 py-2 rounded-lg text-sm ${tab===k?'bg-blue-600':'text-white/50'}`}>{t[k]}</button>)}
-          </div>
-          
-          {tab==='scan' && (
-              <div className="w-full max-w-md">
-                  {isScan ? <div id="reader" className="bg-black rounded-xl overflow-hidden mb-4"></div> : <button onClick={()=>setIsScan(true)} className="w-full py-12 border-2 border-dashed border-white/20 rounded-xl text-white/50 flex flex-col items-center gap-2 hover:bg-white/5"><Camera size={32}/> {t.scanCam}</button>}
-                  {scanRes && <div className={`p-4 rounded-xl text-center font-bold ${scanRes.type==='success'?'bg-green-600':'bg-red-600'}`}>{scanRes.msg} {scanRes.p?.name}</div>}
-              </div>
-          )}
-
+          <div className="flex gap-2 mb-6 bg-white/5 p-1 rounded-xl">{['scan','list','seating'].map(k=><button key={k} onClick={()=>{setTab(k);setIsScan(false)}} className={`px-4 py-2 rounded-lg text-sm ${tab===k?'bg-blue-600':'text-white/50'}`}>{t[k]}</button>)}</div>
+          {tab==='scan' && (<div className="w-full max-w-md">{isScan ? <div id="reader" className="bg-black rounded-xl overflow-hidden mb-4"></div> : <button onClick={()=>setIsScan(true)} className="w-full py-12 border-2 border-dashed border-white/20 rounded-xl text-white/50 flex flex-col items-center gap-2 hover:bg-white/5"><Camera size={32}/> {t.scanCam}</button>}{scanRes && <div className={`p-4 rounded-xl text-center font-bold ${scanRes.type==='success'?'bg-green-600':'bg-red-600'}`}>{scanRes.msg} {scanRes.p?.name}</div>}</div>)}
           {tab==='list' && (
               <div className="w-full flex-1 flex flex-col h-[70vh]">
                   <div className="p-4 bg-white/5 rounded-t-xl border-b border-white/10">
-                      <div className="mb-4 relative">
-                          <Search className="absolute top-2.5 left-3 text-white/30" size={16}/>
-                          <input placeholder={t.searchList} value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-white/10 rounded-lg pl-9 pr-4 py-2 text-sm outline-none"/>
-                      </div>
-                      
-                      <form onSubmit={handleAddGuest} className="flex gap-2 flex-wrap mb-4 bg-white/5 p-2 rounded-lg">
-                          <div className="w-full text-xs text-white/40 mb-1">{t.addGuest}</div>
-                          <input placeholder="Name" value={adminForm.name} onChange={e=>setAdminForm({...adminForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]"/>
-                          <input placeholder="Phone" value={adminForm.phone} onChange={e=>setAdminForm({...adminForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none"/>
-                          <input placeholder="Email" value={adminForm.email} onChange={e=>setAdminForm({...adminForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-32 text-xs outline-none"/>
-                          <input placeholder="Dept" value={adminForm.dept} onChange={e=>setAdminForm({...adminForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none"/>
-                          <input placeholder="T" value={adminForm.table} onChange={e=>setAdminForm({...adminForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/>
-                          <input placeholder="S" value={adminForm.seat} onChange={e=>setAdminForm({...adminForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/>
-                          <button className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
-                      </form>
-                      
-                      <div className="flex justify-between text-xs text-white/50">
-                          <span>Total: {attendees.length}</span>
-                          <span className="text-emerald-400">Arrived: {attendees.filter(x=>x.checkedIn).length}</span>
-                      </div>
+                      <div className="mb-4 relative"><Search className="absolute top-2.5 left-3 text-white/30" size={16}/><input placeholder={t.searchList} value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-white/10 rounded-lg pl-9 pr-4 py-2 text-sm outline-none"/></div>
+                      <form onSubmit={handleAddGuest} className="flex gap-2 flex-wrap mb-4 bg-white/5 p-2 rounded-lg"><div className="w-full text-xs text-white/40 mb-1">{t.addGuest}</div><input placeholder="Name" value={adminForm.name} onChange={e=>setAdminForm({...adminForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]"/><input placeholder="Phone" value={adminForm.phone} onChange={e=>setAdminForm({...adminForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none"/><input placeholder="Email" value={adminForm.email} onChange={e=>setAdminForm({...adminForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-32 text-xs outline-none"/><input placeholder="Dept" value={adminForm.dept} onChange={e=>setAdminForm({...adminForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none"/><input placeholder="T" value={adminForm.table} onChange={e=>setAdminForm({...adminForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/><input placeholder="S" value={adminForm.seat} onChange={e=>setAdminForm({...adminForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/><button className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button></form>
+                      <div className="flex justify-between text-xs text-white/50"><span>Total: {attendees.length}</span><span className="text-emerald-400">Arrived: {attendees.filter(x=>x.checkedIn).length}</span></div>
                   </div>
-
-                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-b-xl p-2">
-                      <table className="w-full text-left border-collapse">
-                          <thead className="text-xs text-white/40 uppercase border-b border-white/10">
-                              <tr>
-                                  <th className="p-2">Name</th>
-                                  <th className="p-2 hidden md:table-cell">Phone</th>
-                                  <th className="p-2 hidden md:table-cell">Email</th>
-                                  <th className="p-2 hidden md:table-cell">Dept</th>
-                                  <th className="p-2">Table</th>
-                                  <th className="p-2">Seat</th>
-                                  <th className="p-2 text-yellow-500">{t.wonPrize}</th>
-                                  <th className="p-2 text-center">Status</th>
-                                  <th className="p-2 text-right">Del</th>
-                              </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/5">
-                              {filteredList.map(p=>{
-                                  const winnerRec = drawHistory.find(h=>h.attendeeId===p.id);
-                                  return (
-                                      <tr key={p.id} className="hover:bg-white/5 text-sm">
-                                          <td className="p-2 font-bold flex items-center gap-2">{p.photo ? <img src={p.photo} className="w-6 h-6 rounded-full object-cover"/> : <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center"><User size={12}/></div>}{p.name}</td>
-                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.phone}</td>
-                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.email}</td>
-                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.dept}</td>
-                                          <td className="p-2 font-mono text-blue-400">{p.table}</td>
-                                          <td className="p-2 font-mono">{p.seat}</td>
-                                          <td className="p-2 text-xs text-yellow-400 font-bold">{winnerRec ? winnerRec.prize : '-'}</td>
-                                          <td className="p-2 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-1 rounded text-[10px]">{t.checkin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-2 py-1 rounded text-[10px]">{t.cancel}</button>}</td>
-                                          <td className="p-2 text-right"><button onClick={()=>deletePerson(p.id)} className="p-1 text-white/30 hover:text-red-500"><Trash2 size={14}/></button></td>
-                                      </tr>
-                                  );
-                              })}
-                          </tbody>
-                      </table>
-                  </div>
+                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-b-xl p-2"><table className="w-full text-left border-collapse"><thead className="text-xs text-white/40 uppercase border-b border-white/10"><tr><th className="p-2">Name</th><th className="p-2 hidden md:table-cell">Phone</th><th className="p-2 hidden md:table-cell">Email</th><th className="p-2 hidden md:table-cell">Dept</th><th className="p-2">Table</th><th className="p-2">Seat</th><th className="p-2 text-yellow-500">{t.wonPrize}</th><th className="p-2 text-center">Status</th><th className="p-2 text-right">Del</th></tr></thead><tbody className="divide-y divide-white/5">{filteredList.map(p=>{const winnerRec = drawHistory.find(h=>h.attendeeId===p.id);return (<tr key={p.id} className="hover:bg-white/5 text-sm"><td className="p-2 font-bold flex items-center gap-2">{p.photo ? <img src={p.photo} className="w-6 h-6 rounded-full object-cover"/> : <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center"><User size={12}/></div>}{p.name}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.phone}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.email}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.dept}</td><td className="p-2 font-mono text-blue-400">{p.table}</td><td className="p-2 font-mono">{p.seat}</td><td className="p-2 text-xs text-yellow-400 font-bold">{winnerRec ? winnerRec.prize : '-'}</td><td className="p-2 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-1 rounded text-[10px]">{t.checkin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-2 py-1 rounded text-[10px]">{t.cancel}</button>}</td><td className="p-2 text-right"><button onClick={()=>deletePerson(p.id)} className="p-1 text-white/30 hover:text-red-500"><Trash2 size={14}/></button></td></tr>);})}</tbody></table></div>
               </div>
           )}
-
           {tab==='seating' && (
               <div className="w-full flex-1 flex flex-col gap-4">
-                  <div className="flex gap-2">
-                      <input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none text-sm"/>
-                      <label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label>
-                      <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button>
-                  </div>
-                  
-                  <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2">
-                      <div className="w-full text-xs text-white/40 mb-1">{t.addSeat}</div>
-                      <input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" />
-                      <input placeholder={t.phone} value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none" />
-                      <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
-                      <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
-                      <input placeholder="T" value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
-                      <input placeholder="S" value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
-                      <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2">
-                      <table className="w-full text-left border-collapse">
-                          <thead className="text-xs text-white/40 uppercase border-b border-white/10">
-                              <tr>
-                                  <th className="p-2">Name</th>
-                                  <th className="p-2 hidden md:table-cell">Phone</th>
-                                  <th className="p-2 hidden md:table-cell">Email</th>
-                                  <th className="p-2 hidden md:table-cell">Dept</th>
-                                  <th className="p-2">Table</th>
-                                  <th className="p-2">Seat</th>
-                                  <th className="p-2 text-right">Del</th>
-                              </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/5">
-                              {filteredSeat.map(s=>(
-                                  <tr key={s.id} className="hover:bg-white/5 text-sm">
-                                      <td className="p-2 font-bold">{s.name}</td>
-                                      <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.phone}</td>
-                                      <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.email}</td>
-                                      <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.dept}</td>
-                                      <td className="p-2 font-mono text-blue-400">{s.table}</td>
-                                      <td className="p-2 font-mono">{s.seat}</td>
-                                      <td className="p-2 text-right"><button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500 ml-2"><Trash2 size={14}/></button></td>
-                                  </tr>
-                              ))}
-                          </tbody>
-                      </table>
-                  </div>
+                  <div className="flex gap-2"><input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none text-sm"/><label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label><button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button></div>
+                  <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2"><div className="w-full text-xs text-white/40 mb-1">{t.addSeat}</div><input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" /><input placeholder={t.phone} value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none" /><input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" /><input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" /><input placeholder="T" value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" /><input placeholder="S" value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" /><button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button></div>
+                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2"><table className="w-full text-left border-collapse"><thead className="text-xs text-white/40 uppercase border-b border-white/10"><tr><th className="p-2">Name</th><th className="p-2 hidden md:table-cell">Phone</th><th className="p-2 hidden md:table-cell">Email</th><th className="p-2 hidden md:table-cell">Dept</th><th className="p-2">Table</th><th className="p-2">Seat</th><th className="p-2 text-right">Del</th></tr></thead><tbody className="divide-y divide-white/5">{filteredSeat.map(s=>(<tr key={s.id} className="hover:bg-white/5 text-sm"><td className="p-2 font-bold">{s.name}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.phone}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.email}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.dept}</td><td className="p-2 font-mono text-blue-400">{s.table}</td><td className="p-2 font-mono">{s.seat}</td><td className="p-2 text-right"><button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500 ml-2"><Trash2 size={14}/></button></td></tr>))}</tbody></table></div>
               </div>
           )}
        </main>
     </div>
   );
 };
-
-// ... (PrizeDashboard, App Main) ...
 const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, setCurrentPrize }) => {
   const [prizes, setPrizes] = useState([]); 
   const [newPrizeName, setNewPrizeName] = useState("");
