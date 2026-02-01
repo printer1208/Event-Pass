@@ -54,7 +54,7 @@ const StyleInjector = () => {
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 修正版",
+    title: "Tesla Annual Dinner", sub: "2025 獎品管理清空版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
@@ -72,11 +72,11 @@ const translations = {
     markWin: "設為得主", resetWinner: "重置", select: "選取",
     importCSV: "導入 CSV", downloadTemp: "範本", importSuccess: "成功",
     table: "桌號", seat: "座號", addSeat: "新增座位", searchSeat: "搜尋姓名/電話/桌號...",
-    searchList: "搜尋名單...", seatTBD: "待定", wonPrize: "獲獎紀錄",
-    addGuest: "新增賓客"
+    searchList: "搜尋名單...", seatTBD: "待定 (請洽櫃台)", wonPrize: "獲獎紀錄",
+    addGuest: "新增賓客", clearAll: "清空所有得獎者"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Fixed",
+    title: "Tesla Annual Dinner", sub: "2025 Prize Reset",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Auto seat assignment",
@@ -95,7 +95,7 @@ const translations = {
     importCSV: "Import", downloadTemp: "Template", importSuccess: "Done",
     table: "Table", seat: "Seat", addSeat: "Add Seat", searchSeat: "Search...",
     searchList: "Search...", seatTBD: "TBD", wonPrize: "Prize",
-    addGuest: "Add Guest"
+    addGuest: "Add Guest", clearAll: "Clear All Winners"
   }
 };
 
@@ -327,17 +327,16 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     );
 };
 
-// 🔥 Reception Dashboard (V59: Fix List & Manual Seat)
+// --- Reception Dashboard ---
 const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan, drawHistory }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
   const [scanRes, setScanRes] = useState(null);
   const [search, setSearch] = useState(""); 
   const [adminForm, setAdminForm] = useState({name:'',phone:'',email:'',dept:'',table:'',seat:''});
-  const [seatForm, setSeatForm] = useState({name:'',phone:'',email:'',dept:'',table:'',seat:''}); // 🔥 手動新增座位表單
+  const [seatForm, setSeatForm] = useState({name:'',phone:'',email:'',dept:'',table:'',seat:''}); 
   const lastTime = useRef(0);
 
-  // V58: 列表搜尋包含部門與獎品
   const filteredList = attendees.filter(p => {
       const s = search.toLowerCase();
       const prizeName = drawHistory.find(h=>h.attendeeId===p.id)?.prize || "";
@@ -394,7 +393,6 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
       setAdminForm({name:'',phone:'',email:'',dept:'',table:'',seat:''});
   };
 
-  // 🔥 手動新增座位功能
   const handleAddSeating = async (e) => {
       e.preventDefault();
       if(!seatForm.table) return;
@@ -438,7 +436,6 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                           <Search className="absolute top-2.5 left-3 text-white/30" size={16}/>
                           <input placeholder={t.searchList} value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-white/10 rounded-lg pl-9 pr-4 py-2 text-sm outline-none"/>
                       </div>
-                      
                       <form onSubmit={handleAddGuest} className="flex gap-2 flex-wrap mb-4 bg-white/5 p-2 rounded-lg">
                           <div className="w-full text-xs text-white/40 mb-1">{t.addGuest}</div>
                           <input placeholder="Name" value={adminForm.name} onChange={e=>setAdminForm({...adminForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]"/>
@@ -449,26 +446,12 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                           <input placeholder="S" value={adminForm.seat} onChange={e=>setAdminForm({...adminForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/>
                           <button className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
                       </form>
-                      
-                      <div className="flex justify-between text-xs text-white/50">
-                          <span>Total: {attendees.length}</span>
-                          <span className="text-emerald-400">Arrived: {attendees.filter(x=>x.checkedIn).length}</span>
-                      </div>
+                      <div className="flex justify-between text-xs text-white/50"><span>Total: {attendees.length}</span><span className="text-emerald-400">Arrived: {attendees.filter(x=>x.checkedIn).length}</span></div>
                   </div>
-
                   <div className="flex-1 overflow-y-auto bg-white/5 rounded-b-xl p-2">
                       <table className="w-full text-left border-collapse">
                           <thead className="text-xs text-white/40 uppercase border-b border-white/10">
-                              <tr>
-                                  <th className="p-2">Name</th>
-                                  <th className="p-2 hidden md:table-cell">Contact</th>
-                                  <th className="p-2 hidden md:table-cell">Dept</th>
-                                  <th className="p-2">Table</th>
-                                  <th className="p-2">Seat</th>
-                                  <th className="p-2 text-yellow-500">{t.wonPrize}</th>
-                                  <th className="p-2 text-center">Status</th>
-                                  <th className="p-2 text-right">Del</th>
-                              </tr>
+                              <tr><th className="p-2">Name</th><th className="p-2 hidden md:table-cell">Phone</th><th className="p-2 hidden md:table-cell">Email</th><th className="p-2 hidden md:table-cell">Dept</th><th className="p-2">Table</th><th className="p-2">Seat</th><th className="p-2 text-yellow-500">{t.wonPrize}</th><th className="p-2 text-center">Status</th><th className="p-2 text-right">Del</th></tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
                               {filteredList.map(p=>{
@@ -476,13 +459,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   return (
                                       <tr key={p.id} className="hover:bg-white/5 text-sm">
                                           <td className="p-2 font-bold flex items-center gap-2">{p.photo ? <img src={p.photo} className="w-6 h-6 rounded-full object-cover"/> : <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center"><User size={12}/></div>}{p.name}</td>
-                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.phone}<br/>{p.email}</td>
-                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.dept}</td>
-                                          <td className="p-2 font-mono text-blue-400">{p.table}</td>
-                                          <td className="p-2 font-mono">{p.seat}</td>
-                                          <td className="p-2 text-xs text-yellow-400 font-bold">{winnerRec ? winnerRec.prize : '-'}</td>
-                                          <td className="p-2 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-1 rounded text-[10px]">{t.checkin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-2 py-1 rounded text-[10px]">{t.cancel}</button>}</td>
-                                          <td className="p-2 text-right"><button onClick={()=>deletePerson(p.id)} className="p-1 text-white/30 hover:text-red-500"><Trash2 size={14}/></button></td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.phone}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.email}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.dept}</td><td className="p-2 font-mono text-blue-400">{p.table}</td><td className="p-2 font-mono">{p.seat}</td><td className="p-2 text-xs text-yellow-400 font-bold">{winnerRec ? winnerRec.prize : '-'}</td><td className="p-2 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-1 rounded text-[10px]">{t.checkin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-2 py-1 rounded text-[10px]">{t.cancel}</button>}</td><td className="p-2 text-right"><button onClick={()=>deletePerson(p.id)} className="p-1 text-white/30 hover:text-red-500"><Trash2 size={14}/></button></td>
                                       </tr>
                                   );
                               })}
@@ -500,7 +477,6 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button>
                   </div>
                   
-                  {/* 🔥 V59: 手動新增座位回歸 */}
                   <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2">
                       <div className="w-full text-xs text-white/40 mb-1">{t.addSeat}</div>
                       <input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" />
@@ -513,15 +489,24 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                   </div>
 
                   <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2">
-                      {filteredSeat.map(s=>(
-                          <div key={s.id} className="flex justify-between items-center p-3 border-b border-white/10 text-sm">
-                              <div><div className="font-bold">{s.name} <span className="text-white/40 text-xs ml-2">{s.dept}</span></div><div className="text-xs text-white/50">{s.phone} | {s.email}</div></div>
-                              <div className="flex items-center gap-2">
-                                  <div className="text-right text-blue-400 font-mono font-bold">T-{s.table} {s.seat&&`/ ${s.seat}`}</div>
-                                  <button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500 ml-2"><Trash2 size={14}/></button>
-                              </div>
-                          </div>
-                      ))}
+                      <table className="w-full text-left border-collapse">
+                          <thead className="text-xs text-white/40 uppercase border-b border-white/10">
+                              <tr><th className="p-2">Name</th><th className="p-2 hidden md:table-cell">Phone</th><th className="p-2 hidden md:table-cell">Email</th><th className="p-2 hidden md:table-cell">Dept</th><th className="p-2">Table</th><th className="p-2">Seat</th><th className="p-2 text-right">Del</th></tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                              {filteredSeat.map(s=>(
+                                  <tr key={s.id} className="hover:bg-white/5 text-sm">
+                                      <td className="p-2 font-bold">{s.name}</td>
+                                      <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.phone}</td>
+                                      <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.email}</td>
+                                      <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.dept}</td>
+                                      <td className="p-2 font-mono text-blue-400">{s.table}</td>
+                                      <td className="p-2 font-mono">{s.seat}</td>
+                                      <td className="p-2 text-right"><button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500"><Trash2 size={14}/></button></td>
+                                  </tr>
+                              ))}
+                          </tbody>
+                      </table>
                   </div>
               </div>
           )}
@@ -537,46 +522,14 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
   const [qty, setQty] = useState("1");
   const [prizeSearch, setPrizeSearch] = useState(""); 
   const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    if (!db) return;
-    const unsub = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => {
-        setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsub();
-  }, []);
-
-  const handleAddPrize = async (e) => {
-      e.preventDefault();
-      if(newPrizeName && db) {
-          const q = parseInt(qty) || 1;
-          const batch = writeBatch(db);
-          for(let i=1; i<=q; i++) {
-              const newRef = doc(collection(db, "prizes"));
-              batch.set(newRef, { name: q > 1 ? `${newPrizeName} #${i}` : newPrizeName, createdAt: new Date().toISOString() });
-          }
-          await batch.commit();
-          setNewPrizeName(""); setQty("1");
-      }
-  };
-
+  useEffect(() => { if (!db) return; const unsub = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => { setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); }); return () => unsub(); }, []);
+  const handleAddPrize = async (e) => { e.preventDefault(); if(newPrizeName && db) { const q = parseInt(qty) || 1; const batch = writeBatch(db); for(let i=1; i<=q; i++) { const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: q > 1 ? `${newPrizeName} #${i}` : newPrizeName, createdAt: new Date().toISOString() }); } await batch.commit(); setNewPrizeName(""); setQty("1"); } };
   const handleSelectPrize = async (prizeName) => { if(db) await setDoc(doc(db, "config", "settings"), { currentPrize: prizeName }, { merge: true }); };
   const handleDeletePrize = async (id) => { if(confirm('Delete prize?')) await deleteDoc(doc(db, "prizes", id)); };
-  
-  const toggleWinnerStatus = async (winnerRecord) => { 
-      if(confirm('Reset this prize? Winner will be removed.')) {
-          await deleteDoc(doc(db, "winners", winnerRecord.id));
-          await setDoc(doc(db, "config", "settings"), { currentPrize: winnerRecord.prize }, { merge: true });
-      }
-  };
-  
-  const handleImportPrizes = async (e) => {
-      const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split(/\r\n|\n/).filter(l=>l);
-      const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l.trim(), createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!");
-  };
-
+  const toggleWinnerStatus = async (winnerRecord) => { if(confirm('Reset this prize? Winner will be removed.')) { await deleteDoc(doc(db, "winners", winnerRecord.id)); await setDoc(doc(db, "config", "settings"), { currentPrize: winnerRecord.prize }, { merge: true }); } };
+  const handleResetAllWinners = async () => { if (confirm('確定要清空所有中獎紀錄嗎？此操作無法復原。\nAre you sure you want to clear ALL winners?')) { const batch = writeBatch(db); drawHistory.forEach(win => { batch.delete(doc(db, "winners", win.id)); }); await batch.commit(); } };
+  const handleImportPrizes = async (e) => { const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split(/\r\n|\n/).filter(l=>l); const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l.trim(), createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!"); };
   const filteredPrizes = prizes.filter(p => p.name.toLowerCase().includes(prizeSearch.toLowerCase()));
-
   return (
     <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
       <header className="bg-neutral-900/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
@@ -587,34 +540,10 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
         <div className="w-full grid md:grid-cols-2 gap-8 h-full">
             <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex flex-col h-[700px]">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Gift size={20} className="text-red-500"/> {t.prizeList}</h3>
-                <form onSubmit={handleAddPrize} className="flex gap-2 mb-4">
-                    <input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-[2] bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:border-red-500 outline-none"/>
-                    <input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} className="w-16 bg-black/50 border border-white/20 rounded-xl px-2 py-3 text-sm text-center text-white focus:border-red-500 outline-none"/>
-                    <button className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-colors"><Plus size={20}/></button>
-                </form>
-                <div className="flex gap-2 mb-4 relative">
-                    <Search className="absolute top-3 left-3 text-white/30" size={16}/>
-                    <input value={prizeSearch} onChange={e=>setPrizeSearch(e.target.value)} placeholder="Search Prize..." className="w-full bg-black/30 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none"/>
-                    <label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Upload size={12}/> CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label>
-                </div>
+                <form onSubmit={handleAddPrize} className="flex gap-2 mb-4"><input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-[2] bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:border-red-500 outline-none"/><input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} className="w-16 bg-black/50 border border-white/20 rounded-xl px-2 py-3 text-sm text-center text-white focus:border-red-500 outline-none"/><button className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-colors"><Plus size={20}/></button></form>
+                <div className="flex gap-2 mb-4 relative"><Search className="absolute top-3 left-3 text-white/30" size={16}/><input value={prizeSearch} onChange={e=>setPrizeSearch(e.target.value)} placeholder="Search Prize..." className="w-full bg-black/30 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none"/><label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Upload size={12}/> CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label></div>
                 <div className="flex-1 overflow-y-auto pr-2 custom-scroll flex flex-col gap-2">
-                    {filteredPrizes.map(p=>{
-                        const winnerRecord = drawHistory.find(h => h.prize === p.name);
-                        return (
-                            <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${currentPrize===p.name?'bg-red-600/20 border-red-600':'bg-white/5 border-white/10'} ${winnerRecord ? 'opacity-70 bg-black/40' : ''}`}>
-                                <div className="flex flex-col">
-                                    <span className={`font-bold ${currentPrize===p.name?'text-white':'text-white/70'}`}>{p.name}</span>
-                                    {winnerRecord && <span className="text-xs text-yellow-400 flex items-center gap-1 mt-1 font-bold">🏆 {winnerRecord.name}</span>}
-                                </div>
-                                <div className="flex gap-2">
-                                    {currentPrize!==p.name && !winnerRecord && <button onClick={()=>handleSelectPrize(p.name)} className="px-3 py-1.5 bg-white/10 hover:bg-green-600 rounded-lg text-xs transition-colors">{t.select}</button>}
-                                    {currentPrize===p.name && <span className="px-3 py-1.5 bg-red-600 rounded-lg text-xs font-bold">{t.active}</span>}
-                                    {winnerRecord ? <button onClick={()=>toggleWinnerStatus(winnerRecord)} className="p-2 bg-white/10 hover:bg-yellow-600 rounded-lg transition-colors" title={t.resetWinner}><RotateCcw size={14}/></button>
-                                                  : <button onClick={()=>handleDeletePrize(p.id)} className="p-2 bg-white/10 hover:bg-red-600 rounded-lg transition-colors"><Trash2 size={14}/></button>}
-                                </div>
-                            </div>
-                        );
-                    })}
+                    {filteredPrizes.map(p=>{ const winnerRecord = drawHistory.find(h => h.prize === p.name); return ( <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${currentPrize===p.name?'bg-red-600/20 border-red-600':'bg-white/5 border-white/10'} ${winnerRecord ? 'opacity-70 bg-black/40' : ''}`}> <div className="flex flex-col"><span className={`font-bold ${currentPrize===p.name?'text-white':'text-white/70'}`}>{p.name}</span>{winnerRecord && <span className="text-xs text-yellow-400 flex items-center gap-1 mt-1 font-bold">🏆 {winnerRecord.name}</span>}</div><div className="flex gap-2">{currentPrize!==p.name && !winnerRecord && <button onClick={()=>handleSelectPrize(p.name)} className="px-3 py-1.5 bg-white/10 hover:bg-green-600 rounded-lg text-xs transition-colors">{t.select}</button>}{currentPrize===p.name && <span className="px-3 py-1.5 bg-red-600 rounded-lg text-xs font-bold">{t.active}</span>}{winnerRecord ? <button onClick={()=>toggleWinnerStatus(winnerRecord)} className="p-2 bg-white/10 hover:bg-yellow-600 rounded-lg transition-colors" title={t.resetWinner}><RotateCcw size={14}/></button> : <button onClick={()=>handleDeletePrize(p.id)} className="p-2 bg-white/10 hover:bg-red-600 rounded-lg transition-colors"><Trash2 size={14}/></button>}</div></div> ); })}
                 </div>
             </div>
             <div className="flex flex-col gap-6">
@@ -629,7 +558,10 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
                     </div>
                 </div>
                 <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex-1 h-[350px] overflow-hidden flex flex-col">
-                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Trophy size={20} className="text-yellow-500"/> {t.winnersList}</h3>
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold flex items-center gap-2"><Trophy size={20} className="text-yellow-500"/> {t.winnersList}</h3>
+                        {drawHistory.length > 0 && (<button onClick={() => { if (confirm('確定要清空所有中獎紀錄嗎？此操作無法復原。\nAre you sure you want to clear ALL winners?')) { const batch = writeBatch(db); drawHistory.forEach(win => { batch.delete(doc(db, "winners", win.id)); }); batch.commit(); } }} className="text-xs bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1.5 rounded-lg hover:bg-red-600 hover:text-white transition-colors"><Trash2 size={12} className="inline mr-1"/> {t.clearAll}</button>)}
+                    </div>
                     <div className="flex-1 overflow-y-auto custom-scroll flex flex-col gap-2">
                         {drawHistory.map(h => (
                             <div key={h.id} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
@@ -701,7 +633,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
               {!isCameraOpen && (
                   <div className="space-y-3">
                     {['name', 'phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
-                    <input className="w-full bg-white/5 border border-white/10 text-white p-3 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t.company} value={form.company} onChange={e=>setForm({...form,company:e.target.value})} />
+                    {/* V58: No Seat Input for Guest */}
                     <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
                   </div>
               )}
@@ -710,7 +642,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
             <div className="text-center animate-in zoom-in duration-300">
               <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)] relative"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({id: newId}))}`} alt="QR" className="w-48 h-48 object-contain"/><div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full shadow-lg flex items-center gap-1 font-bold tracking-wider"><Cloud size={10}/> SAVED</div></div>
               <h3 className="text-2xl font-bold text-white mb-1">{form.name}</h3>
-              <div className="text-red-400 text-lg font-bold mb-4 flex justify-center items-center gap-2 bg-white/5 p-2 rounded-lg border border-red-500/30"><Armchair size={18}/> {matchedSeat && matchedSeat.table ? `${t.table} ${matchedSeat.table}` : form.table ? `${t.table} ${form.table}` : t.seatTBD} {matchedSeat && matchedSeat.seat ? ` / ${t.seat} ${matchedSeat.seat}` : form.seat ? ` / ${t.seat} ${form.seat}` : ""}</div>
+              <div className="text-red-400 text-lg font-bold mb-4 flex justify-center items-center gap-2 bg-white/5 p-2 rounded-lg border border-red-500/30"><Armchair size={18}/> {matchedSeat && matchedSeat.table ? `${t.table} ${matchedSeat.table}` : t.seatTBD} {matchedSeat && matchedSeat.seat ? ` / ${t.seat} ${matchedSeat.seat}` : ""}</div>
               <p className="text-white/50 text-sm mb-8 leading-relaxed">{t.showToStaff}</p>
               <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:'',table:'',seat:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm">{t.next}</button>
             </div>
