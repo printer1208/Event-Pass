@@ -5,7 +5,7 @@ import {
   ArrowRight, UserPlus, LogOut, Globe, Mail,
   Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
   Cloud, Zap, Image as ImageIcon, MonitorPlay, Aperture, Gift,
-  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid, Briefcase
+  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid, Briefcase, Hash
 } from 'lucide-react';
 
 // --- Firebase ---
@@ -199,20 +199,41 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
         const container = canvas?.parentElement;
         if (!canvas || !container || list.length === 0) return;
         const ctx = canvas.getContext('2d');
-        const resize = () => { canvas.width = container.clientWidth; canvas.height = container.clientHeight; };
-        resize(); window.addEventListener('resize', resize);
+        
+        // 🔥 V67: 優化佈局計算，確保 400 張照片都在畫面內
+        const resize = () => { 
+            canvas.width = container.clientWidth; 
+            canvas.height = container.clientHeight; 
+        };
+        resize();
+        window.addEventListener('resize', resize);
 
-        const cols = Math.ceil(Math.sqrt(list.length * 2.5));
-        const size = Math.max(30, canvas.width / cols);
+        // 根據長寬比計算最佳行列數
+        const ratio = canvas.width / canvas.height;
+        const cols = Math.ceil(Math.sqrt(list.length * ratio));
+        const rows = Math.ceil(list.length / cols);
+        // 計算格子大小，取寬高的最小值以確保不溢出
+        const size = Math.min(canvas.width / cols, canvas.height / rows) * 0.9; // 0.9 為留白
+
+        // 偏移量，讓馬賽克置中
+        const xOffset = (canvas.width - cols * size) / 2;
+        const yOffset = (canvas.height - rows * size) / 2;
 
         particles.current = list.map((p, i) => {
             const img = new Image();
             img.src = p.photo || `https://ui-avatars.com/api/?name=${p.name}&background=random&color=fff&size=128`;
+            const col = i % cols;
+            const row = Math.floor(i / cols);
             return {
                 id: p.id,
-                x: (i % cols) * size * 2 + 50, y: Math.floor(i / cols) * size * 2 + 50,
-                targetX: (i % cols) * size * 2 + 50, targetY: Math.floor(i / cols) * size * 2 + 50,
-                vx: 0, vy: 0, size: size, img: img, data: p
+                x: xOffset + col * size, 
+                y: yOffset + row * size,
+                targetX: xOffset + col * size,
+                targetY: yOffset + row * size,
+                vx: 0, vy: 0,
+                size: size - 2, // 每個格子留一點縫隙
+                img: img,
+                data: p
             };
         });
 
@@ -221,14 +242,16 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
             particles.current.forEach(p => {
                 if (mode.current === 'galaxy') {
                     p.x += p.vx; p.y += p.vy;
+                    // 反彈邏輯
                     if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
                     if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
                 } else {
+                    // 馬賽克歸位
                     p.x += (p.targetX - p.x) * 0.1;
                     p.y += (p.targetY - p.y) * 0.1;
                 }
                 ctx.save();
-                ctx.beginPath(); ctx.arc(p.x + p.size/2, p.y + p.size/2, p.size/2 - 2, 0, Math.PI * 2); ctx.clip();
+                ctx.beginPath(); ctx.arc(p.x + p.size/2, p.y + p.size/2, p.size/2, 0, Math.PI * 2); ctx.clip();
                 if (p.img.complete) ctx.drawImage(p.img, p.x, p.y, p.size, p.size);
                 else { ctx.fillStyle = '#333'; ctx.fillRect(p.x, p.y, p.size, p.size); }
                 ctx.restore();
@@ -350,6 +373,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   );
 };
 
+// --- Projector View ---
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes }) => {
     const [winner, setWinner] = useState(null);
     const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h => h.attendeeId === p.id));
@@ -433,6 +457,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                     <h2 className="text-3xl font-bold text-white/80 mb-6 tracking-[0.5em]">{t.winner}</h2>
                     {winner.photo ? <img src={winner.photo} className="w-80 h-80 rounded-full border-8 border-yellow-400 object-cover shadow-[0_0_100px_rgba(234,179,8,0.5)] mb-8"/> : <div className="w-64 h-64 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={100}/></div>}
                     <h1 className="text-8xl font-black text-white mb-4">{winner.name}</h1>
+                    {/* Fixed undefined check for table/seat display */}
                     {(winner.table || winner.seat) && <div className="bg-white/20 px-8 py-3 rounded-full text-2xl font-bold border border-white/30 flex items-center gap-3"><Armchair/> Table {winner.table || '-'} / Seat {winner.seat || '-'}</div>}
                     <p className="mt-10 text-white/30 text-sm">Press ENTER to continue</p>
                 </div>
@@ -441,6 +466,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     );
 };
 
+// --- Reception Dashboard ---
 const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan, drawHistory }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
@@ -467,6 +493,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
         lastTime.current = now;
         let targetId = data.id || (data.type==='new_reg' && attendees.find(x=>x.phone===normalizePhone(data.phone))?.id);
         const p = attendees.find(x=>x.id===targetId);
+        
         if(!p) setScanRes({type:'error', msg:t.notFound});
         else if(p.checkedIn) setScanRes({type:'duplicate', msg:t.duplicate, p});
         else {
@@ -509,7 +536,12 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
       e.preventDefault();
       if(!seatForm.table) return;
       if(db) await addDoc(collection(db, "seating_plan"), { 
-          name: seatForm.name, phone: normalizePhone(seatForm.phone), email: normalizeEmail(seatForm.email), dept: seatForm.dept, table: seatForm.table, seat: seatForm.seat 
+          name: seatForm.name, 
+          phone: normalizePhone(seatForm.phone), 
+          email: normalizeEmail(seatForm.email), 
+          dept: seatForm.dept, 
+          table: seatForm.table, 
+          seat: seatForm.seat 
       });
       setSeatForm({ name:'', phone:'', email: '', dept: '', table: '', seat: '' });
   };
@@ -527,22 +559,124 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
           <div className="flex gap-2 mb-6 bg-white/5 p-1 rounded-xl">
               {['scan','list','seating'].map(k=><button key={k} onClick={()=>{setTab(k);setIsScan(false)}} className={`px-4 py-2 rounded-lg text-sm ${tab===k?'bg-blue-600':'text-white/50'}`}>{t[k]}</button>)}
           </div>
-          {tab==='scan' && (<div className="w-full max-w-md">{isScan ? <div id="reader" className="bg-black rounded-xl overflow-hidden mb-4"></div> : <button onClick={()=>setIsScan(true)} className="w-full py-12 border-2 border-dashed border-white/20 rounded-xl text-white/50 flex flex-col items-center gap-2 hover:bg-white/5"><Camera size={32}/> {t.scanCam}</button>}{scanRes && <div className={`p-4 rounded-xl text-center font-bold ${scanRes.type==='success'?'bg-green-600':'bg-red-600'}`}>{scanRes.msg} {scanRes.p?.name}</div>}</div>)}
+          
+          {tab==='scan' && (
+              <div className="w-full max-w-md">
+                  {isScan ? <div id="reader" className="bg-black rounded-xl overflow-hidden mb-4"></div> : <button onClick={()=>setIsScan(true)} className="w-full py-12 border-2 border-dashed border-white/20 rounded-xl text-white/50 flex flex-col items-center gap-2 hover:bg-white/5"><Camera size={32}/> {t.scanCam}</button>}
+                  {scanRes && <div className={`p-4 rounded-xl text-center font-bold ${scanRes.type==='success'?'bg-green-600':'bg-red-600'}`}>{scanRes.msg} {scanRes.p?.name}</div>}
+              </div>
+          )}
+
           {tab==='list' && (
               <div className="w-full flex-1 flex flex-col h-[70vh]">
                   <div className="p-4 bg-white/5 rounded-t-xl border-b border-white/10">
-                      <div className="mb-4 relative"><Search className="absolute top-2.5 left-3 text-white/30" size={16}/><input placeholder={t.searchList} value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-white/10 rounded-lg pl-9 pr-4 py-2 text-sm outline-none"/></div>
-                      <form onSubmit={handleAddGuest} className="flex gap-2 flex-wrap mb-4 bg-white/5 p-2 rounded-lg"><div className="w-full text-xs text-white/40 mb-1">{t.addGuest}</div><input placeholder="Name" value={adminForm.name} onChange={e=>setAdminForm({...adminForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]"/><input placeholder="Phone" value={adminForm.phone} onChange={e=>setAdminForm({...adminForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none"/><input placeholder="Email" value={adminForm.email} onChange={e=>setAdminForm({...adminForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-32 text-xs outline-none"/><input placeholder="Dept" value={adminForm.dept} onChange={e=>setAdminForm({...adminForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none"/><input placeholder="T" value={adminForm.table} onChange={e=>setAdminForm({...adminForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/><input placeholder="S" value={adminForm.seat} onChange={e=>setAdminForm({...adminForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/><button className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button></form>
-                      <div className="flex justify-between text-xs text-white/50"><span>Total: {attendees.length}</span><span className="text-emerald-400">Arrived: {attendees.filter(x=>x.checkedIn).length}</span></div>
+                      <div className="mb-4 relative">
+                          <Search className="absolute top-2.5 left-3 text-white/30" size={16}/>
+                          <input placeholder={t.searchList} value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-white/10 rounded-lg pl-9 pr-4 py-2 text-sm outline-none"/>
+                      </div>
+                      
+                      <form onSubmit={handleAddGuest} className="flex gap-2 flex-wrap mb-4 bg-white/5 p-2 rounded-lg">
+                          <div className="w-full text-xs text-white/40 mb-1">{t.addGuest}</div>
+                          <input placeholder="Name" value={adminForm.name} onChange={e=>setAdminForm({...adminForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]"/>
+                          <input placeholder="Phone" value={adminForm.phone} onChange={e=>setAdminForm({...adminForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none"/>
+                          <input placeholder="Email" value={adminForm.email} onChange={e=>setAdminForm({...adminForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-32 text-xs outline-none"/>
+                          <input placeholder="Dept" value={adminForm.dept} onChange={e=>setAdminForm({...adminForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none"/>
+                          <input placeholder="T" value={adminForm.table} onChange={e=>setAdminForm({...adminForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/>
+                          <input placeholder="S" value={adminForm.seat} onChange={e=>setAdminForm({...adminForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/>
+                          <button className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
+                      </form>
+                      
+                      <div className="flex justify-between text-xs text-white/50">
+                          <span>Total: {attendees.length}</span>
+                          <span className="text-emerald-400">Arrived: {attendees.filter(x=>x.checkedIn).length}</span>
+                      </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-b-xl p-2"><table className="w-full text-left border-collapse"><thead className="text-xs text-white/40 uppercase border-b border-white/10"><tr><th className="p-2">Name</th><th className="p-2 hidden md:table-cell">Phone</th><th className="p-2 hidden md:table-cell">Email</th><th className="p-2 hidden md:table-cell">Dept</th><th className="p-2">Table</th><th className="p-2">Seat</th><th className="p-2 text-yellow-500">{t.wonPrize}</th><th className="p-2 text-center">Status</th><th className="p-2 text-right">Del</th></tr></thead><tbody className="divide-y divide-white/5">{filteredList.map(p=>{const winnerRec = drawHistory.find(h=>h.attendeeId===p.id);return (<tr key={p.id} className="hover:bg-white/5 text-sm"><td className="p-2 font-bold flex items-center gap-2">{p.photo ? <img src={p.photo} className="w-6 h-6 rounded-full object-cover"/> : <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center"><User size={12}/></div>}{p.name}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.phone}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.email}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.dept}</td><td className="p-2 font-mono text-blue-400">{p.table}</td><td className="p-2 font-mono">{p.seat}</td><td className="p-2 text-xs text-yellow-400 font-bold">{winnerRec ? winnerRec.prize : '-'}</td><td className="p-2 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-1 rounded text-[10px]">{t.checkin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-2 py-1 rounded text-[10px]">{t.cancel}</button>}</td><td className="p-2 text-right"><button onClick={()=>deletePerson(p.id)} className="p-1 text-white/30 hover:text-red-500"><Trash2 size={14}/></button></td></tr>);})}</tbody></table></div>
+
+                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-b-xl p-2">
+                      <table className="w-full text-left border-collapse">
+                          <thead className="text-xs text-white/40 uppercase border-b border-white/10">
+                              <tr>
+                                  <th className="p-2">Name</th>
+                                  <th className="p-2 hidden md:table-cell">Phone</th>
+                                  <th className="p-2 hidden md:table-cell">Email</th>
+                                  <th className="p-2 hidden md:table-cell">Dept</th>
+                                  <th className="p-2">Table</th>
+                                  <th className="p-2">Seat</th>
+                                  <th className="p-2 text-yellow-500">{t.wonPrize}</th>
+                                  <th className="p-2 text-center">Status</th>
+                                  <th className="p-2 text-right">Del</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                              {filteredList.map(p=>{
+                                  const winnerRec = drawHistory.find(h=>h.attendeeId===p.id);
+                                  return (
+                                      <tr key={p.id} className="hover:bg-white/5 text-sm">
+                                          <td className="p-2 font-bold flex items-center gap-2">{p.photo ? <img src={p.photo} className="w-6 h-6 rounded-full object-cover"/> : <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center"><User size={12}/></div>}{p.name}</td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.phone}</td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.email}</td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.dept}</td>
+                                          <td className="p-2 font-mono text-blue-400">{p.table}</td>
+                                          <td className="p-2 font-mono">{p.seat}</td>
+                                          <td className="p-2 text-xs text-yellow-400 font-bold">{winnerRec ? winnerRec.prize : '-'}</td>
+                                          <td className="p-2 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-1 rounded text-[10px]">{t.checkin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-2 py-1 rounded text-[10px]">{t.cancel}</button>}</td>
+                                          <td className="p-2 text-right"><button onClick={()=>deletePerson(p.id)} className="p-1 text-white/30 hover:text-red-500"><Trash2 size={14}/></button></td>
+                                      </tr>
+                                  );
+                              })}
+                          </tbody>
+                      </table>
+                  </div>
               </div>
           )}
+
           {tab==='seating' && (
               <div className="w-full flex-1 flex flex-col gap-4">
-                  <div className="flex gap-2"><input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none text-sm"/><label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label><button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button></div>
-                  <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2"><div className="w-full text-xs text-white/40 mb-1">{t.addSeat}</div><input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" /><input placeholder={t.phone} value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none" /><input placeholder="Email" value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" /><input placeholder="Dept" value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" /><input placeholder="T" value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" /><input placeholder="S" value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" /><button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button></div>
-                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2"><table className="w-full text-left border-collapse"><thead className="text-xs text-white/40 uppercase border-b border-white/10"><tr><th className="p-2">Name</th><th className="p-2 hidden md:table-cell">Phone</th><th className="p-2 hidden md:table-cell">Email</th><th className="p-2 hidden md:table-cell">Dept</th><th className="p-2">Table</th><th className="p-2">Seat</th><th className="p-2 text-right">Del</th></tr></thead><tbody className="divide-y divide-white/5">{filteredSeat.map(s=>(<tr key={s.id} className="hover:bg-white/5 text-sm"><td className="p-2 font-bold">{s.name}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.phone}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.email}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.dept}</td><td className="p-2 font-mono text-blue-400">{s.table}</td><td className="p-2 font-mono">{s.seat}</td><td className="p-2 text-right"><button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500 ml-2"><Trash2 size={14}/></button></td></tr>))}</tbody></table></div>
+                  <div className="flex gap-2">
+                      <input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none text-sm"/>
+                      <label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label>
+                      <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button>
+                  </div>
+                  
+                  <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2">
+                      <div className="w-full text-xs text-white/40 mb-1">{t.addSeat}</div>
+                      <input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" />
+                      <input placeholder={t.phone} value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none" />
+                      <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
+                      <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
+                      <input placeholder="T" value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
+                      <input placeholder="S" value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
+                      <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2">
+                      <table className="w-full text-left border-collapse">
+                          <thead className="text-xs text-white/40 uppercase border-b border-white/10">
+                              <tr>
+                                  <th className="p-2">Name</th>
+                                  <th className="p-2 hidden md:table-cell">Phone</th>
+                                  <th className="p-2 hidden md:table-cell">Email</th>
+                                  <th className="p-2 hidden md:table-cell">Dept</th>
+                                  <th className="p-2">Table</th>
+                                  <th className="p-2">Seat</th>
+                                  <th className="p-2 text-right">Del</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                              {filteredSeat.map(s=>(
+                                  <tr key={s.id} className="hover:bg-white/5 text-sm">
+                                      <td className="p-2 font-bold">{s.name}</td>
+                                      <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.phone}</td>
+                                      <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.email}</td>
+                                      <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.dept}</td>
+                                      <td className="p-2 font-mono text-blue-400">{s.table}</td>
+                                      <td className="p-2 font-mono">{s.seat}</td>
+                                      <td className="p-2 text-right"><button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500 ml-2"><Trash2 size={14}/></button></td>
+                                  </tr>
+                              ))}
+                          </tbody>
+                      </table>
+                  </div>
               </div>
           )}
        </main>
@@ -550,20 +684,53 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   );
 };
 
+// ... (PrizeDashboard, LoginView, GuestView - 保持 V58 邏輯) ...
 const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, setCurrentPrize }) => {
   const [prizes, setPrizes] = useState([]); 
   const [newPrizeName, setNewPrizeName] = useState("");
   const [qty, setQty] = useState("1");
   const [prizeSearch, setPrizeSearch] = useState(""); 
   const fileInputRef = useRef(null);
-  useEffect(() => { if (!db) return; const unsub = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => { setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); }); return () => unsub(); }, []);
-  const handleAddPrize = async (e) => { e.preventDefault(); if(newPrizeName && db) { const q = parseInt(qty) || 1; const batch = writeBatch(db); for(let i=1; i<=q; i++) { const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: q > 1 ? `${newPrizeName} #${i}` : newPrizeName, createdAt: new Date().toISOString() }); } await batch.commit(); setNewPrizeName(""); setQty("1"); } };
+
+  useEffect(() => {
+    if (!db) return;
+    const unsub = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => {
+        setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => unsub();
+  }, []);
+
+  const handleAddPrize = async (e) => {
+      e.preventDefault();
+      if(newPrizeName && db) {
+          const q = parseInt(qty) || 1;
+          const batch = writeBatch(db);
+          for(let i=1; i<=q; i++) {
+              const newRef = doc(collection(db, "prizes"));
+              batch.set(newRef, { name: q > 1 ? `${newPrizeName} #${i}` : newPrizeName, createdAt: new Date().toISOString() });
+          }
+          await batch.commit();
+          setNewPrizeName(""); setQty("1");
+      }
+  };
+
   const handleSelectPrize = async (prizeName) => { if(db) await setDoc(doc(db, "config", "settings"), { currentPrize: prizeName }, { merge: true }); };
   const handleDeletePrize = async (id) => { if(confirm('Delete prize?')) await deleteDoc(doc(db, "prizes", id)); };
-  const toggleWinnerStatus = async (winnerRecord) => { if(confirm('Reset this prize? Winner will be removed.')) { await deleteDoc(doc(db, "winners", winnerRecord.id)); await setDoc(doc(db, "config", "settings"), { currentPrize: winnerRecord.prize }, { merge: true }); } };
-  const handleResetAllWinners = async () => { if (confirm('確定要清空所有中獎紀錄嗎？此操作無法復原。\nAre you sure you want to clear ALL winners?')) { const batch = writeBatch(db); drawHistory.forEach(win => { batch.delete(doc(db, "winners", win.id)); }); batch.commit(); } };
-  const handleImportPrizes = async (e) => { const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split(/\r\n|\n/).filter(l=>l); const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l.trim(), createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!"); };
+  
+  const toggleWinnerStatus = async (winnerRecord) => { 
+      if(confirm('Reset this prize? Winner will be removed.')) {
+          await deleteDoc(doc(db, "winners", winnerRecord.id));
+          await setDoc(doc(db, "config", "settings"), { currentPrize: winnerRecord.prize }, { merge: true });
+      }
+  };
+  
+  const handleImportPrizes = async (e) => {
+      const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split(/\r\n|\n/).filter(l=>l);
+      const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l.trim(), createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!");
+  };
+
   const filteredPrizes = prizes.filter(p => p.name.toLowerCase().includes(prizeSearch.toLowerCase()));
+
   return (
     <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
       <header className="bg-neutral-900/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
@@ -574,10 +741,34 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
         <div className="w-full grid md:grid-cols-2 gap-8 h-full">
             <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex flex-col h-[700px]">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Gift size={20} className="text-red-500"/> {t.prizeList}</h3>
-                <form onSubmit={handleAddPrize} className="flex gap-2 mb-4"><input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-[2] bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:border-red-500 outline-none"/><input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} className="w-16 bg-black/50 border border-white/20 rounded-xl px-2 py-3 text-sm text-center text-white focus:border-red-500 outline-none"/><button className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-colors"><Plus size={20}/></button></form>
-                <div className="flex gap-2 mb-4 relative"><Search className="absolute top-3 left-3 text-white/30" size={16}/><input value={prizeSearch} onChange={e=>setPrizeSearch(e.target.value)} placeholder="Search Prize..." className="w-full bg-black/30 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none"/><label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Upload size={12}/> CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label></div>
+                <form onSubmit={handleAddPrize} className="flex gap-2 mb-4">
+                    <input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-[2] bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:border-red-500 outline-none"/>
+                    <input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} className="w-16 bg-black/50 border border-white/20 rounded-xl px-2 py-3 text-sm text-center text-white focus:border-red-500 outline-none"/>
+                    <button className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-colors"><Plus size={20}/></button>
+                </form>
+                <div className="flex gap-2 mb-4 relative">
+                    <Search className="absolute top-3 left-3 text-white/30" size={16}/>
+                    <input value={prizeSearch} onChange={e=>setPrizeSearch(e.target.value)} placeholder="Search Prize..." className="w-full bg-black/30 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none"/>
+                    <label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Upload size={12}/> CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label>
+                </div>
                 <div className="flex-1 overflow-y-auto pr-2 custom-scroll flex flex-col gap-2">
-                    {filteredPrizes.map(p=>{ const winnerRecord = drawHistory.find(h => h.prize === p.name); return ( <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${currentPrize===p.name?'bg-red-600/20 border-red-600':'bg-white/5 border-white/10'} ${winnerRecord ? 'opacity-70 bg-black/40' : ''}`}> <div className="flex flex-col"><span className={`font-bold ${currentPrize===p.name?'text-white':'text-white/70'}`}>{p.name}</span>{winnerRecord && <span className="text-xs text-yellow-400 flex items-center gap-1 mt-1 font-bold">🏆 {winnerRecord.name}</span>}</div><div className="flex gap-2">{currentPrize!==p.name && !winnerRecord && <button onClick={()=>handleSelectPrize(p.name)} className="px-3 py-1.5 bg-white/10 hover:bg-green-600 rounded-lg text-xs transition-colors">{t.select}</button>}{currentPrize===p.name && <span className="px-3 py-1.5 bg-red-600 rounded-lg text-xs font-bold">{t.active}</span>}{winnerRecord ? <button onClick={()=>toggleWinnerStatus(winnerRecord)} className="p-2 bg-white/10 hover:bg-yellow-600 rounded-lg transition-colors" title={t.resetWinner}><RotateCcw size={14}/></button> : <button onClick={()=>handleDeletePrize(p.id)} className="p-2 bg-white/10 hover:bg-red-600 rounded-lg transition-colors"><Trash2 size={14}/></button>}</div></div> ); })}
+                    {filteredPrizes.map(p=>{
+                        const winnerRecord = drawHistory.find(h => h.prize === p.name);
+                        return (
+                            <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${currentPrize===p.name?'bg-red-600/20 border-red-600':'bg-white/5 border-white/10'} ${winnerRecord ? 'opacity-70 bg-black/40' : ''}`}>
+                                <div className="flex flex-col">
+                                    <span className={`font-bold ${currentPrize===p.name?'text-white':'text-white/70'}`}>{p.name}</span>
+                                    {winnerRecord && <span className="text-xs text-yellow-400 flex items-center gap-1 mt-1 font-bold">🏆 {winnerRecord.name}</span>}
+                                </div>
+                                <div className="flex gap-2">
+                                    {currentPrize!==p.name && !winnerRecord && <button onClick={()=>handleSelectPrize(p.name)} className="px-3 py-1.5 bg-white/10 hover:bg-green-600 rounded-lg text-xs transition-colors">{t.select}</button>}
+                                    {currentPrize===p.name && <span className="px-3 py-1.5 bg-red-600 rounded-lg text-xs font-bold">{t.active}</span>}
+                                    {winnerRecord ? <button onClick={()=>toggleWinnerStatus(winnerRecord)} className="p-2 bg-white/10 hover:bg-yellow-600 rounded-lg transition-colors" title={t.resetWinner}><RotateCcw size={14}/></button>
+                                                  : <button onClick={()=>handleDeletePrize(p.id)} className="p-2 bg-white/10 hover:bg-red-600 rounded-lg transition-colors"><Trash2 size={14}/></button>}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
             <div className="flex flex-col gap-6">
