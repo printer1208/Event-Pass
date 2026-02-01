@@ -5,7 +5,7 @@ import {
   ArrowRight, UserPlus, LogOut, Globe, Mail,
   Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
   Cloud, Zap, Image as ImageIcon, MonitorPlay, Aperture, Gift,
-  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid, Briefcase, Hash
+  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid, Briefcase
 } from 'lucide-react';
 
 // --- Firebase ---
@@ -15,7 +15,10 @@ import {
   doc, onSnapshot, query, orderBy, deleteDoc, writeBatch
 } from "firebase/firestore";
 
-// ✅ Firebase Config
+// ==========================================
+// 1. 設定與常數 (Config & Constants)
+// ==========================================
+
 const firebaseConfig = {
   apiKey: "AIzaSyDUZeeaWvQZJORdDv4PdAHQK-SqXFIDsy4",
   authDomain: "eventpass-77522.firebaseapp.com",
@@ -36,26 +39,14 @@ try {
 
 const ADMIN_PASSWORD = "admin"; 
 
-// --- Style Injector ---
-const StyleInjector = () => {
-  useEffect(() => {
-    document.body.style.backgroundColor = "#000000";
-    document.body.style.color = "#ffffff";
-    document.body.style.margin = "0";
-    if (!document.querySelector('#tailwind-cdn')) {
-      const script = document.createElement('script');
-      script.id = 'tailwind-cdn';
-      script.src = "https://cdn.tailwindcss.com";
-      document.head.appendChild(script);
-    }
-  }, []);
-  return null;
-};
+// ==========================================
+// 2. 翻譯資料 (Defined EARLY to avoid ReferenceError)
+// ==========================================
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "CYBERTRUCK EDITION",
-    guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
+    title: "Tesla Annual Dinner", sub: "2025 最終穩定版",
+    guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台 (抽獎)", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
     name: "姓名", phone: "電話", email: "電郵", dept: "部門",
@@ -72,11 +63,12 @@ const translations = {
     markWin: "設為得主", resetWinner: "重置", select: "選取",
     importCSV: "導入 CSV", downloadTemp: "範本", importSuccess: "成功",
     table: "桌號", seat: "座號", addSeat: "新增座位", searchSeat: "搜尋姓名/電話/桌號...",
-    searchList: "搜尋名單...", seatTBD: "待定", wonPrize: "獲獎紀錄",
-    addGuest: "新增賓客"
+    searchList: "搜尋名單...", seatTBD: "待定 (請洽櫃台)", wonPrize: "獲獎紀錄",
+    addGuest: "新增賓客", clearAll: "清空所有得獎者",
+    drawn: "已抽出", winnerIs: "得主"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "CYBERTRUCK EDITION",
+    title: "Tesla Annual Dinner", sub: "2025 Stable",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Auto seat assignment",
@@ -95,9 +87,14 @@ const translations = {
     importCSV: "Import", downloadTemp: "Template", importSuccess: "Done",
     table: "Table", seat: "Seat", addSeat: "Add Seat", searchSeat: "Search...",
     searchList: "Search...", seatTBD: "TBD", wonPrize: "Prize",
-    addGuest: "Add Guest"
+    addGuest: "Add Guest", clearAll: "Clear All Winners",
+    drawn: "Drawn", winnerIs: "Winner"
   }
 };
+
+// ==========================================
+// 3. 工具函數 (Helpers)
+// ==========================================
 
 const normalizePhone = (p) => String(p || '').replace(/[^0-9]/g, '');
 const normalizeEmail = (e) => String(e || '').trim().toLowerCase();
@@ -122,6 +119,25 @@ const compressImage = (source, isFile = true) => {
     });
 };
 
+// ==========================================
+// 4. 基礎組件 (Base Components)
+// ==========================================
+
+const StyleInjector = () => {
+  useEffect(() => {
+    document.body.style.backgroundColor = "#000000";
+    document.body.style.color = "#ffffff";
+    document.body.style.margin = "0";
+    if (!document.querySelector('#tailwind-cdn')) {
+      const script = document.createElement('script');
+      script.id = 'tailwind-cdn';
+      script.src = "https://cdn.tailwindcss.com";
+      document.head.appendChild(script);
+    }
+  }, []);
+  return null;
+};
+
 const Confetti = () => {
   const canvasRef = useRef(null);
   useEffect(() => {
@@ -135,7 +151,6 @@ const Confetti = () => {
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
 };
 
-// --- Sound ---
 const SoundController = {
   ctx: null, oscList: [],
   init: function() { const AC = window.AudioContext || window.webkitAudioContext; if (AC) this.ctx = new AC(); },
@@ -172,7 +187,6 @@ const SoundController = {
   }
 };
 
-// --- Galaxy Canvas ---
 const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
     const canvasRef = useRef(null);
     const [isRunning, setIsRunning] = useState(false);
@@ -193,7 +207,6 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
 
         particles.current = list.map((p, i) => {
             const img = new Image();
-            // 🔥 V68 Fix: 加入 p.id 避免同名人員的頭像網址重複，導致快取問題
             img.src = p.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=random&color=fff&size=128&id=${p.id}`;
             const col = i % cols;
             const row = Math.floor(i / cols);
@@ -210,17 +223,15 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
             particles.current.forEach(p => {
                 if (mode.current === 'galaxy') {
                     p.x += p.vx; p.y += p.vy;
-                    // 反彈邏輯
                     if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
                     if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
                 } else {
-                    // 馬賽克歸位
                     p.x += (p.targetX - p.x) * 0.1;
                     p.y += (p.targetY - p.y) * 0.1;
                 }
                 ctx.save();
                 // Square Mosaic - No Gap
-                const gap = 0; // 改為 0 以去除間隔
+                const gap = 0;
                 const drawSize = p.size - gap;
                 ctx.beginPath(); 
                 ctx.rect(p.x, p.y, drawSize, drawSize); 
@@ -346,15 +357,19 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   );
 };
 
-// --- Projector View ---
+// --- Projector View (UI Overlap Fix & Duplicate Fix) ---
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes }) => {
     const [winner, setWinner] = useState(null);
+    const [isSaving, setIsSaving] = useState(false); // Lock for double press
+    
     const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h => h.attendeeId === p.id));
     const currentPrizeWinner = drawHistory.find(h => h.prize === currentPrize);
 
     useEffect(() => {
         const handleKey = async (e) => { 
-            if (winner && e.key === 'Enter') {
+            // 🔥 Fix: Prevent double press (Anti-Duplicate)
+            if (winner && e.key === 'Enter' && !isSaving) {
+                setIsSaving(true);
                 if (db) await addDoc(collection(db, "winners"), { 
                     attendeeId: winner.id, 
                     name: winner.name || "", 
@@ -365,7 +380,9 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                     prize: currentPrize || "Grand Prize", 
                     wonAt: new Date().toISOString() 
                 });
+                
                 setWinner(null);
+                
                 if (currentPrize && prizes.length > 0) {
                     const currentIdx = prizes.findIndex(p => p.name === currentPrize);
                     const nextAvailablePrize = prizes.find((p, idx) => idx > currentIdx && !drawHistory.some(h => h.prize === p.name));
@@ -373,11 +390,12 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                         await setDoc(doc(db, "config", "settings"), { currentPrize: nextAvailablePrize.name }, { merge: true });
                     }
                 }
+                setIsSaving(false);
             }
         };
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
-    }, [winner, prizes, drawHistory, currentPrize]);
+    }, [winner, prizes, drawHistory, currentPrize, isSaving]);
 
     const handleDrawEnd = async (w) => {
         setWinner(w);
@@ -431,7 +449,6 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                     {winner.photo ? <img src={winner.photo} className="w-80 h-80 rounded-full border-8 border-yellow-400 object-cover shadow-[0_0_100px_rgba(234,179,8,0.5)] mb-8"/> : <div className="w-64 h-64 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={100}/></div>}
                     <h1 className="text-8xl font-black text-white mb-4">{winner.name}</h1>
                     
-                    {/* 🔥 V68 Fix: 強制顯示座位，無資料則顯示 - */}
                     <div className="bg-white/20 px-8 py-3 rounded-full text-2xl font-bold border border-white/30 flex items-center gap-3">
                         <Armchair/> Table {winner.table || '-'} / Seat {winner.seat || '-'}
                     </div>
@@ -470,7 +487,6 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
         lastTime.current = now;
         let targetId = data.id || (data.type==='new_reg' && attendees.find(x=>x.phone===normalizePhone(data.phone))?.id);
         const p = attendees.find(x=>x.id===targetId);
-        
         if(!p) setScanRes({type:'error', msg:t.notFound});
         else if(p.checkedIn) setScanRes({type:'duplicate', msg:t.duplicate, p});
         else {
@@ -513,12 +529,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
       e.preventDefault();
       if(!seatForm.table) return;
       if(db) await addDoc(collection(db, "seating_plan"), { 
-          name: seatForm.name, 
-          phone: normalizePhone(seatForm.phone), 
-          email: normalizeEmail(seatForm.email), 
-          dept: seatForm.dept, 
-          table: seatForm.table, 
-          seat: seatForm.seat 
+          name: seatForm.name, phone: normalizePhone(seatForm.phone), email: normalizeEmail(seatForm.email), dept: seatForm.dept, table: seatForm.table, seat: seatForm.seat 
       });
       setSeatForm({ name:'', phone:'', email: '', dept: '', table: '', seat: '' });
   };
@@ -661,7 +672,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   );
 };
 
-// ... (PrizeDashboard, LoginView, GuestView - 保持 V67 邏輯) ...
+// ... (PrizeDashboard, App Main) ...
 const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, setCurrentPrize }) => {
   const [prizes, setPrizes] = useState([]); 
   const [newPrizeName, setNewPrizeName] = useState("");
