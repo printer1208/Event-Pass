@@ -15,10 +15,7 @@ import {
   doc, onSnapshot, query, orderBy, deleteDoc, writeBatch
 } from "firebase/firestore";
 
-// ==========================================
-// 1. 設定與常數 (Config & Constants)
-// ==========================================
-
+// ✅ Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyDUZeeaWvQZJORdDv4PdAHQK-SqXFIDsy4",
   authDomain: "eventpass-77522.firebaseapp.com",
@@ -187,6 +184,7 @@ const SoundController = {
   }
 };
 
+// --- Galaxy Canvas (Visuals Fix: Square Mosaic) ---
 const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
     const canvasRef = useRef(null);
     const [isRunning, setIsRunning] = useState(false);
@@ -199,25 +197,11 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
         const container = canvas?.parentElement;
         if (!canvas || !container || list.length === 0) return;
         const ctx = canvas.getContext('2d');
-        
-        // 🔥 V67: 優化佈局計算，確保 400 張照片都在畫面內
-        const resize = () => { 
-            canvas.width = container.clientWidth; 
-            canvas.height = container.clientHeight; 
-        };
-        resize();
-        window.addEventListener('resize', resize);
+        const resize = () => { canvas.width = container.clientWidth; canvas.height = container.clientHeight; };
+        resize(); window.addEventListener('resize', resize);
 
-        // 根據長寬比計算最佳行列數
-        const ratio = canvas.width / canvas.height;
-        const cols = Math.ceil(Math.sqrt(list.length * ratio));
-        const rows = Math.ceil(list.length / cols);
-        // 計算格子大小，取寬高的最小值以確保不溢出
-        const size = Math.min(canvas.width / cols, canvas.height / rows) * 0.9; // 0.9 為留白
-
-        // 偏移量，讓馬賽克置中
-        const xOffset = (canvas.width - cols * size) / 2;
-        const yOffset = (canvas.height - rows * size) / 2;
+        const cols = Math.ceil(Math.sqrt(list.length * 2.5));
+        const size = Math.max(30, canvas.width / cols);
 
         particles.current = list.map((p, i) => {
             const img = new Image();
@@ -226,14 +210,9 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
             const row = Math.floor(i / cols);
             return {
                 id: p.id,
-                x: xOffset + col * size, 
-                y: yOffset + row * size,
-                targetX: xOffset + col * size,
-                targetY: yOffset + row * size,
-                vx: 0, vy: 0,
-                size: size - 2, // 每個格子留一點縫隙
-                img: img,
-                data: p
+                x: (i % cols) * size * 2 + 50, y: Math.floor(i / cols) * size * 2 + 50,
+                targetX: (i % cols) * size * 2 + 50, targetY: Math.floor(i / cols) * size * 2 + 50,
+                vx: 0, vy: 0, size: size, img: img, data: p
             };
         });
 
@@ -242,18 +221,23 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
             particles.current.forEach(p => {
                 if (mode.current === 'galaxy') {
                     p.x += p.vx; p.y += p.vy;
-                    // 反彈邏輯
                     if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
                     if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
                 } else {
-                    // 馬賽克歸位
                     p.x += (p.targetX - p.x) * 0.1;
                     p.y += (p.targetY - p.y) * 0.1;
                 }
+                
+                // 🔥 修改：改用正方形繪製 (Square Mosaic)
                 ctx.save();
-                ctx.beginPath(); ctx.arc(p.x + p.size/2, p.y + p.size/2, p.size/2, 0, Math.PI * 2); ctx.clip();
-                if (p.img.complete) ctx.drawImage(p.img, p.x, p.y, p.size, p.size);
-                else { ctx.fillStyle = '#333'; ctx.fillRect(p.x, p.y, p.size, p.size); }
+                // 留一點間隙 gap
+                const gap = 2;
+                const drawSize = p.size - gap;
+                ctx.beginPath(); 
+                ctx.rect(p.x, p.y, drawSize, drawSize); // 使用 rect 畫正方形
+                ctx.clip();
+                if (p.img.complete) ctx.drawImage(p.img, p.x, p.y, drawSize, drawSize);
+                else { ctx.fillStyle = '#333'; ctx.fillRect(p.x, p.y, drawSize, drawSize); }
                 ctx.restore();
             });
             frameId.current = requestAnimationFrame(render);
@@ -293,84 +277,6 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
             {isRunning && <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none"><h1 className="text-8xl font-black text-white drop-shadow-[0_0_30px_rgba(232,33,39,0.8)] animate-pulse uppercase tracking-widest">{t.running}</h1></div>}
         </div>
     );
-};
-
-// ==========================================
-// 5. 頁面組件 (Views)
-// ==========================================
-
-const LoginView = ({ t, onLogin, onBack }) => {
-    const [pwd, setPwd] = useState('');
-    const inputRef = useRef(null);
-    useEffect(() => { const timer = setTimeout(() => { if(inputRef.current) inputRef.current.focus(); }, 100); return () => clearTimeout(timer); }, []);
-    const handleSubmit = (e) => { e.preventDefault(); if(pwd === ADMIN_PASSWORD) onLogin(); else { alert(t.wrongPwd); setPwd(''); } };
-    return (
-      <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
-        <div className="relative bg-neutral-900/80 border border-white/20 p-10 rounded-3xl w-full max-w-sm backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in duration-500 z-50">
-          <button onClick={onBack} className="text-white/50 hover:text-white mb-8 flex items-center transition-colors text-sm uppercase tracking-widest"><ChevronLeft size={16} className="mr-1"/> {t.back}</button>
-          <div className="text-center mb-8"><h2 className="text-3xl font-bold text-white mb-2 tracking-tight">{t.login}</h2></div>
-          <form onSubmit={handleSubmit}><input ref={inputRef} type="password" autoFocus value={pwd} onChange={(e) => setPwd(e.target.value)} placeholder={t.pwdPlace} className="w-full bg-white/5 border border-white/10 text-white p-4 rounded-xl mb-6 focus:ring-1 focus:ring-red-600 focus:border-red-600 outline-none transition-all text-center tracking-[0.3em] placeholder:tracking-normal placeholder:text-white/20"/><button type="submit" className="w-full bg-gradient-to-r from-red-700 to-red-600 hover:from-red-600 hover:to-red-500 text-white p-4 rounded-xl font-bold shadow-lg shadow-red-900/40 transition-all active:scale-95 uppercase tracking-widest text-sm">{t.enter}</button></form>
-        </div>
-      </div>
-    );
-};
-
-const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState({name:'',phone:'',email:'',company:'',table:'',seat:''});
-  const [photo, setPhoto] = useState(null);
-  const [err, setErr] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [newId, setNewId] = useState(null);
-  const [matchedSeat, setMatchSeat] = useState(null); 
-  const [isCameraOpen, setIsCameraOpen] = useState(false);
-  const videoRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const startCamera = async () => { setErr(''); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } }); setIsCameraOpen(true); setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100); } catch (e) { fileInputRef.current.click(); } };
-  const takePhoto = async () => { if(!videoRef.current) return; const canvas = document.createElement('canvas'); const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const xOffset = (videoRef.current.videoWidth - size) / 2; const yOffset = (videoRef.current.videoHeight - size) / 2; ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size); const rawBase64 = canvas.toDataURL('image/jpeg'); const stream = videoRef.current.srcObject; if(stream) stream.getTracks().forEach(track => track.stop()); setIsCameraOpen(false); const compressed = await compressImage(rawBase64, false); setPhoto(compressed); };
-  const handleFileChange = async (e) => { const file = e.target.files[0]; if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); } };
-  const handleSubmit = async (e) => { e.preventDefault(); setErr(''); if(!photo) { setErr(t.errPhoto); return; } setLoading(true); const cleanPhone = normalizePhone(form.phone); const cleanEmail = normalizeEmail(form.email); const dup = checkDuplicate(cleanPhone, cleanEmail); if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } let assignedTable = ""; let assignedSeat = ""; const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail); const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; } else if(phoneMatch) { assignedTable = phoneMatch.table; assignedSeat = phoneMatch.seat; } setMatchSeat({ table: assignedTable, seat: assignedSeat }); try { if (!db) throw new Error("Firebase not initialized"); const docRef = await addDoc(collection(db, "attendees"), { name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, table: assignedTable, seat: assignedSeat, photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() }); setNewId(docRef.id); setStep(2); } catch (error) { console.error(error); setErr("Network Error."); } setLoading(false); };
-  return (
-    <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
-      <div className="relative bg-neutral-900/80 border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl">
-        <div className="bg-gradient-to-r from-red-700 to-red-900 p-8 text-white text-center relative">
-          {!isCameraOpen && <button onClick={onBack} className="absolute left-6 top-6 text-white/70 hover:text-white z-10"><ChevronLeft/></button>}
-          <h2 className="text-2xl font-bold tracking-wide relative z-10">{t.regTitle}</h2>
-          <p className="text-white/80 text-xs mt-2 uppercase tracking-widest relative z-10">{t.regSub}</p>
-        </div>
-        <div className="p-8">
-          {step === 1 ? (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {err && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm flex items-center animate-pulse"><AlertTriangle size={16} className="mr-2"/>{err}</div>}
-              <div className="flex flex-col items-center mb-4">
-                  {isCameraOpen ? (
-                      <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black border-2 border-red-500 shadow-2xl"><video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" /><button type="button" onClick={takePhoto} className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-white border-4 border-gray-300 hover:scale-110 transition-transform"><Aperture className="w-full h-full p-2 text-black"/></button></div>
-                  ) : (
-                      <div className="flex flex-col items-center gap-3 w-full"><div className={`w-32 h-32 rounded-full border-2 border-dashed flex items-center justify-center overflow-hidden relative shadow-lg ${photo ? 'border-red-500' : 'border-white/30'}`}>{photo ? <img src={photo} alt="Selfie" className="w-full h-full object-cover" /> : <User size={48} className="text-white/20"/>}</div><div className="flex gap-2"><button type="button" onClick={startCamera} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><Camera size={14}/> {t.photoBtn}</button><button type="button" onClick={()=>fileInputRef.current.click()} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><ImageIcon size={14}/> {t.uploadBtn}</button></div></div>
-                  )}
-                  <input type="file" accept="image/*" capture="user" ref={fileInputRef} className="hidden" onChange={handleFileChange}/>
-              </div>
-              {!isCameraOpen && (
-                  <div className="space-y-3">
-                    {['name', 'phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
-                    {/* V58: No Seat Input for Guest */}
-                    <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
-                  </div>
-              )}
-            </form>
-          ) : (
-            <div className="text-center animate-in zoom-in duration-300">
-              <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)] relative"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({id: newId}))}`} alt="QR" className="w-48 h-48 object-contain"/><div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full shadow-lg flex items-center gap-1 font-bold tracking-wider"><Cloud size={10}/> SAVED</div></div>
-              <h3 className="text-2xl font-bold text-white mb-1">{form.name}</h3>
-              <div className="text-red-400 text-lg font-bold mb-4 flex justify-center items-center gap-2 bg-white/5 p-2 rounded-lg border border-red-500/30"><Armchair size={18}/> {matchedSeat && matchedSeat.table ? `${t.table} ${matchedSeat.table}` : form.table ? `${t.table} ${form.table}` : t.seatTBD} {matchedSeat && matchedSeat.seat ? ` / ${t.seat} ${matchedSeat.seat}` : form.seat ? ` / ${t.seat} ${form.seat}` : ""}</div>
-              <p className="text-white/50 text-sm mb-8 leading-relaxed">{t.showToStaff}</p>
-              <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:'',table:'',seat:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm">{t.next}</button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
 };
 
 // --- Projector View ---
@@ -457,8 +363,16 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                     <h2 className="text-3xl font-bold text-white/80 mb-6 tracking-[0.5em]">{t.winner}</h2>
                     {winner.photo ? <img src={winner.photo} className="w-80 h-80 rounded-full border-8 border-yellow-400 object-cover shadow-[0_0_100px_rgba(234,179,8,0.5)] mb-8"/> : <div className="w-64 h-64 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={100}/></div>}
                     <h1 className="text-8xl font-black text-white mb-4">{winner.name}</h1>
-                    {/* Fixed undefined check for table/seat display */}
-                    {(winner.table || winner.seat) && <div className="bg-white/20 px-8 py-3 rounded-full text-2xl font-bold border border-white/30 flex items-center gap-3"><Armchair/> Table {winner.table || '-'} / Seat {winner.seat || '-'}</div>}
+                    
+                    {/* 🔥 修正：強制顯示座位資訊，無資料顯示 - */}
+                    <div className="bg-white/20 px-10 py-4 rounded-2xl text-3xl font-bold border border-white/30 flex items-center gap-4 mb-8">
+                        <Armchair size={36} className="text-yellow-400"/> 
+                        <div>
+                             <span className="text-white/70 text-lg uppercase block tracking-wider text-left text-xs">Seating</span>
+                             <span>Table {winner.table || '-'} <span className="mx-2 opacity-50">|</span> Seat {winner.seat || '-'}</span>
+                        </div>
+                    </div>
+                    
                     <p className="mt-10 text-white/30 text-sm">Press ENTER to continue</p>
                 </div>
             )}
@@ -684,53 +598,21 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   );
 };
 
-// ... (PrizeDashboard, LoginView, GuestView - 保持 V58 邏輯) ...
+// ... (PrizeDashboard, LoginView, GuestView - 保持 V66 邏輯) ...
 const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, setCurrentPrize }) => {
   const [prizes, setPrizes] = useState([]); 
   const [newPrizeName, setNewPrizeName] = useState("");
   const [qty, setQty] = useState("1");
   const [prizeSearch, setPrizeSearch] = useState(""); 
   const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    if (!db) return;
-    const unsub = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => {
-        setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
-    return () => unsub();
-  }, []);
-
-  const handleAddPrize = async (e) => {
-      e.preventDefault();
-      if(newPrizeName && db) {
-          const q = parseInt(qty) || 1;
-          const batch = writeBatch(db);
-          for(let i=1; i<=q; i++) {
-              const newRef = doc(collection(db, "prizes"));
-              batch.set(newRef, { name: q > 1 ? `${newPrizeName} #${i}` : newPrizeName, createdAt: new Date().toISOString() });
-          }
-          await batch.commit();
-          setNewPrizeName(""); setQty("1");
-      }
-  };
-
+  useEffect(() => { if (!db) return; const unsub = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => { setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); }); return () => unsub(); }, []);
+  const handleAddPrize = async (e) => { e.preventDefault(); if(newPrizeName && db) { const q = parseInt(qty) || 1; const batch = writeBatch(db); for(let i=1; i<=q; i++) { const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: q > 1 ? `${newPrizeName} #${i}` : newPrizeName, createdAt: new Date().toISOString() }); } await batch.commit(); setNewPrizeName(""); setQty("1"); } };
   const handleSelectPrize = async (prizeName) => { if(db) await setDoc(doc(db, "config", "settings"), { currentPrize: prizeName }, { merge: true }); };
   const handleDeletePrize = async (id) => { if(confirm('Delete prize?')) await deleteDoc(doc(db, "prizes", id)); };
-  
-  const toggleWinnerStatus = async (winnerRecord) => { 
-      if(confirm('Reset this prize? Winner will be removed.')) {
-          await deleteDoc(doc(db, "winners", winnerRecord.id));
-          await setDoc(doc(db, "config", "settings"), { currentPrize: winnerRecord.prize }, { merge: true });
-      }
-  };
-  
-  const handleImportPrizes = async (e) => {
-      const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split(/\r\n|\n/).filter(l=>l);
-      const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l.trim(), createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!");
-  };
-
+  const toggleWinnerStatus = async (winnerRecord) => { if(confirm('Reset this prize? Winner will be removed.')) { await deleteDoc(doc(db, "winners", winnerRecord.id)); await setDoc(doc(db, "config", "settings"), { currentPrize: winnerRecord.prize }, { merge: true }); } };
+  const handleResetAllWinners = async () => { if (confirm('確定要清空所有中獎紀錄嗎？此操作無法復原。\nAre you sure you want to clear ALL winners?')) { const batch = writeBatch(db); drawHistory.forEach(win => { batch.delete(doc(db, "winners", win.id)); }); batch.commit(); } };
+  const handleImportPrizes = async (e) => { const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split(/\r\n|\n/).filter(l=>l); const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l.trim(), createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!"); };
   const filteredPrizes = prizes.filter(p => p.name.toLowerCase().includes(prizeSearch.toLowerCase()));
-
   return (
     <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
       <header className="bg-neutral-900/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
@@ -741,34 +623,10 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
         <div className="w-full grid md:grid-cols-2 gap-8 h-full">
             <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex flex-col h-[700px]">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Gift size={20} className="text-red-500"/> {t.prizeList}</h3>
-                <form onSubmit={handleAddPrize} className="flex gap-2 mb-4">
-                    <input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-[2] bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:border-red-500 outline-none"/>
-                    <input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} className="w-16 bg-black/50 border border-white/20 rounded-xl px-2 py-3 text-sm text-center text-white focus:border-red-500 outline-none"/>
-                    <button className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-colors"><Plus size={20}/></button>
-                </form>
-                <div className="flex gap-2 mb-4 relative">
-                    <Search className="absolute top-3 left-3 text-white/30" size={16}/>
-                    <input value={prizeSearch} onChange={e=>setPrizeSearch(e.target.value)} placeholder="Search Prize..." className="w-full bg-black/30 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none"/>
-                    <label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Upload size={12}/> CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label>
-                </div>
+                <form onSubmit={handleAddPrize} className="flex gap-2 mb-4"><input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-[2] bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:border-red-500 outline-none"/><input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} className="w-16 bg-black/50 border border-white/20 rounded-xl px-2 py-3 text-sm text-center text-white focus:border-red-500 outline-none"/><button className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-colors"><Plus size={20}/></button></form>
+                <div className="flex gap-2 mb-4 relative"><Search className="absolute top-3 left-3 text-white/30" size={16}/><input value={prizeSearch} onChange={e=>setPrizeSearch(e.target.value)} placeholder="Search Prize..." className="w-full bg-black/30 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none"/><label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Upload size={12}/> CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label></div>
                 <div className="flex-1 overflow-y-auto pr-2 custom-scroll flex flex-col gap-2">
-                    {filteredPrizes.map(p=>{
-                        const winnerRecord = drawHistory.find(h => h.prize === p.name);
-                        return (
-                            <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${currentPrize===p.name?'bg-red-600/20 border-red-600':'bg-white/5 border-white/10'} ${winnerRecord ? 'opacity-70 bg-black/40' : ''}`}>
-                                <div className="flex flex-col">
-                                    <span className={`font-bold ${currentPrize===p.name?'text-white':'text-white/70'}`}>{p.name}</span>
-                                    {winnerRecord && <span className="text-xs text-yellow-400 flex items-center gap-1 mt-1 font-bold">🏆 {winnerRecord.name}</span>}
-                                </div>
-                                <div className="flex gap-2">
-                                    {currentPrize!==p.name && !winnerRecord && <button onClick={()=>handleSelectPrize(p.name)} className="px-3 py-1.5 bg-white/10 hover:bg-green-600 rounded-lg text-xs transition-colors">{t.select}</button>}
-                                    {currentPrize===p.name && <span className="px-3 py-1.5 bg-red-600 rounded-lg text-xs font-bold">{t.active}</span>}
-                                    {winnerRecord ? <button onClick={()=>toggleWinnerStatus(winnerRecord)} className="p-2 bg-white/10 hover:bg-yellow-600 rounded-lg transition-colors" title={t.resetWinner}><RotateCcw size={14}/></button>
-                                                  : <button onClick={()=>handleDeletePrize(p.id)} className="p-2 bg-white/10 hover:bg-red-600 rounded-lg transition-colors"><Trash2 size={14}/></button>}
-                                </div>
-                            </div>
-                        );
-                    })}
+                    {filteredPrizes.map(p=>{ const winnerRecord = drawHistory.find(h => h.prize === p.name); return ( <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${currentPrize===p.name?'bg-red-600/20 border-red-600':'bg-white/5 border-white/10'} ${winnerRecord ? 'opacity-70 bg-black/40' : ''}`}> <div className="flex flex-col"><span className={`font-bold ${currentPrize===p.name?'text-white':'text-white/70'}`}>{p.name}</span>{winnerRecord && <span className="text-xs text-yellow-400 flex items-center gap-1 mt-1 font-bold">🏆 {winnerRecord.name}</span>}</div><div className="flex gap-2">{currentPrize!==p.name && !winnerRecord && <button onClick={()=>handleSelectPrize(p.name)} className="px-3 py-1.5 bg-white/10 hover:bg-green-600 rounded-lg text-xs transition-colors">{t.select}</button>}{currentPrize===p.name && <span className="px-3 py-1.5 bg-red-600 rounded-lg text-xs font-bold">{t.active}</span>}{winnerRecord ? <button onClick={()=>toggleWinnerStatus(winnerRecord)} className="p-2 bg-white/10 hover:bg-yellow-600 rounded-lg transition-colors" title={t.resetWinner}><RotateCcw size={14}/></button> : <button onClick={()=>handleDeletePrize(p.id)} className="p-2 bg-white/10 hover:bg-red-600 rounded-lg transition-colors"><Trash2 size={14}/></button>}</div></div> ); })}
                 </div>
             </div>
             <div className="flex flex-col gap-6">
