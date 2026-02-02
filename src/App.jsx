@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 視覺平衡版",
+    title: "Tesla Annual Dinner", sub: "2025 橫向資訊版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
@@ -74,7 +74,7 @@ const translations = {
     winnerLabel: "得主"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Visual Balance",
+    title: "Tesla Annual Dinner", sub: "2025 Horizontal Info",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Auto seat assignment",
@@ -543,7 +543,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
   );
 };
 
-// 🔥 Projector View: Fixed Layout with Bottom Button (V112: Visual Balance)
+// 🔥 Projector View: Fixed Layout with Bottom Button (V113: Horizontal Header, Clean Winner)
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes }) => {
     const [winner, setWinner] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -602,12 +602,13 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
             {/* 1. Header (15%) - Fixed & Consistent Font Size */}
             <div className="flex-none h-[15vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-b border-white/10 flex items-center justify-between px-8 relative shadow-xl w-full">
                  <button onClick={onBack} className="text-white/30 hover:text-white transition-colors mr-6"><ChevronLeft size={32}/></button>
-                 <div className="flex-1 flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 w-full">
+                 {/* 🔥 V113: Forced Row Layout */}
+                 <div className="flex-1 flex flex-row items-center justify-center gap-6 w-full">
                     {/* 🔥 V109: Dynamic Header Label */}
                     <span className="text-yellow-500 font-bold tracking-widest uppercase text-5xl whitespace-nowrap">
                         {winner ? t.winnerLabel : t.currentPrize}:
                     </span>
-                    {/* 🔥 V106: Fixed text-6xl for consistency */}
+                    {/* 🔥 V106: Fixed text-5xl for consistency */}
                     <h1 className="text-5xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] leading-tight text-center whitespace-nowrap pb-1">
                         {currentPrize || "WAITING..."}
                     </h1>
@@ -618,25 +619,31 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
             {/* 2. Canvas Area (Flex 1) - Maximize Space */}
             <div className="flex-1 w-full relative z-10 bg-black overflow-hidden flex items-center justify-center">
                 {winner ? (
-                     // 🔥 V112: Clean & Balanced Winner Display (Center of screen, no jump)
+                     // 🔥 V113: Horizontal Info Layout (Shrunk by 30% from V112)
                     <div className="flex flex-col items-center justify-center h-full w-full relative z-50">
                         <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
 
-                        {/* Photo - Big but balanced */}
+                        {/* Photo stays top */}
                         <div className="relative mb-6">
                             <div className="absolute inset-0 bg-yellow-500/30 blur-3xl rounded-full animate-pulse"></div>
-                            {winner.photo ? <img src={winner.photo} className="relative w-96 h-96 rounded-full border-8 border-yellow-400 object-cover shadow-2xl"/> : <div className="w-96 h-96 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={150}/></div>}
+                            {winner.photo ? <img src={winner.photo} className="relative w-80 h-80 rounded-full border-8 border-yellow-400 object-cover shadow-2xl"/> : <div className="w-80 h-80 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={120}/></div>}
                         </div>
                         
-                        {/* 🔥 V112: Smaller Font for Name (6xl) */}
-                        <h1 className="text-6xl font-black text-white mb-6 drop-shadow-lg tracking-wide">{winner.name}</h1>
-                        
-                        {/* 🔥 V112: Smaller Font for Seat (3xl) */}
-                        <div className="bg-white/10 backdrop-blur-md px-10 py-4 rounded-full text-3xl font-bold border border-white/20 flex items-center gap-6 text-yellow-100 shadow-xl">
-                            <Armchair size={32}/> 
-                            <span>Table {winner.table || '-'}</span>
-                            <span className="w-1 h-8 bg-white/20"></span>
-                            <span>Seat {winner.seat || '-'}</span>
+                        {/* 🔥 V114: Scaled Down Info Row */}
+                        <div className="flex flex-row items-center justify-center gap-6 bg-white/10 backdrop-blur-md px-12 py-4 rounded-full border border-white/20 shadow-xl mt-4">
+                            {/* Name */}
+                            <h1 className="text-5xl font-black text-white tracking-wide">{winner.name}</h1>
+                            
+                            {/* Vertical Divider */}
+                            <div className="w-1 h-12 bg-white/20 rounded-full"></div>
+
+                            {/* Seat Info */}
+                            <div className="flex items-center gap-4 text-3xl font-bold text-yellow-400">
+                                <Armchair size={32} className="text-white/60"/> 
+                                <span>Table {winner.table || '-'}</span>
+                                <span className="text-white/20">/</span>
+                                <span>Seat {winner.seat || '-'}</span>
+                            </div>
                         </div>
                         
                         <p className="absolute bottom-4 text-white/30 text-sm animate-pulse">{t.nextRound}</p>
@@ -941,78 +948,6 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                           <td className="p-2 text-xs text-yellow-400 font-bold">{winnerRec ? winnerRec.prize : '-'}</td>
                                           <td className="p-2 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-1 rounded text-[10px]">{t.checkin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-2 py-1 rounded text-[10px]">{t.cancel}</button>}</td>
                                           <td className="p-2 text-right"><button onClick={()=>deletePerson(p.id)} className="p-1 text-white/30 hover:text-red-500"><Trash2 size={14}/></button></td>
-                                      </tr>
-                                  );
-                              })}
-                          </tbody>
-                      </table>
-                  </div>
-              </div>
-          )}
-
-          {tab==='seating' && (
-              <div className="w-full flex-1 flex flex-col gap-4">
-                  <div className="flex gap-2">
-                      <input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none text-sm"/>
-                      <label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label>
-                      <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button>
-                      {/* 🔥 V85: Dummy Seating Button */}
-                      <button onClick={handleGenerateDummySeating} className="bg-purple-600/20 text-purple-400 border border-purple-600/50 px-3 py-2 rounded-lg text-xs hover:bg-purple-600 hover:text-white transition-colors flex items-center gap-1"><Database size={14}/> {t.genDummySeat}</button>
-                      {/* 🔥 V87: Clear Seat */}
-                      <button onClick={handleClearSeating} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1"><Trash2 size={14}/></button>
-                  </div>
-                  
-                  <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2">
-                      <div className="w-full text-xs text-white/40 mb-1">{t.addSeat}</div>
-                      <input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" />
-                      <input placeholder={t.phone} value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none" />
-                      <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
-                      <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
-                      <input placeholder={t.table} value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
-                      <input placeholder={t.seat} value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
-                      <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2">
-                      <table className="w-full text-left border-collapse">
-                          <thead className="text-xs text-white/40 uppercase border-b border-white/10">
-                              <tr>
-                                  <th className="p-2">Name</th>
-                                  <th className="p-2 hidden md:table-cell">Phone</th>
-                                  <th className="p-2 hidden md:table-cell">Email</th>
-                                  <th className="p-2 hidden md:table-cell">Dept</th>
-                                  <th className="p-2">Table</th>
-                                  <th className="p-2">Seat</th>
-                                  {/* 🔥 V89: New Status Column */}
-                                  <th className="p-2 text-center">{t.status}</th>
-                                  <th className="p-2 text-right">Del</th>
-                              </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/5">
-                              {filteredSeat.map(s=>{
-                                  // 🔥 V89: Find attendee status
-                                  const match = attendees.find(a => 
-                                      (s.phone && normalizePhone(a.phone) === normalizePhone(s.phone)) || 
-                                      (s.email && normalizeEmail(a.email) === normalizeEmail(s.email))
-                                  );
-                                  const isCheckedIn = match?.checkedIn;
-                                  
-                                  return (
-                                      <tr key={s.id} className="hover:bg-white/5 text-sm">
-                                          <td className="p-2 font-bold">{s.name}</td>
-                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.phone}</td>
-                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.email}</td>
-                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.dept}</td>
-                                          <td className="p-2 font-mono text-blue-400">{s.table}</td>
-                                          <td className="p-2 font-mono">{s.seat}</td>
-                                          {/* 🔥 V89: Status Indicator */}
-                                          <td className="p-2 text-center">
-                                              {isCheckedIn ? 
-                                                  <span className="text-green-400 bg-green-400/20 px-2 py-1 rounded text-xs border border-green-400/50">已到場</span> : 
-                                                  <span className="text-white/30 text-xs border border-white/10 px-2 py-1 rounded">未簽到</span>
-                                              }
-                                          </td>
-                                          <td className="p-2 text-right"><button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500 ml-2"><Trash2 size={14}/></button></td>
                                       </tr>
                                   );
                               })}
