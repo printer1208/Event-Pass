@@ -5,7 +5,7 @@ import {
   ArrowRight, UserPlus, LogOut, Globe, Mail,
   Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
   Cloud, Zap, Image as ImageIcon, MonitorPlay, Aperture, Gift,
-  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid, Briefcase, Hash
+  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid, Briefcase, Hash, Database
 } from 'lucide-react';
 
 // --- Firebase ---
@@ -45,8 +45,8 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "",
-    guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台 (抽獎)", projectorMode: "大螢幕投影",
+    title: "Tesla Annual Dinner", sub: "2025 測試增強版",
+    guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
     name: "姓名", phone: "電話", email: "電郵", dept: "部門",
@@ -65,10 +65,11 @@ const translations = {
     table: "桌號", seat: "座號", addSeat: "新增座位", searchSeat: "搜尋姓名/電話/桌號...",
     searchList: "搜尋名單...", seatTBD: "待定 (請洽櫃台)", wonPrize: "獲獎紀錄",
     addGuest: "新增賓客", clearAll: "清空所有得獎者",
-    drawn: "已抽出", winnerIs: "得主", noPhoto: "無照片"
+    drawn: "已抽出", winnerIs: "得主", noPhoto: "無照片",
+    genDummy: "生成 100 筆測試資料"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "",
+    title: "Tesla Annual Dinner", sub: "2025 Test Edition",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Auto seat assignment",
@@ -88,7 +89,8 @@ const translations = {
     table: "Table", seat: "Seat", addSeat: "Add Seat", searchSeat: "Search...",
     searchList: "Search...", seatTBD: "TBD", wonPrize: "Prize",
     addGuest: "Add Guest", clearAll: "Clear All Winners",
-    drawn: "Drawn", winnerIs: "Winner", noPhoto: "No Photo"
+    drawn: "Drawn", winnerIs: "Winner", noPhoto: "No Photo",
+    genDummy: "Gen 100 Dummy Data"
   }
 };
 
@@ -198,7 +200,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
         
         const ctx = canvas.getContext('2d');
         const resize = () => { 
-            // 確保 Canvas 填滿容器
+            // V82: Use full container size
             canvas.width = container.clientWidth; 
             canvas.height = container.clientHeight; 
             initParticles();
@@ -210,20 +212,20 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
             const area = w * h;
             const n = list.length;
             
-            // 計算最佳無縫排列
+            // Calculate best square size to fill area
             const ratio = w / h;
             let cols = Math.ceil(Math.sqrt(n * ratio));
             let rows = Math.ceil(n / cols);
             
-            // 確保格子足夠
+            // Adjust to ensure fit
             while (cols * rows < n) {
                 if (w / cols < h / rows) cols++;
                 else rows++;
             }
 
-            const size = Math.ceil(Math.max(w / cols, h / rows));
+            const size = Math.floor(Math.min(w / cols, h / rows));
             
-            // 置中
+            // Center
             const totalW = cols * size;
             const totalH = rows * size;
             const xOffset = (w - totalW) / 2;
@@ -232,8 +234,10 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
             particles.current = list.map((p, i) => {
                 const img = new Image();
                 img.src = p.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=random&color=fff&size=128&id=${p.id}`;
+                
                 const col = i % cols;
                 const row = Math.floor(i / cols);
+
                 return {
                     id: p.id,
                     x: xOffset + col * size, 
@@ -278,7 +282,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
                      if (p.img.complete) ctx.drawImage(p.img, -currentSize/2, -currentSize/2, currentSize, currentSize);
                      else { ctx.fillStyle = '#333'; ctx.fillRect(-currentSize/2, -currentSize/2, currentSize, currentSize); }
                 } else {
-                     // 馬賽克：無縫
+                     // Seamless Mosaic (gap=0)
                      const gap = 0; 
                      ctx.beginPath();
                      ctx.rect(p.x, p.y, p.size - gap, p.size - gap);
@@ -299,6 +303,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
         setIsRunning(true);
         mode.current = 'galaxy';
         particles.current.forEach(p => { 
+            // Random High Speed
             p.vx = (Math.random() - 0.5) * 40; 
             p.vy = (Math.random() - 0.5) * 40; 
         });
@@ -387,6 +392,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
               {!isCameraOpen && (
                   <div className="space-y-3">
                     {['name', 'phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
+                    {/* V58: No Seat Input for Guest */}
                     <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
                   </div>
               )}
@@ -406,7 +412,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   );
 };
 
-// 🔥 Projector View: 3-Part Layout with Bottom Button (V82)
+// 🔥 Projector View: Fixed Layout with Bottom Button
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes }) => {
     const [winner, setWinner] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -559,6 +565,31 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   const toggleCancelCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: false, checkInTime: null }); };
   const deletePerson = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "attendees", id)); };
   const downloadTemplate = () => { const content = "\uFEFFName,Phone,Email,Dept,Table,Seat\nElon Musk,0912345678,elon@tesla.com,Engineering,1,A"; const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "seating_template.csv"; link.click(); };
+  
+  // 🔥 V83: Dummy Generator
+  const handleGenerateDummy = async () => {
+    if (!confirm("確定要生成 100 筆測試資料嗎？")) return;
+    const batch = writeBatch(db);
+    for (let i = 1; i <= 100; i++) {
+        const ref = doc(collection(db, "attendees"));
+        batch.set(ref, {
+            name: `Guest ${i}`,
+            phone: `9000${String(i).padStart(4, '0')}`,
+            email: `guest${i}@test.com`,
+            dept: `Dept ${Math.ceil(i / 20)}`,
+            table: `${Math.ceil(i / 10)}`,
+            seat: String.fromCharCode(65 + ((i - 1) % 10)),
+            // Photo with 1-100 number
+            photo: `https://ui-avatars.com/api/?name=${i}&background=random&color=fff&size=128&length=3&font-size=0.5`,
+            checkedIn: true,
+            checkInTime: new Date().toISOString(),
+            createdAt: new Date().toISOString()
+        });
+    }
+    await batch.commit();
+    alert("已生成 100 筆測試資料！");
+  };
+
   return (
     <div className="min-h-[100dvh] bg-neutral-950 text-white flex flex-col">
        <header className="p-4 border-b border-white/10 flex justify-between items-center bg-neutral-900"><div className="font-bold text-lg flex gap-2"><QrCode/> Reception</div><button onClick={onLogout}><LogOut size={18}/></button></header>
@@ -568,7 +599,11 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
           {tab==='list' && (
               <div className="w-full flex-1 flex flex-col h-[70vh]">
                   <div className="p-4 bg-white/5 rounded-t-xl border-b border-white/10">
-                      <div className="mb-4 relative"><Search className="absolute top-2.5 left-3 text-white/30" size={16}/><input placeholder={t.searchList} value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-white/10 rounded-lg pl-9 pr-4 py-2 text-sm outline-none"/></div>
+                      <div className="mb-4 flex gap-2">
+                          <div className="relative flex-1"><Search className="absolute top-2.5 left-3 text-white/30" size={16}/><input placeholder={t.searchList} value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-white/10 rounded-lg pl-9 pr-4 py-2 text-sm outline-none"/></div>
+                          {/* 🔥 V83: Dummy Button */}
+                          <button onClick={handleGenerateDummy} className="bg-yellow-600/20 text-yellow-400 border border-yellow-600/50 px-3 py-2 rounded-lg text-xs hover:bg-yellow-600 hover:text-white transition-colors flex items-center gap-1"><Database size={14}/> {t.genDummy}</button>
+                      </div>
                       <form onSubmit={handleAddGuest} className="flex gap-2 flex-wrap mb-4 bg-white/5 p-2 rounded-lg"><div className="w-full text-xs text-white/40 mb-1">{t.addGuest}</div><input placeholder="Name" value={adminForm.name} onChange={e=>setAdminForm({...adminForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]"/><input placeholder="Phone" value={adminForm.phone} onChange={e=>setAdminForm({...adminForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none"/><input placeholder="Email" value={adminForm.email} onChange={e=>setAdminForm({...adminForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-32 text-xs outline-none"/><input placeholder="Dept" value={adminForm.dept} onChange={e=>setAdminForm({...adminForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none"/><input placeholder="T" value={adminForm.table} onChange={e=>setAdminForm({...adminForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/><input placeholder="S" value={adminForm.seat} onChange={e=>setAdminForm({...adminForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/><button className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button></form>
                       <div className="flex justify-between text-xs text-white/50"><span>Total: {attendees.length}</span><span className="text-emerald-400">Arrived: {attendees.filter(x=>x.checkedIn).length}</span></div>
                   </div>
@@ -586,6 +621,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
     </div>
   );
 };
+
 const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, setCurrentPrize }) => {
   const [prizes, setPrizes] = useState([]); 
   const [newPrizeName, setNewPrizeName] = useState("");
