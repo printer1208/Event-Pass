@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 座位測試版",
+    title: "Tesla Annual Dinner", sub: "2025 資料管理版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
@@ -66,11 +66,10 @@ const translations = {
     searchList: "搜尋名單...", seatTBD: "待定 (請洽櫃台)", wonPrize: "獲獎紀錄",
     addGuest: "新增賓客", clearAll: "清空所有得獎者",
     drawn: "已抽出", winnerIs: "得主", noPhoto: "無照片",
-    genDummy: "生成 100 筆測試賓客", clearGuests: "清空所有賓客", confirmClearGuests: "確定要刪除所有賓客資料嗎？這將無法復原。",
-    genDummySeat: "生成 50 筆測試座位"
+    genDummy: "生成 100 筆測試資料", clearGuests: "清空所有賓客", confirmClearGuests: "確定要刪除所有賓客資料嗎？這將無法復原。"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Seat Test",
+    title: "Tesla Annual Dinner", sub: "2025 Data Manager",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Auto seat assignment",
@@ -91,8 +90,7 @@ const translations = {
     searchList: "Search...", seatTBD: "TBD", wonPrize: "Prize",
     addGuest: "Add Guest", clearAll: "Clear All Winners",
     drawn: "Drawn", winnerIs: "Winner", noPhoto: "No Photo",
-    genDummy: "Gen 100 Dummy Guests", clearGuests: "Clear All Guests", confirmClearGuests: "Are you sure to delete ALL guests? This cannot be undone.",
-    genDummySeat: "Gen 50 Dummy Seats"
+    genDummy: "Gen 100 Dummy", clearGuests: "Clear All Guests", confirmClearGuests: "Are you sure to delete ALL guests? This cannot be undone."
   }
 };
 
@@ -187,7 +185,7 @@ const SoundController = {
   }
 };
 
-// --- Galaxy Canvas ---
+// --- Galaxy Canvas (Visuals) ---
 const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
     const canvasRef = useRef(null);
     const [isRunning, setIsRunning] = useState(false);
@@ -334,7 +332,7 @@ const LoginView = ({ t, onLogin, onBack }) => {
 
 const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState({name:'',phone:'',email:'',company:''});
+  const [form, setForm] = useState({name:'',phone:'',email:'',company:'',table:'',seat:''});
   const [photo, setPhoto] = useState(null);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
@@ -390,7 +388,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   );
 };
 
-// 🔥 Projector View: 3-Part Layout with Bottom Button
+// 🔥 Projector View: Fixed Layout with Bottom Button
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes }) => {
     const [winner, setWinner] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -627,7 +625,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
     let count = 0;
     for (let i = 1; i <= 100; i++) {
         const phone = `9000${String(i).padStart(4, '0')}`;
-        const email = `guest${i}@test.com`;
+        const email = i <= 50 ? `seat${i}@test.com` : `guest${i}@test.com`;
         
         // Check if exists
         const exists = attendees.some(a => normalizePhone(a.phone) === phone || normalizeEmail(a.email) === email);
