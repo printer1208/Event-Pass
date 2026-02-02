@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 資料管理版",
+    title: "Tesla Annual Dinner", sub: "2025 TESLA PRO",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
@@ -66,10 +66,13 @@ const translations = {
     searchList: "搜尋名單...", seatTBD: "待定 (請洽櫃台)", wonPrize: "獲獎紀錄",
     addGuest: "新增賓客", clearAll: "清空所有得獎者",
     drawn: "已抽出", winnerIs: "得主", noPhoto: "無照片",
-    genDummy: "生成 100 筆測試資料", clearGuests: "清空所有賓客", confirmClearGuests: "確定要刪除所有賓客資料嗎？這將無法復原。"
+    genDummy: "生成 100 筆測試資料", clearGuests: "清空所有賓客", confirmClearGuests: "確定要刪除所有賓客資料嗎？這將無法復原。",
+    genDummySeat: "生成 100 筆測試座位", clearSeats: "清空座位表", confirmClearSeats: "確定要清空所有座位表嗎？",
+    checkSeat: "查詢座位", inputHint: "輸入電話或 Email 查詢", backToReg: "返回登記",
+    seatResult: "查詢結果", status: "狀態", notCheckedIn: "未簽到"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Data Manager",
+    title: "Tesla Annual Dinner", sub: "2025 TESLA PRO",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Auto seat assignment",
@@ -90,7 +93,10 @@ const translations = {
     searchList: "Search...", seatTBD: "TBD", wonPrize: "Prize",
     addGuest: "Add Guest", clearAll: "Clear All Winners",
     drawn: "Drawn", winnerIs: "Winner", noPhoto: "No Photo",
-    genDummy: "Gen 100 Dummy", clearGuests: "Clear All Guests", confirmClearGuests: "Are you sure to delete ALL guests? This cannot be undone."
+    genDummy: "Gen 100 Dummy", clearGuests: "Clear All Guests", confirmClearGuests: "Are you sure to delete ALL guests? This cannot be undone.",
+    genDummySeat: "Gen 100 Dummy Seats", clearSeats: "Clear Seats", confirmClearSeats: "Delete ALL seating plan?",
+    checkSeat: "Check Seat", inputHint: "Enter Phone or Email", backToReg: "Back to Register",
+    seatResult: "Result", status: "Status", notCheckedIn: "Not In"
   }
 };
 
@@ -185,7 +191,7 @@ const SoundController = {
   }
 };
 
-// --- Galaxy Canvas (Visuals) ---
+// --- Galaxy Canvas (Visuals: Tesla Big Text) ---
 const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
     const canvasRef = useRef(null);
     const [isRunning, setIsRunning] = useState(false);
@@ -208,30 +214,79 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
             const w = canvas.width;
             const h = canvas.height;
             const n = list.length;
-            const ratio = w / h;
-            let cols = Math.ceil(Math.sqrt(n * ratio));
-            let rows = Math.ceil(n / cols);
-            while (cols * rows < n) {
-                if (w / cols < h / rows) cols++;
-                else rows++;
-            }
-            const size = Math.floor(Math.min(w / cols, h / rows));
-            const totalW = cols * size;
-            const totalH = rows * size;
-            const xOffset = (w - totalW) / 2;
-            const yOffset = (h - totalH) / 2;
+            
+            // 1. 生成 TESLA 文字遮罩 (大字版)
+            const offCanvas = document.createElement('canvas');
+            offCanvas.width = w;
+            offCanvas.height = h;
+            const offCtx = offCanvas.getContext('2d');
+            
+            offCtx.fillStyle = '#000';
+            offCtx.fillRect(0, 0, w, h);
+            offCtx.fillStyle = '#fff';
+            
+            // 🔥 V92: Bigger Font & Wide Spacing
+            // 字體大小：高度的 75% 或 寬度的 20% (確保不會爆出螢幕)
+            const fontSize = Math.min(w * 0.20, h * 0.75); 
+            offCtx.font = `900 ${fontSize}px sans-serif`;
+            offCtx.textAlign = 'center';
+            offCtx.textBaseline = 'middle';
+            
+            // 🔥 V92: 增加字元間距 "T   E   S   L   A"
+            const text = "T  E  S  L  A";
+            offCtx.fillText(text, w / 2, h / 2);
+            
+            const imgData = offCtx.getImageData(0,0,w,h).data;
+            
+            // 2. 掃描有效點
+            // 根據人數調整採樣密度
+            // 目標點數 = 人數 * 1.5 (確保填得滿)
+            const targetPoints = n * 1.5; 
+            // 計算白色區域面積
+            // 簡化：假設白色區域佔全螢幕 25% (因為字變大了)
+            // step = sqrt(WhiteArea / N)
+            let step = Math.floor(Math.sqrt((w * h * 0.25) / targetPoints));
+            if(step < 4) step = 4; // 防止過密
 
+            let validPoints = [];
+            // 掃描像素
+            for(let y=0; y<h; y+=step) {
+                for(let x=0; x<w; x+=step) {
+                    const idx = (y * w + x) * 4;
+                    if(imgData[idx] > 100) { // 白字區域
+                         validPoints.push({x, y});
+                    }
+                }
+            }
+
+            // Shuffle
+            for (let i = validPoints.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [validPoints[i], validPoints[j]] = [validPoints[j], validPoints[i]];
+            }
+
+            // 3. 分配粒子
             particles.current = list.map((p, i) => {
                 const img = new Image();
                 img.src = p.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=random&color=fff&size=128&id=${p.id}`;
-                const col = i % cols;
-                const row = Math.floor(i / cols);
+                
+                // 優先使用文字點，不夠則隨機
+                const pt = validPoints[i % validPoints.length] || {x: Math.random()*w, y: Math.random()*h};
+                
+                // 粒子大小：略小於步長，避免重疊
+                const size = Math.max(10, step * 0.85);
+
                 return {
                     id: p.id,
-                    x: xOffset + col * size, y: yOffset + row * size,
-                    targetX: xOffset + col * size, targetY: yOffset + row * size,
+                    x: pt.x, 
+                    y: pt.y,
+                    targetX: pt.x, 
+                    targetY: pt.y,
                     vx: 0, vy: 0,
-                    size: size, img: img, data: p, angle: 0
+                    size: size, 
+                    img: img,
+                    data: p,
+                    angle: 0
                 };
             });
         };
@@ -245,6 +300,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
                 if (mode.current === 'galaxy') {
                     p.x += p.vx; p.y += p.vy;
                     p.angle += 0.05;
+                    // 全螢幕反彈
                     if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
                     if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
                 } else {
@@ -252,10 +308,12 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
                     p.y += (p.targetY - p.y) * 0.1;
                     p.angle = 0;
                 }
+                
                 ctx.save();
-                const currentSize = mode.current === 'galaxy' ? p.size * 0.3 : p.size; 
+                const currentSize = mode.current === 'galaxy' ? p.size : p.size; 
+                
                 if (mode.current === 'galaxy') {
-                     ctx.translate(p.x + p.size/2, p.y + p.size/2);
+                     ctx.translate(p.x, p.y);
                      ctx.rotate(p.angle);
                      ctx.beginPath(); 
                      ctx.arc(0, 0, currentSize/2, 0, Math.PI * 2); 
@@ -263,12 +321,12 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
                      if (p.img.complete) ctx.drawImage(p.img, -currentSize/2, -currentSize/2, currentSize, currentSize);
                      else { ctx.fillStyle = '#333'; ctx.fillRect(-currentSize/2, -currentSize/2, currentSize, currentSize); }
                 } else {
-                     const gap = 0; 
+                     // Mosaic (Text Shape)
                      ctx.beginPath();
-                     ctx.rect(p.x, p.y, p.size - gap, p.size - gap);
+                     ctx.rect(p.x, p.y, p.size, p.size);
                      ctx.clip();
-                     if (p.img.complete) ctx.drawImage(p.img, p.x, p.y, p.size - gap, p.size - gap);
-                     else { ctx.fillStyle = '#333'; ctx.fillRect(p.x, p.y, p.size - gap, p.size - gap); }
+                     if (p.img.complete) ctx.drawImage(p.img, p.x, p.y, p.size, p.size);
+                     else { ctx.fillStyle = '#333'; ctx.fillRect(p.x, p.y, p.size, p.size); }
                 }
                 ctx.restore();
             });
@@ -282,7 +340,10 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
         if(list.length < 2) return;
         setIsRunning(true);
         mode.current = 'galaxy';
-        particles.current.forEach(p => { p.vx = (Math.random() - 0.5) * 40; p.vy = (Math.random() - 0.5) * 40; });
+        particles.current.forEach(p => { 
+            p.vx = (Math.random() - 0.5) * 50; 
+            p.vy = (Math.random() - 0.5) * 50; 
+        });
         SoundController.startSuspense();
         setTimeout(stop, 12000);
     };
@@ -339,12 +400,31 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   const [newId, setNewId] = useState(null);
   const [matchedSeat, setMatchSeat] = useState(null); 
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+  
+  // New Seat Search State
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResult, setSearchResult] = useState(null);
+
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
+  
   const startCamera = async () => { setErr(''); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } }); setIsCameraOpen(true); setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100); } catch (e) { fileInputRef.current.click(); } };
   const takePhoto = async () => { if(!videoRef.current) return; const canvas = document.createElement('canvas'); const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const xOffset = (videoRef.current.videoWidth - size) / 2; const yOffset = (videoRef.current.videoHeight - size) / 2; ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size); const rawBase64 = canvas.toDataURL('image/jpeg'); const stream = videoRef.current.srcObject; if(stream) stream.getTracks().forEach(track => track.stop()); setIsCameraOpen(false); const compressed = await compressImage(rawBase64, false); setPhoto(compressed); };
   const handleFileChange = async (e) => { const file = e.target.files[0]; if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); } };
   const handleSubmit = async (e) => { e.preventDefault(); setErr(''); if(!photo) { setErr(t.errPhoto); return; } setLoading(true); const cleanPhone = normalizePhone(form.phone); const cleanEmail = normalizeEmail(form.email); const dup = checkDuplicate(cleanPhone, cleanEmail); if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } let assignedTable = ""; let assignedSeat = ""; const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail); const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; } else if(phoneMatch) { assignedTable = phoneMatch.table; assignedSeat = phoneMatch.seat; } setMatchSeat({ table: assignedTable, seat: assignedSeat }); try { if (!db) throw new Error("Firebase not initialized"); const docRef = await addDoc(collection(db, "attendees"), { name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, table: assignedTable, seat: assignedSeat, photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() }); setNewId(docRef.id); setStep(2); } catch (error) { console.error(error); setErr("Network Error."); } setLoading(false); };
+  
+  const handleSeatSearch = (e) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    const isEmail = q.includes('@');
+    const target = isEmail ? normalizeEmail(q) : normalizePhone(q);
+    const found = seatingPlan.find(s => isEmail ? normalizeEmail(s.email) === target : normalizePhone(s.phone) === target);
+    if (found) { setSearchResult(found); setErr(""); }
+    else { setSearchResult(null); setErr(t.notFound); }
+  };
+
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
       <div className="relative bg-neutral-900/80 border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl">
@@ -354,41 +434,69 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
           <p className="text-white/80 text-xs mt-2 uppercase tracking-widest relative z-10">{t.regSub}</p>
         </div>
         <div className="p-8">
-          {step === 1 ? (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {err && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm flex items-center animate-pulse"><AlertTriangle size={16} className="mr-2"/>{err}</div>}
-              <div className="flex flex-col items-center mb-4">
-                  {isCameraOpen ? (
-                      <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black border-2 border-red-500 shadow-2xl"><video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" /><button type="button" onClick={takePhoto} className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-white border-4 border-gray-300 hover:scale-110 transition-transform"><Aperture className="w-full h-full p-2 text-black"/></button></div>
+            {isSearchMode ? (
+                <div className="space-y-6 animate-in fade-in zoom-in duration-300">
+                    <h3 className="text-xl font-bold text-center mb-4 text-yellow-500">{t.checkSeat}</h3>
+                    <div className="space-y-3">
+                        <div className="relative">
+                            <Search className="absolute top-3.5 left-4 text-white/30" size={18}/>
+                            <input autoFocus value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-yellow-500 transition-all placeholder:text-white/20" placeholder={t.inputHint} />
+                        </div>
+                        <button onClick={handleSeatSearch} className="w-full bg-yellow-600 hover:bg-yellow-500 text-white p-3 rounded-xl font-bold shadow-lg transition-all">{t.searchList}</button>
+                    </div>
+                    {err && <div className="text-red-400 text-center text-sm bg-red-500/10 p-2 rounded-lg">{err}</div>}
+                    {searchResult && (
+                        <div className="mt-4 p-5 bg-white/10 rounded-2xl border border-yellow-500/50 text-center shadow-lg">
+                            <div className="text-sm text-yellow-500 mb-1">{t.seatResult}</div>
+                            <div className="text-2xl font-bold mb-2">{searchResult.name}</div>
+                            <div className="text-sm text-white/60 mb-4">{searchResult.dept}</div>
+                            <div className="text-3xl font-black text-white bg-white/10 p-3 rounded-xl inline-block border border-white/20">
+                                Table {searchResult.table} / Seat {searchResult.seat}
+                            </div>
+                        </div>
+                    )}
+                    <button onClick={()=>{setIsSearchMode(false);setSearchResult(null);setSearchQuery("");setErr("")}} className="w-full text-white/50 hover:text-white text-sm mt-4 underline">{t.backToReg}</button>
+                </div>
+            ) : (
+                <>
+                  {step === 1 ? (
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      {err && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm flex items-center animate-pulse"><AlertTriangle size={16} className="mr-2"/>{err}</div>}
+                      <div className="flex flex-col items-center mb-4">
+                          {isCameraOpen ? (
+                              <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black border-2 border-red-500 shadow-2xl"><video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" /><button type="button" onClick={takePhoto} className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-white border-4 border-gray-300 hover:scale-110 transition-transform"><Aperture className="w-full h-full p-2 text-black"/></button></div>
+                          ) : (
+                              <div className="flex flex-col items-center gap-3 w-full"><div className={`w-32 h-32 rounded-full border-2 border-dashed flex items-center justify-center overflow-hidden relative shadow-lg ${photo ? 'border-red-500' : 'border-white/30'}`}>{photo ? <img src={photo} alt="Selfie" className="w-full h-full object-cover" /> : <User size={48} className="text-white/20"/>}</div><div className="flex gap-2"><button type="button" onClick={startCamera} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><Camera size={14}/> {t.photoBtn}</button><button type="button" onClick={()=>fileInputRef.current.click()} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><ImageIcon size={14}/> {t.uploadBtn}</button></div></div>
+                          )}
+                          <input type="file" accept="image/*" capture="user" ref={fileInputRef} className="hidden" onChange={handleFileChange}/>
+                      </div>
+                      {!isCameraOpen && (
+                          <div className="space-y-3">
+                            {['name', 'phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
+                            <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
+                            <div className="pt-4 mt-4 border-t border-white/10 text-center">
+                                <button type="button" onClick={()=>setIsSearchMode(true)} className="text-yellow-500 text-sm hover:text-yellow-400 flex items-center justify-center gap-1 mx-auto transition-colors"><Search size={14}/> {t.checkSeat}</button>
+                            </div>
+                          </div>
+                      )}
+                    </form>
                   ) : (
-                      <div className="flex flex-col items-center gap-3 w-full"><div className={`w-32 h-32 rounded-full border-2 border-dashed flex items-center justify-center overflow-hidden relative shadow-lg ${photo ? 'border-red-500' : 'border-white/30'}`}>{photo ? <img src={photo} alt="Selfie" className="w-full h-full object-cover" /> : <User size={48} className="text-white/20"/>}</div><div className="flex gap-2"><button type="button" onClick={startCamera} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><Camera size={14}/> {t.photoBtn}</button><button type="button" onClick={()=>fileInputRef.current.click()} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><ImageIcon size={14}/> {t.uploadBtn}</button></div></div>
+                    <div className="text-center animate-in zoom-in duration-300">
+                      <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)] relative"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({id: newId}))}`} alt="QR" className="w-48 h-48 object-contain"/><div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full shadow-lg flex items-center gap-1 font-bold tracking-wider"><Cloud size={10}/> SAVED</div></div>
+                      <h3 className="text-2xl font-bold text-white mb-1">{form.name}</h3>
+                      <div className="text-red-400 text-lg font-bold mb-4 flex justify-center items-center gap-2 bg-white/5 p-2 rounded-lg border border-red-500/30"><Armchair size={18}/> {matchedSeat && matchedSeat.table ? `${t.table} ${matchedSeat.table}` : t.seatTBD} {matchedSeat && matchedSeat.seat ? ` / ${t.seat} ${matchedSeat.seat}` : ""}</div>
+                      <p className="text-white/50 text-sm mb-8 leading-relaxed">{t.showToStaff}</p>
+                      <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:'',table:'',seat:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm">{t.next}</button>
+                    </div>
                   )}
-                  <input type="file" accept="image/*" capture="user" ref={fileInputRef} className="hidden" onChange={handleFileChange}/>
-              </div>
-              {!isCameraOpen && (
-                  <div className="space-y-3">
-                    {['name', 'phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
-                    {/* V58: No Seat Input for Guest */}
-                    <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
-                  </div>
-              )}
-            </form>
-          ) : (
-            <div className="text-center animate-in zoom-in duration-300">
-              <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)] relative"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({id: newId}))}`} alt="QR" className="w-48 h-48 object-contain"/><div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full shadow-lg flex items-center gap-1 font-bold tracking-wider"><Cloud size={10}/> SAVED</div></div>
-              <h3 className="text-2xl font-bold text-white mb-1">{form.name}</h3>
-              <div className="text-red-400 text-lg font-bold mb-4 flex justify-center items-center gap-2 bg-white/5 p-2 rounded-lg border border-red-500/30"><Armchair size={18}/> {matchedSeat && matchedSeat.table ? `${t.table} ${matchedSeat.table}` : t.seatTBD} {matchedSeat && matchedSeat.seat ? ` / ${t.seat} ${matchedSeat.seat}` : ""}</div>
-              <p className="text-white/50 text-sm mb-8 leading-relaxed">{t.showToStaff}</p>
-              <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm">{t.next}</button>
-            </div>
-          )}
+                </>
+            )}
         </div>
       </div>
     </div>
   );
 };
 
-// 🔥 Projector View: Fixed Layout with Bottom Button
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes }) => {
     const [winner, setWinner] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -625,7 +733,8 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
     let count = 0;
     for (let i = 1; i <= 100; i++) {
         const phone = `9000${String(i).padStart(4, '0')}`;
-        const email = i <= 50 ? `seat${i}@test.com` : `guest${i}@test.com`;
+        // 🔥 V87: Simplified email format for testing
+        const email = `guest${i}@test.com`; 
         
         // Check if exists
         const exists = attendees.some(a => normalizePhone(a.phone) === phone || normalizeEmail(a.email) === email);
@@ -668,23 +777,32 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
     alert("已清空所有賓客！");
   };
 
-  // 🔥 V85: Dummy Seat Generator
+  // 🔥 V87: Updated Dummy Seat Generator (100 Seats)
   const handleGenerateDummySeating = async () => {
-    if (!confirm("確定要生成 50 筆測試座位資料嗎？")) return;
+    if (!confirm("確定要生成 100 筆測試座位資料嗎？")) return;
     const batch = writeBatch(db);
-    for (let i = 1; i <= 50; i++) {
+    for (let i = 1; i <= 100; i++) {
         const ref = doc(collection(db, "seating_plan"));
         batch.set(ref, {
-            name: `Seat User ${i}`,
-            phone: `8000${String(i).padStart(4, '0')}`,
-            email: `seat${i}@test.com`,
+            name: `Guest ${i}`,
+            phone: `9000${String(i).padStart(4, '0')}`,
+            email: `guest${i}@test.com`, // Matches guest email
             dept: `Dept ${['A','B','C'][Math.floor(Math.random()*3)]}`,
             table: `${Math.ceil(i / 10)}`,
             seat: String.fromCharCode(65 + ((i - 1) % 10))
         });
     }
     await batch.commit();
-    alert("已生成 50 筆測試座位資料！");
+    alert("已生成 100 筆測試座位資料！");
+  };
+
+  // 🔥 V87: Bulk Clear Seating
+  const handleClearSeating = async () => {
+      if(!confirm(t.confirmClearSeats)) return;
+      const batch = writeBatch(db);
+      seatingPlan.forEach(s => batch.delete(doc(db, "seating_plan", s.id)));
+      await batch.commit();
+      alert("座位表已清空");
   };
 
   return (
@@ -740,8 +858,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   <th className="p-2 hidden md:table-cell">Dept</th>
                                   <th className="p-2">Table</th>
                                   <th className="p-2">Seat</th>
-                                  <th className="p-2 text-yellow-500">{t.wonPrize}</th>
-                                  <th className="p-2 text-center">Status</th>
+                                  <th className="p-2 text-center">{t.status}</th>
                                   <th className="p-2 text-right">Del</th>
                               </tr>
                           </thead>
@@ -776,6 +893,8 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button>
                       {/* 🔥 V85: Dummy Seating Button */}
                       <button onClick={handleGenerateDummySeating} className="bg-purple-600/20 text-purple-400 border border-purple-600/50 px-3 py-2 rounded-lg text-xs hover:bg-purple-600 hover:text-white transition-colors flex items-center gap-1"><Database size={14}/> {t.genDummySeat}</button>
+                      {/* 🔥 V87: Clear Seat */}
+                      <button onClick={handleClearSeating} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1"><Trash2 size={14}/></button>
                   </div>
                   
                   <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2">
@@ -799,21 +918,39 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   <th className="p-2 hidden md:table-cell">Dept</th>
                                   <th className="p-2">Table</th>
                                   <th className="p-2">Seat</th>
+                                  {/* 🔥 V89: New Status Column */}
+                                  <th className="p-2 text-center">{t.status}</th>
                                   <th className="p-2 text-right">Del</th>
                               </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
-                              {filteredSeat.map(s=>(
-                                  <tr key={s.id} className="hover:bg-white/5 text-sm">
-                                      <td className="p-2 font-bold">{s.name}</td>
-                                      <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.phone}</td>
-                                      <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.email}</td>
-                                      <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.dept}</td>
-                                      <td className="p-2 font-mono text-blue-400">{s.table}</td>
-                                      <td className="p-2 font-mono">{s.seat}</td>
-                                      <td className="p-2 text-right"><button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500 ml-2"><Trash2 size={14}/></button></td>
-                                  </tr>
-                              ))}
+                              {filteredSeat.map(s=>{
+                                  // 🔥 V89: Find attendee status
+                                  const match = attendees.find(a => 
+                                      (s.phone && normalizePhone(a.phone) === normalizePhone(s.phone)) || 
+                                      (s.email && normalizeEmail(a.email) === normalizeEmail(s.email))
+                                  );
+                                  const isCheckedIn = match?.checkedIn;
+                                  
+                                  return (
+                                      <tr key={s.id} className="hover:bg-white/5 text-sm">
+                                          <td className="p-2 font-bold">{s.name}</td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.phone}</td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.email}</td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.dept}</td>
+                                          <td className="p-2 font-mono text-blue-400">{s.table}</td>
+                                          <td className="p-2 font-mono">{s.seat}</td>
+                                          {/* 🔥 V89: Status Indicator */}
+                                          <td className="p-2 text-center">
+                                              {isCheckedIn ? 
+                                                  <span className="text-green-400 bg-green-400/20 px-2 py-1 rounded text-xs border border-green-400/50">已到場</span> : 
+                                                  <span className="text-white/30 text-xs border border-white/10 px-2 py-1 rounded">未簽到</span>
+                                              }
+                                          </td>
+                                          <td className="p-2 text-right"><button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500 ml-2"><Trash2 size={14}/></button></td>
+                                      </tr>
+                                  );
+                              })}
                           </tbody>
                       </table>
                   </div>
