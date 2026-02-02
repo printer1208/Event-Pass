@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 最終修復版",
+    title: "Tesla Annual Dinner", sub: "2025 視覺平衡版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
@@ -70,10 +70,11 @@ const translations = {
     genDummySeat: "生成 100 筆測試座位", clearSeats: "清空座位表", confirmClearSeats: "確定要清空所有座位表嗎？",
     checkSeat: "查詢座位", inputHint: "輸入電話或 Email 查詢", backToReg: "返回登記",
     seatResult: "查詢結果", status: "狀態", notCheckedIn: "未簽到", registered: "已登記", notRegistered: "未登記",
-    youWon: "恭喜獲得"
+    youWon: "恭喜獲得", nextRound: "按 ENTER 進入下一輪",
+    winnerLabel: "得主"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Final Fix",
+    title: "Tesla Annual Dinner", sub: "2025 Visual Balance",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Auto seat assignment",
@@ -98,7 +99,8 @@ const translations = {
     genDummySeat: "Gen 100 Dummy Seats", clearSeats: "Clear Seats", confirmClearSeats: "Delete ALL seating plan?",
     checkSeat: "Check Seat", inputHint: "Enter Phone or Email", backToReg: "Back to Register",
     seatResult: "Result", status: "Status", notCheckedIn: "Not In", registered: "Registered", notRegistered: "Not Reg",
-    youWon: "You Won"
+    youWon: "Congratulations!", nextRound: "Press ENTER for Next Round",
+    winnerLabel: "WINNER"
   }
 };
 
@@ -204,11 +206,12 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
     useEffect(() => {
         const canvas = canvasRef.current;
         const container = canvas?.parentElement;
-        if (!canvas || !container) return; 
+        if (!canvas || !container) return; // Allow empty list for init
         
         const ctx = canvas.getContext('2d');
         
         const resize = () => { 
+            // 🔥 V98: 使用容器的寬高，確保填滿中間區域
             canvas.width = container.clientWidth; 
             canvas.height = container.clientHeight; 
             initParticles();
@@ -217,7 +220,8 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
         const initParticles = () => {
             const w = canvas.width;
             const h = canvas.height;
-            const minParticles = 500;
+            // V95: Min particles for text shape
+            const minParticles = 600; // Increased density
             const totalParticles = Math.max(list.length, minParticles);
             
             // 1. Generate TESLA Text Mask
@@ -230,6 +234,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.fillRect(0, 0, w, h);
             offCtx.fillStyle = '#fff';
             
+            // 🔥 V98: Bigger Font
             const fontSize = Math.min(w * 0.4, h * 0.95); 
             offCtx.font = `900 ${fontSize}px sans-serif`; 
             offCtx.textAlign = 'center';
@@ -251,6 +256,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             let particleSize = Math.floor(Math.sqrt(areaPerPerson));
             
             if(particleSize < 4) particleSize = 4; 
+            // V98: Allow even bigger particles if few people
             if(particleSize > 150) particleSize = 150; 
 
             const step = particleSize;
@@ -280,13 +286,12 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                 let img = null;
 
                 if (list.length > 0) {
-                    // Cycle through real guests
+                    // Cycle through real guests to reuse photos
                     const guestIndex = i % list.length;
                     p = list[guestIndex];
                     img = new Image();
-                    img.src = p.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=random&color=fff&size=128&id=${p.id}`;
+                    img.src = p.photo && p.photo.startsWith('http') ? p.photo : `https://i.pravatar.cc/300?u=${p.id}`;
                 } else {
-                    // Should rarely happen if >0 guests
                     p = { id: `dummy_${i}`, name: '?' };
                 }
 
@@ -300,7 +305,8 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                     size: step, 
                     img: img,
                     data: p,
-                    angle: 0
+                    angle: 0,
+                    color: ['#E82127','#FFFFFF','#808080','#333333'][Math.floor(Math.random()*4)]
                 });
             }
             particles.current = particleArray;
@@ -324,7 +330,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                 }
                 
                 ctx.save();
-                // 🔥 V103: Huge particles during draw (80%)
+                // 🔥 V108: Huge particles during draw (80%)
                 const currentSize = mode.current === 'galaxy' ? p.size * 0.8 : p.size; 
                 
                 if (mode.current === 'galaxy') {
@@ -334,27 +340,26 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                      ctx.arc(0, 0, currentSize/2, 0, Math.PI * 2); 
                      ctx.clip();
                      
-                     if (p.img && p.img.complete) {
+                     if (p.img && p.img.complete && p.img.naturalWidth !== 0) {
                          ctx.drawImage(p.img, -currentSize/2, -currentSize/2, currentSize, currentSize);
                      } else {
-                         // Fallback color derived from ID to look varied
-                         ctx.fillStyle = '#333'; 
+                         ctx.fillStyle = p.color; 
                          ctx.fillRect(-currentSize/2, -currentSize/2, currentSize, currentSize); 
                      }
                 } else {
-                     // Mosaic (Text Shape)
+                     // Mosaic
                      const gap = 0.5;
                      ctx.beginPath();
                      ctx.rect(p.x, p.y, p.size - gap, p.size - gap);
                      ctx.clip();
                      
-                     if (p.img && p.img.complete) {
+                     if (p.img && p.img.complete && p.img.naturalWidth !== 0) {
                          ctx.drawImage(p.img, p.x, p.y, p.size - gap, p.size - gap);
                          ctx.strokeStyle = 'rgba(255,255,255,0.2)';
                          ctx.lineWidth = 0.5;
                          ctx.strokeRect(p.x, p.y, p.size - gap, p.size - gap);
                      } else {
-                         ctx.fillStyle = '#333'; 
+                         ctx.fillStyle = p.color; 
                          ctx.fillRect(p.x, p.y, p.size - gap, p.size - gap); 
                      }
                 }
@@ -426,7 +431,6 @@ const LoginView = ({ t, onLogin, onBack }) => {
     );
 };
 
-// 🔥 V86/V88: GuestView with Search & Uniform Fonts
 const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({name:'',phone:'',email:'',company:'',table:'',seat:''});
@@ -436,8 +440,6 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
   const [newId, setNewId] = useState(null);
   const [matchedSeat, setMatchSeat] = useState(null); 
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  
-  // New Seat Search State
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResult, setSearchResult] = useState(null);
@@ -541,7 +543,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
   );
 };
 
-// 🔥 Projector View: Fixed Layout with Bottom Button
+// 🔥 Projector View: Fixed Layout with Bottom Button (V112: Visual Balance)
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes }) => {
     const [winner, setWinner] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -571,8 +573,6 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                     wonAt: new Date().toISOString() 
                 });
                 
-                setWinner(null);
-                
                 // 2. Auto Next Prize
                 if (currentPrize && prizes.length > 0) {
                     const currentIdx = prizes.findIndex(p => p.name === currentPrize);
@@ -582,6 +582,9 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                         await setDoc(doc(db, "config", "settings"), { currentPrize: nextPrize.name }, { merge: true });
                     }
                 }
+
+                // 3. Clear Winner (Back to Galaxy)
+                setWinner(null);
                 setIsSaving(false);
             }
         };
@@ -596,26 +599,56 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     return (
         <div className="min-h-screen bg-black text-white relative flex flex-col overflow-hidden">
             
-            {/* 1. Header (15%) - Fixed */}
+            {/* 1. Header (15%) - Fixed & Consistent Font Size */}
             <div className="flex-none h-[15vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-b border-white/10 flex items-center justify-between px-8 relative shadow-xl w-full">
                  <button onClick={onBack} className="text-white/30 hover:text-white transition-colors mr-6"><ChevronLeft size={32}/></button>
                  <div className="flex-1 flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 w-full">
-                    <span className="text-yellow-500 font-bold tracking-widest uppercase text-lg md:text-xl whitespace-nowrap">{t.currentPrize}:</span>
-                    <h1 className="text-4xl md:text-6xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] leading-tight text-center">{currentPrize || "WAITING..."}</h1>
+                    {/* 🔥 V109: Dynamic Header Label */}
+                    <span className="text-yellow-500 font-bold tracking-widest uppercase text-5xl whitespace-nowrap">
+                        {winner ? t.winnerLabel : t.currentPrize}:
+                    </span>
+                    {/* 🔥 V106: Fixed text-6xl for consistency */}
+                    <h1 className="text-5xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] leading-tight text-center whitespace-nowrap pb-1">
+                        {currentPrize || "WAITING..."}
+                    </h1>
                  </div>
                  <div className="w-10"></div>
             </div>
 
             {/* 2. Canvas Area (Flex 1) - Maximize Space */}
             <div className="flex-1 w-full relative z-10 bg-black overflow-hidden flex items-center justify-center">
-                {currentPrizeWinner ? (
-                    <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500 z-20">
-                        <div className="text-2xl text-yellow-500 font-bold mb-6 uppercase tracking-[0.3em] border-b-2 border-yellow-500 pb-2">{t.drawn}</div>
-                        <div className="relative">
-                            {currentPrizeWinner.photo ? <img src={currentPrizeWinner.photo} className="w-80 h-80 rounded-full border-8 border-gray-700 grayscale hover:grayscale-0 transition-all object-cover"/> : <div className="w-64 h-64 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-gray-700 mb-8"><User size={100}/></div>}
+                {winner ? (
+                     // 🔥 V112: Clean & Balanced Winner Display (Center of screen, no jump)
+                    <div className="flex flex-col items-center justify-center h-full w-full relative z-50">
+                        <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
+
+                        {/* Photo - Big but balanced */}
+                        <div className="relative mb-6">
+                            <div className="absolute inset-0 bg-yellow-500/30 blur-3xl rounded-full animate-pulse"></div>
+                            {winner.photo ? <img src={winner.photo} className="relative w-96 h-96 rounded-full border-8 border-yellow-400 object-cover shadow-2xl"/> : <div className="w-96 h-96 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={150}/></div>}
                         </div>
-                        <h1 className="text-7xl font-black text-gray-400 mt-6">{currentPrizeWinner.name}</h1>
-                        <div className="text-white/30 mt-2">{t.winnerIs}</div>
+                        
+                        {/* 🔥 V112: Smaller Font for Name (6xl) */}
+                        <h1 className="text-6xl font-black text-white mb-6 drop-shadow-lg tracking-wide">{winner.name}</h1>
+                        
+                        {/* 🔥 V112: Smaller Font for Seat (3xl) */}
+                        <div className="bg-white/10 backdrop-blur-md px-10 py-4 rounded-full text-3xl font-bold border border-white/20 flex items-center gap-6 text-yellow-100 shadow-xl">
+                            <Armchair size={32}/> 
+                            <span>Table {winner.table || '-'}</span>
+                            <span className="w-1 h-8 bg-white/20"></span>
+                            <span>Seat {winner.seat || '-'}</span>
+                        </div>
+                        
+                        <p className="absolute bottom-4 text-white/30 text-sm animate-pulse">{t.nextRound}</p>
+                    </div>
+                ) : currentPrizeWinner ? (
+                     <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500 z-20">
+                        <div className="text-2xl text-white/50 font-bold mb-4 uppercase tracking-[0.3em]">{t.drawn}</div>
+                        <div className="relative mb-6">
+                            {currentPrizeWinner.photo ? <img src={currentPrizeWinner.photo} className="w-64 h-64 rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover"/> : <div className="w-64 h-64 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-gray-700 mb-8"><User size={100}/></div>}
+                        </div>
+                        <h1 className="text-7xl font-black text-gray-400 mt-2">{currentPrizeWinner.name}</h1>
+                        <div className="text-white/30 mt-4 text-xl">{t.winnerIs}</div>
                     </div>
                 ) : eligible.length > 0 ? (
                     <GalaxyCanvas list={eligible} t={t} onDrawEnd={handleDrawEnd} disabled={!!winner} />
@@ -624,63 +657,23 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                 )}
             </div>
             
-            {/* 3. Footer (20%) - Increased Height for Button & Marquee */}
-            <div className="flex-none h-[20vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-t border-white/10 flex flex-col items-center justify-center overflow-hidden w-full relative">
+            {/* 3. Footer (15%) - Clean (V105) */}
+            <div className="flex-none h-[15vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-t border-white/10 flex flex-col items-center justify-center overflow-hidden w-full relative">
                 
                 {/* 🔥 V82: Button moved to Footer Center */}
                 {eligible.length > 0 && !winner && !currentPrizeWinner && (
-                    <div className="mb-4 mt-2">
+                    <div className="">
                         <button onClick={triggerDraw} className="bg-red-600 text-white px-10 py-3 rounded-full font-bold text-xl shadow-2xl border-4 border-black uppercase tracking-widest hover:scale-105 transition-transform animate-pulse flex items-center gap-2">
                             <Play size={24} fill="currentColor"/> {t.drawBtn}
                         </button>
                     </div>
                 )}
-
-                {drawHistory.length > 0 ? (
-                    <div className="w-full max-w-7xl overflow-x-auto px-10 pb-4 no-scrollbar">
-                        <div className="flex gap-4 justify-center">
-                            {drawHistory.map(h => (
-                                <div key={h.id} className="bg-white/10 px-4 py-2 rounded-full flex items-center gap-2 border border-white/10 shrink-0">
-                                    <span className="text-yellow-400 font-bold text-xs">{h.prize}</span>
-                                    <div className="w-[1px] h-3 bg-white/20"></div>
-                                    <span className="font-bold text-sm">{h.name}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <div className="text-white/20 text-sm pb-4">Waiting for first winner...</div>
-                )}
             </div>
-
-            {/* Winner Overlay */}
-            {winner && (
-                <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center pb-32 animate-in zoom-in duration-300">
-                    <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
-                    <Trophy className="text-yellow-400 mb-6 drop-shadow-[0_0_50px_rgba(250,204,21,0.8)] animate-bounce" size={100} />
-                    <h2 className="text-3xl font-bold text-white/80 mb-2 tracking-[0.5em]">{t.winner}</h2>
-                    
-                    {/* 🔥 V101: Highlighted Prize Name */}
-                    <div className="text-white/60 text-lg mb-2">{t.youWon}</div>
-                    <div className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-yellow-500 to-yellow-300 mb-10 text-center max-w-4xl leading-tight drop-shadow-[0_0_30px_rgba(234,179,8,0.8)] animate-pulse">
-                        {currentPrize}
-                    </div>
-
-                    {winner.photo ? <img src={winner.photo} className="w-80 h-80 rounded-full border-8 border-yellow-400 object-cover shadow-[0_0_100px_rgba(234,179,8,0.5)] mb-8"/> : <div className="w-64 h-64 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={100}/></div>}
-                    <h1 className="text-8xl font-black text-white mb-4">{winner.name}</h1>
-                    
-                    <div className="bg-white/20 px-8 py-3 rounded-full text-2xl font-bold border border-white/30 flex items-center gap-3">
-                        <Armchair/> Table {winner.table || '-'} / Seat {winner.seat || '-'}
-                    </div>
-                    
-                    <p className="mt-10 text-white/30 text-sm">Press ENTER to continue</p>
-                </div>
-            )}
         </div>
     );
 };
 
-// --- Reception Dashboard (V84: Data Guard & Dummy Gen) ---
+// --- Reception Dashboard, Prize Dashboard, App (Moved to bottom) ---
 const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan, drawHistory }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
@@ -812,8 +805,8 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
             dept: `Dept ${String.fromCharCode(65 + (i % 5))}`, // A, B, C, D, E
             table: `${Math.ceil(i / 10)}`,
             seat: String.fromCharCode(65 + ((i - 1) % 10)), // A-J
-            // V91: Tesla Brand Colors
-            photo: `https://ui-avatars.com/api/?name=${i}&background=${bg}&color=${color}&size=128&length=3&font-size=0.5`,
+            // V91: Tesla Brand Colors (Pravatar for realism)
+            photo: `https://i.pravatar.cc/300?u=guest_${i}`,
             checkedIn: true, // Default Checked In for testing
             checkInTime: new Date().toISOString(),
             createdAt: new Date().toISOString()
