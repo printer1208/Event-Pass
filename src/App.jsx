@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 橫向資訊版",
+    title: "Tesla Annual Dinner", sub: "2025 版面修復版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
@@ -74,7 +74,7 @@ const translations = {
     winnerLabel: "得主"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Horizontal Info",
+    title: "Tesla Annual Dinner", sub: "2025 Layout Fix",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Auto seat assignment",
@@ -630,7 +630,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                         </div>
                         
                         {/* 🔥 V114: Scaled Down Info Row */}
-                        <div className="flex flex-row items-center justify-center gap-6 bg-white/10 backdrop-blur-md px-12 py-4 rounded-full border border-white/20 shadow-xl mt-4">
+                        <div className="flex flex-row items-center justify-center gap-6 bg-white/10 backdrop-blur-md px-12 py-4 rounded-full border border-white/20 shadow-xl mt-4 mb-8">
                             {/* Name */}
                             <h1 className="text-5xl font-black text-white tracking-wide">{winner.name}</h1>
                             
@@ -646,7 +646,8 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                             </div>
                         </div>
                         
-                        <p className="absolute bottom-4 text-white/30 text-sm animate-pulse">{t.nextRound}</p>
+                        {/* 🔥 V115: Relative Position to avoid overlap */}
+                        <p className="text-white/30 text-sm animate-pulse">{t.nextRound}</p>
                     </div>
                 ) : currentPrizeWinner ? (
                      <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500 z-20">
