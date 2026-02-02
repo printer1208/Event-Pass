@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 TESLA PRO",
+    title: "Tesla Annual Dinner", sub: "2025 智慧測試版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
@@ -66,13 +66,13 @@ const translations = {
     searchList: "搜尋名單...", seatTBD: "待定 (請洽櫃台)", wonPrize: "獲獎紀錄",
     addGuest: "新增賓客", clearAll: "清空所有得獎者",
     drawn: "已抽出", winnerIs: "得主", noPhoto: "無照片",
-    genDummy: "生成 100 筆測試資料", clearGuests: "清空所有賓客", confirmClearGuests: "確定要刪除所有賓客資料嗎？這將無法復原。",
-    genDummySeat: "生成 100 筆測試座位", clearSeats: "清空座位表", confirmClearSeats: "確定要清空所有座位表嗎？",
+    genDummy: "新增 50 筆測試賓客", clearGuests: "清空所有賓客", confirmClearGuests: "確定要刪除所有賓客資料嗎？這將無法復原。",
+    genDummySeat: "新增 50 筆測試座位", clearSeats: "清空座位表", confirmClearSeats: "確定要清空所有座位表嗎？",
     checkSeat: "查詢座位", inputHint: "輸入電話或 Email 查詢", backToReg: "返回登記",
     seatResult: "查詢結果", status: "狀態", notCheckedIn: "未簽到"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 TESLA PRO",
+    title: "Tesla Annual Dinner", sub: "2025 Smart Test",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Auto seat assignment",
@@ -93,8 +93,8 @@ const translations = {
     searchList: "Search...", seatTBD: "TBD", wonPrize: "Prize",
     addGuest: "Add Guest", clearAll: "Clear All Winners",
     drawn: "Drawn", winnerIs: "Winner", noPhoto: "No Photo",
-    genDummy: "Gen 100 Dummy", clearGuests: "Clear All Guests", confirmClearGuests: "Are you sure to delete ALL guests? This cannot be undone.",
-    genDummySeat: "Gen 100 Dummy Seats", clearSeats: "Clear Seats", confirmClearSeats: "Delete ALL seating plan?",
+    genDummy: "Add 50 Dummy Guests", clearGuests: "Clear All Guests", confirmClearGuests: "Are you sure to delete ALL guests? This cannot be undone.",
+    genDummySeat: "Add 50 Dummy Seats", clearSeats: "Clear Seats", confirmClearSeats: "Delete ALL seating plan?",
     checkSeat: "Check Seat", inputHint: "Enter Phone or Email", backToReg: "Back to Register",
     seatResult: "Result", status: "Status", notCheckedIn: "Not In"
   }
@@ -226,40 +226,30 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
             offCtx.fillStyle = '#fff';
             
             // 🔥 V92: Bigger Font & Wide Spacing
-            // 字體大小：高度的 75% 或 寬度的 20% (確保不會爆出螢幕)
             const fontSize = Math.min(w * 0.20, h * 0.75); 
             offCtx.font = `900 ${fontSize}px sans-serif`;
             offCtx.textAlign = 'center';
             offCtx.textBaseline = 'middle';
-            
-            // 🔥 V92: 增加字元間距 "T   E   S   L   A"
             const text = "T  E  S  L  A";
             offCtx.fillText(text, w / 2, h / 2);
             
             const imgData = offCtx.getImageData(0,0,w,h).data;
             
             // 2. 掃描有效點
-            // 根據人數調整採樣密度
-            // 目標點數 = 人數 * 1.5 (確保填得滿)
             const targetPoints = n * 1.5; 
-            // 計算白色區域面積
-            // 簡化：假設白色區域佔全螢幕 25% (因為字變大了)
-            // step = sqrt(WhiteArea / N)
             let step = Math.floor(Math.sqrt((w * h * 0.25) / targetPoints));
-            if(step < 4) step = 4; // 防止過密
+            if(step < 4) step = 4;
 
             let validPoints = [];
-            // 掃描像素
             for(let y=0; y<h; y+=step) {
                 for(let x=0; x<w; x+=step) {
                     const idx = (y * w + x) * 4;
-                    if(imgData[idx] > 100) { // 白字區域
+                    if(imgData[idx] > 100) { 
                          validPoints.push({x, y});
                     }
                 }
             }
 
-            // Shuffle
             for (let i = validPoints.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [validPoints[i], validPoints[j]] = [validPoints[j], validPoints[i]];
@@ -270,10 +260,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
                 const img = new Image();
                 img.src = p.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=random&color=fff&size=128&id=${p.id}`;
                 
-                // 優先使用文字點，不夠則隨機
                 const pt = validPoints[i % validPoints.length] || {x: Math.random()*w, y: Math.random()*h};
-                
-                // 粒子大小：略小於步長，避免重疊
                 const size = Math.max(10, step * 0.85);
 
                 return {
@@ -300,7 +287,6 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
                 if (mode.current === 'galaxy') {
                     p.x += p.vx; p.y += p.vy;
                     p.angle += 0.05;
-                    // 全螢幕反彈
                     if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
                     if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
                 } else {
@@ -313,7 +299,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
                 const currentSize = mode.current === 'galaxy' ? p.size : p.size; 
                 
                 if (mode.current === 'galaxy') {
-                     ctx.translate(p.x, p.y);
+                     ctx.translate(p.x + p.size/2, p.y + p.size/2);
                      ctx.rotate(p.angle);
                      ctx.beginPath(); 
                      ctx.arc(0, 0, currentSize/2, 0, Math.PI * 2); 
@@ -321,7 +307,6 @@ const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
                      if (p.img.complete) ctx.drawImage(p.img, -currentSize/2, -currentSize/2, currentSize, currentSize);
                      else { ctx.fillStyle = '#333'; ctx.fillRect(-currentSize/2, -currentSize/2, currentSize, currentSize); }
                 } else {
-                     // Mosaic (Text Shape)
                      ctx.beginPath();
                      ctx.rect(p.x, p.y, p.size, p.size);
                      ctx.clip();
@@ -433,6 +418,8 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
           <h2 className="text-2xl font-bold tracking-wide relative z-10">{t.regTitle}</h2>
           <p className="text-white/80 text-xs mt-2 uppercase tracking-widest relative z-10">{t.regSub}</p>
         </div>
+        
+        {/* V86: Search Mode vs Registration Mode */}
         <div className="p-8">
             {isSearchMode ? (
                 <div className="space-y-6 animate-in fade-in zoom-in duration-300">
@@ -450,6 +437,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
                             <div className="text-sm text-yellow-500 mb-1">{t.seatResult}</div>
                             <div className="text-2xl font-bold mb-2">{searchResult.name}</div>
                             <div className="text-sm text-white/60 mb-4">{searchResult.dept}</div>
+                            {/* 🔥 V88 Fix: Uniform Font Size */}
                             <div className="text-3xl font-black text-white bg-white/10 p-3 rounded-xl inline-block border border-white/20">
                                 Table {searchResult.table} / Seat {searchResult.seat}
                             </div>
@@ -628,7 +616,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     );
 };
 
-// --- Reception Dashboard (V84: Data Guard & Dummy Gen) ---
+// --- Reception Dashboard (V84/V85/V87: Dummy & Clear Features) ---
 const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan, drawHistory }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
@@ -726,43 +714,43 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   const deletePerson = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "attendees", id)); };
   const downloadTemplate = () => { const content = "\uFEFFName,Phone,Email,Dept,Table,Seat\nElon Musk,0912345678,elon@tesla.com,Engineering,1,A"; const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "seating_template.csv"; link.click(); };
 
-  // 🔥 V83: Smart Dummy Generator (Skip Duplicates)
+  // 🔥 V93: Smart Dummy Generator (Continuous + No Duplicate)
   const handleGenerateDummy = async () => {
-    if (!confirm("確定要生成 100 筆測試資料嗎？")) return;
+    if (!confirm("確定要生成 50 筆新的測試資料嗎？\n(系統會自動從現有編號接續生成)")) return;
+    
+    // 1. 找出目前最大的 Guest ID
+    const existingIds = attendees
+        .map(a => {
+            const match = a.name.match(/^Guest (\d+)$/);
+            return match ? parseInt(match[1]) : 0;
+        });
+    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+    
+    const start = maxId + 1;
+    const end = maxId + 50;
+
     const batch = writeBatch(db);
-    let count = 0;
-    for (let i = 1; i <= 100; i++) {
-        const phone = `9000${String(i).padStart(4, '0')}`;
-        // 🔥 V87: Simplified email format for testing
-        const email = `guest${i}@test.com`; 
+    for (let i = start; i <= end; i++) {
+        // 使用 guest_{i} 作為 ID 確保唯一性
+        const ref = doc(db, "attendees", `guest_${i}`);
         
-        // Check if exists
-        const exists = attendees.some(a => normalizePhone(a.phone) === phone || normalizeEmail(a.email) === email);
-        
-        if (!exists) {
-            const ref = doc(collection(db, "attendees"));
-            batch.set(ref, {
-                name: `Guest ${i}`,
-                phone: phone,
-                email: email,
-                dept: `Dept ${Math.ceil(i / 20)}`,
-                table: `${Math.ceil(i / 10)}`,
-                seat: String.fromCharCode(65 + ((i - 1) % 10)),
-                photo: `https://ui-avatars.com/api/?name=${i}&background=random&color=fff&size=128&length=3&font-size=0.5`,
-                checkedIn: true,
-                checkInTime: new Date().toISOString(),
-                createdAt: new Date().toISOString()
-            });
-            count++;
-        }
+        batch.set(ref, {
+            name: `Guest ${i}`,
+            phone: `9000${String(i).padStart(4, '0')}`,
+            email: `guest${i}@test.com`,
+            dept: `Dept ${String.fromCharCode(65 + (i % 5))}`, // A, B, C, D, E
+            table: `${Math.ceil(i / 10)}`,
+            seat: String.fromCharCode(65 + ((i - 1) % 10)), // A-J
+            // V91: Tesla Brand Colors
+            photo: `https://ui-avatars.com/api/?name=${i}&background=${['e82127','000000','ffffff','808080'][i%4]}&color=${['ffffff','ffffff','000000','ffffff'][i%4]}&size=128&length=3&font-size=0.5`,
+            checkedIn: true, // Default Checked In for testing
+            checkInTime: new Date().toISOString(),
+            createdAt: new Date().toISOString()
+        });
     }
     
-    if (count > 0) {
-        await batch.commit();
-        alert(`已生成 ${count} 筆新資料！(略過重複)`);
-    } else {
-        alert("資料已存在，無需生成。");
-    }
+    await batch.commit();
+    alert(`已生成 Guest ${start} - Guest ${end}`);
   };
 
   // 🔥 V84: Bulk Clear Guests
@@ -777,23 +765,35 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
     alert("已清空所有賓客！");
   };
 
-  // 🔥 V87: Updated Dummy Seat Generator (100 Seats)
+  // 🔥 V93: Smart Dummy Seats (Continuous)
   const handleGenerateDummySeating = async () => {
-    if (!confirm("確定要生成 100 筆測試座位資料嗎？")) return;
+    if (!confirm("確定要生成 50 筆新的座位資料嗎？\n(系統會自動從現有編號接續生成)")) return;
+    
+    // 找出目前最大的 Seat User ID
+    const existingIds = seatingPlan
+        .map(s => {
+            const match = s.name.match(/^Guest (\d+)$/);
+            return match ? parseInt(match[1]) : 0;
+        });
+    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+    
+    const start = maxId + 1;
+    const end = maxId + 50;
+
     const batch = writeBatch(db);
-    for (let i = 1; i <= 100; i++) {
+    for (let i = start; i <= end; i++) {
         const ref = doc(collection(db, "seating_plan"));
         batch.set(ref, {
             name: `Guest ${i}`,
             phone: `9000${String(i).padStart(4, '0')}`,
-            email: `guest${i}@test.com`, // Matches guest email
-            dept: `Dept ${['A','B','C'][Math.floor(Math.random()*3)]}`,
+            email: `guest${i}@test.com`, 
+            dept: `Dept ${String.fromCharCode(65 + (i % 5))}`,
             table: `${Math.ceil(i / 10)}`,
             seat: String.fromCharCode(65 + ((i - 1) % 10))
         });
     }
     await batch.commit();
-    alert("已生成 100 筆測試座位資料！");
+    alert(`已生成座位資料 Guest ${start} - Guest ${end}`);
   };
 
   // 🔥 V87: Bulk Clear Seating
@@ -903,7 +903,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       <input placeholder={t.phone} value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none" />
                       <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
                       <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
-                      <input placeholder="T" value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
+                      <input placeholder={t.table} value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
                       <input placeholder="S" value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
                       <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
                   </div>
