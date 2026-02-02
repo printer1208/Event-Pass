@@ -15,10 +15,7 @@ import {
   doc, onSnapshot, query, orderBy, deleteDoc, writeBatch
 } from "firebase/firestore";
 
-// ==========================================
-// 1. 設定與常數 (Config & Constants)
-// ==========================================
-
+// ✅ Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyDUZeeaWvQZJORdDv4PdAHQK-SqXFIDsy4",
   authDomain: "eventpass-77522.firebaseapp.com",
@@ -40,60 +37,7 @@ try {
 const ADMIN_PASSWORD = "admin"; 
 
 // ==========================================
-// 2. 翻譯與資料 (Translations)
-// ==========================================
-
-const translations = {
-  zh: {
-    title: "Tesla Annual Dinner", sub: "2025 碰撞淘汰版",
-    guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台 (抽獎)", projectorMode: "大螢幕投影",
-    login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
-    regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
-    name: "姓名", phone: "電話", email: "電郵", dept: "部門",
-    generateBtn: "確認登記", back: "返回", yourCode: "入場憑證", yourSeat: "您的座位",
-    showToStaff: "請出示給工作人員掃描", next: "完成",
-    scan: "極速掃描", draw: "抽獎控制", prizeList: "獎品管理",
-    list: "賓客名單", seating: "座位查詢", total: "總人數", arrived: "已到場",
-    scanCam: "啟動掃描", stopCam: "停止", manual: "手動輸入 ID",
-    success: "簽到成功", duplicate: "已入場", error: "無效代碼", regSuccess: "登記成功", notFound: "查無此人",
-    errPhone: "電話已存在", errEmail: "Email已存在", errPhoto: "需照片", errIncomplete: "請填寫完整",
-    drawBtn: "啟動淘汰 (Space)", running: "碰撞淘汰中...", winner: "✨ 恭喜中獎 ✨", claim: "確認 (Enter)",
-    needMore: "等待中...", export: "導出", checkin: "簽到", cancel: "取消", logout: "登出",
-    prizeTitle: "獎品池", setPrize: "新增", prizePlace: "獎品名稱", currentPrize: "正在抽取",
-    markWin: "設為得主", resetWinner: "重置", select: "選取",
-    importCSV: "導入 CSV", downloadTemp: "範本", importSuccess: "成功",
-    table: "桌號", seat: "座號", addSeat: "新增座位", searchSeat: "搜尋姓名/電話/桌號...",
-    searchList: "搜尋名單...", seatTBD: "待定 (請洽櫃台)", wonPrize: "獲獎紀錄",
-    addGuest: "新增賓客", clearAll: "清空所有得獎者",
-    drawn: "已抽出", winnerIs: "得主", noPhoto: "無照片"
-  },
-  en: {
-    title: "Tesla Annual Dinner", sub: "2025 Battle Royale",
-    guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
-    login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
-    regTitle: "Register", regSub: "Auto seat assignment",
-    name: "Name", phone: "Phone", email: "Email", dept: "Dept",
-    generateBtn: "Submit", back: "Back", yourCode: "Entry Pass", yourSeat: "Your Seat",
-    showToStaff: "Show to Staff", next: "Finish",
-    scan: "Scanner", draw: "Control", prizeList: "Prizes",
-    list: "Guest List", seating: "Seating", total: "Total", arrived: "Arrived",
-    scanCam: "Scan", stopCam: "Stop", manual: "Manual Input",
-    success: "Success", duplicate: "Duplicate", error: "Invalid", regSuccess: "Registered", notFound: "Not Found",
-    errPhone: "Phone exists", errEmail: "Email exists", errPhoto: "Photo required", errIncomplete: "Fill all",
-    drawBtn: "Start Battle (Space)", running: "Battling...", winner: "WINNER", claim: "Confirm (Enter)",
-    needMore: "Waiting...", export: "Export", checkin: "Check-in", cancel: "Cancel", logout: "Logout",
-    prizeTitle: "Prizes", setPrize: "Add", prizePlace: "Prize Name", currentPrize: "Drawing",
-    markWin: "Mark Win", resetWinner: "Reset", select: "Select",
-    importCSV: "Import", downloadTemp: "Template", importSuccess: "Done",
-    table: "Table", seat: "Seat", addSeat: "Add Seat", searchSeat: "Search...",
-    searchList: "Search...", seatTBD: "TBD", wonPrize: "Prize",
-    addGuest: "Add Guest", clearAll: "Clear All Winners",
-    drawn: "Drawn", winnerIs: "Winner", noPhoto: "No Photo"
-  }
-};
-
-// ==========================================
-// 3. 工具函數 (Helpers)
+// 1. 工具與基礎組件
 // ==========================================
 
 const normalizePhone = (p) => String(p || '').replace(/[^0-9]/g, '');
@@ -118,10 +62,6 @@ const compressImage = (source, isFile = true) => {
         } else { img.src = source; }
     });
 };
-
-// ==========================================
-// 4. 基礎組件 (Base Components)
-// ==========================================
 
 const StyleInjector = () => {
   useEffect(() => {
@@ -163,8 +103,6 @@ const SoundController = {
       droneGain.gain.setValueAtTime(0.2, now); droneGain.gain.linearRampToValueAtTime(0.5, now + 5);
       drone.start(now);
       this.oscList.push({stop: () => { droneGain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.5); setTimeout(() => drone.stop(), 500); }});
-      
-      // Battle drums
       let beatTime = 0.5;
       const playBeat = () => {
           const osc = this.ctx.createOscillator(); const g = this.ctx.createGain();
@@ -189,21 +127,67 @@ const SoundController = {
   }
 };
 
-// 🔥 V71: Battle Royale Canvas Engine (碰撞淘汰)
-const BattleCanvas = ({ list, t, onDrawEnd }) => {
+const translations = {
+  zh: {
+    title: "Tesla Annual Dinner", sub: "2025 無縫馬賽克版",
+    guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
+    login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
+    regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
+    name: "姓名", phone: "電話", email: "電郵", dept: "部門",
+    generateBtn: "確認登記", back: "返回", yourCode: "入場憑證", yourSeat: "您的座位",
+    showToStaff: "請出示給工作人員掃描", next: "完成",
+    scan: "極速掃描", draw: "抽獎控制", prizeList: "獎品管理",
+    list: "賓客名單", seating: "座位查詢", total: "總人數", arrived: "已到場",
+    scanCam: "啟動掃描", stopCam: "停止", manual: "手動輸入 ID",
+    success: "簽到成功", duplicate: "已入場", error: "無效代碼", regSuccess: "登記成功", notFound: "查無此人",
+    errPhone: "電話已存在", errEmail: "Email已存在", errPhoto: "需照片", errIncomplete: "請填寫完整",
+    drawBtn: "啟動 (Space)", running: "抽獎中...", winner: "✨ 恭喜中獎 ✨", claim: "確認 (Enter)",
+    needMore: "等待中...", export: "導出", checkin: "簽到", cancel: "取消", logout: "登出",
+    prizeTitle: "獎品池", setPrize: "新增", prizePlace: "獎品名稱", currentPrize: "正在抽取",
+    markWin: "設為得主", resetWinner: "重置", select: "選取",
+    importCSV: "導入 CSV", downloadTemp: "範本", importSuccess: "成功",
+    table: "桌號", seat: "座號", addSeat: "新增座位", searchSeat: "搜尋姓名/電話/桌號...",
+    searchList: "搜尋名單...", seatTBD: "待定 (請洽櫃台)", wonPrize: "獲獎紀錄",
+    addGuest: "新增賓客", clearAll: "清空所有得獎者",
+    drawn: "已抽出", winnerIs: "得主"
+  },
+  en: {
+    title: "Tesla Annual Dinner", sub: "2025 Seamless",
+    guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
+    login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
+    regTitle: "Register", regSub: "Auto seat assignment",
+    name: "Name", phone: "Phone", email: "Email", dept: "Dept",
+    generateBtn: "Submit", back: "Back", yourCode: "Entry Pass", yourSeat: "Your Seat",
+    showToStaff: "Show to Staff", next: "Finish",
+    scan: "Scanner", draw: "Control", prizeList: "Prizes",
+    list: "Guest List", seating: "Seating", total: "Total", arrived: "Arrived",
+    scanCam: "Scan", stopCam: "Stop", manual: "Manual Input",
+    success: "Success", duplicate: "Duplicate", error: "Invalid", regSuccess: "Registered", notFound: "Not Found",
+    errPhone: "Phone exists", errEmail: "Email exists", errPhoto: "Photo required", errIncomplete: "Fill all",
+    drawBtn: "Start (Space)", running: "Running...", winner: "WINNER", claim: "Confirm (Enter)",
+    needMore: "Waiting...", export: "Export", checkin: "Check-in", cancel: "Cancel", logout: "Logout",
+    prizeTitle: "Prizes", setPrize: "Add", prizePlace: "Prize Name", currentPrize: "Drawing",
+    markWin: "Mark Win", resetWinner: "Reset", select: "Select",
+    importCSV: "Import", downloadTemp: "Template", importSuccess: "Done",
+    table: "Table", seat: "Seat", addSeat: "Add Seat", searchSeat: "Search...",
+    searchList: "Search...", seatTBD: "TBD", wonPrize: "Prize",
+    addGuest: "Add Guest", clearAll: "Clear All Winners",
+    drawn: "Drawn", winnerIs: "Winner"
+  }
+};
+
+// --- Galaxy Canvas (Visuals Fix: Seamless Mosaic & No Overlap) ---
+const GalaxyCanvas = ({ list, t, onDrawEnd }) => {
     const canvasRef = useRef(null);
     const [isRunning, setIsRunning] = useState(false);
     const particles = useRef([]);
     const frameId = useRef(null);
     const mode = useRef('mosaic'); 
-    const winnerRef = useRef(null); // 預先鎖定贏家
 
-    // 初始化與馬賽克排列
     useEffect(() => {
         const canvas = canvasRef.current;
         const container = canvas?.parentElement;
         if (!canvas || !container || list.length === 0) return;
-        
         const ctx = canvas.getContext('2d');
         const resize = () => { 
             canvas.width = container.clientWidth; 
@@ -213,7 +197,7 @@ const BattleCanvas = ({ list, t, onDrawEnd }) => {
         window.addEventListener('resize', resize);
 
         const cols = Math.ceil(Math.sqrt(list.length * (canvas.width / canvas.height)));
-        const size = Math.ceil(canvas.width / cols); 
+        const size = Math.ceil(canvas.width / cols); // 🔥 V60: 使用 ceil 確保填滿
 
         particles.current = list.map((p, i) => {
             const img = new Image();
@@ -227,78 +211,50 @@ const BattleCanvas = ({ list, t, onDrawEnd }) => {
                 targetX: col * size,
                 targetY: row * size,
                 vx: 0, vy: 0,
-                size: size,
+                size: size, // 🔥 V60: 無間隙
                 img: img,
                 data: p,
-                angle: 0,
-                active: true, // 是否存活
-                scale: 1
+                angle: 0
             };
         });
 
         const render = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // 過濾掉已淘汰的，只繪製存活的
-            const activeParticles = particles.current.filter(p => p.active);
-
-            // 如果是戰鬥模式，執行碰撞檢測與淘汰
-            if (mode.current === 'battle' && activeParticles.length > 1) {
-                // 加速淘汰：每幀隨機淘汰一個非贏家，模擬激烈碰撞
-                if (Math.random() > 0.8) { 
-                    const victims = activeParticles.filter(p => p.id !== winnerRef.current.id);
-                    if (victims.length > 0) {
-                        const victim = victims[Math.floor(Math.random() * victims.length)];
-                        victim.active = false; // 淘汰
-                        // 產生爆炸效果 (簡化：變紅)
-                    }
-                }
-
-                // 物理移動
-                activeParticles.forEach(p => {
-                    p.x += p.vx;
-                    p.y += p.vy;
-                    p.angle += 0.1;
+            particles.current.forEach(p => {
+                if (mode.current === 'galaxy') {
+                    p.x += p.vx; p.y += p.vy;
+                    p.angle += 0.05;
                     if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
                     if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
-                });
-            } else if (mode.current === 'mosaic') {
-                // 馬賽克歸位
-                 particles.current.forEach(p => {
+                } else {
                     p.x += (p.targetX - p.x) * 0.1;
                     p.y += (p.targetY - p.y) * 0.1;
                     p.angle = 0;
-                 });
-            }
-
-            // 繪製
-            activeParticles.forEach(p => {
-                ctx.save();
-                if (mode.current === 'battle') {
-                    // 戰鬥中：圓形 + 旋轉
-                    ctx.translate(p.x + p.size/2, p.y + p.size/2);
-                    ctx.rotate(p.angle);
-                    ctx.beginPath(); 
-                    ctx.arc(0, 0, p.size/2, 0, Math.PI * 2); 
-                    ctx.clip();
-                    if (p.img.complete) ctx.drawImage(p.img, -p.size/2, -p.size/2, p.size, p.size);
-                    else { ctx.fillStyle = '#333'; ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size); }
-                } else {
-                    // 馬賽克：正方形
-                    ctx.beginPath();
-                    ctx.rect(p.x, p.y, p.size, p.size);
-                    ctx.clip();
-                    if (p.img.complete) ctx.drawImage(p.img, p.x, p.y, p.size, p.size);
-                    else { ctx.fillStyle = '#333'; ctx.fillRect(p.x, p.y, p.size, p.size); }
                 }
+                
+                ctx.save();
+                if (mode.current === 'galaxy') {
+                     // 抽獎時：圓形 + 旋轉
+                     ctx.translate(p.x + p.size/2, p.y + p.size/2);
+                     ctx.rotate(p.angle);
+                     ctx.beginPath(); 
+                     ctx.arc(0, 0, p.size/2, 0, Math.PI * 2); 
+                     ctx.clip();
+                     if (p.img.complete) ctx.drawImage(p.img, -p.size/2, -p.size/2, p.size, p.size);
+                     else { ctx.fillStyle = '#333'; ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size); }
+                } else {
+                     // 🔥 V60: 馬賽克無縫並列
+                     ctx.beginPath();
+                     ctx.rect(p.x, p.y, p.size, p.size); // No gaps
+                     ctx.clip();
+                     if (p.img.complete) ctx.drawImage(p.img, p.x, p.y, p.size, p.size);
+                     else { ctx.fillStyle = '#333'; ctx.fillRect(p.x, p.y, p.size, p.size); }
+                     // Optional: very thin line to separate if needed, else remove
+                     // ctx.strokeStyle = '#111'; ctx.lineWidth = 1; ctx.strokeRect(p.x, p.y, p.size, p.size);
+                }
+                
                 ctx.restore();
             });
-
-            // 勝利者檢查
-            if (mode.current === 'battle' && activeParticles.length === 1) {
-                 stop(activeParticles[0].data);
-            }
-
             frameId.current = requestAnimationFrame(render);
         };
         render();
@@ -308,26 +264,19 @@ const BattleCanvas = ({ list, t, onDrawEnd }) => {
     const start = () => {
         if(list.length < 2) return;
         setIsRunning(true);
-        mode.current = 'battle';
-        
-        // 預先選定贏家 (護盾)
-        const winnerIdx = Math.floor(Math.random() * list.length);
-        winnerRef.current = list[winnerIdx];
-
-        // 給予所有粒子隨機速度 (爆炸)
-        particles.current.forEach(p => { 
-            p.vx = (Math.random() - 0.5) * 50; 
-            p.vy = (Math.random() - 0.5) * 50; 
-            p.active = true; // 重置存活狀態
-        });
+        mode.current = 'galaxy';
+        particles.current.forEach(p => { p.vx = (Math.random() - 0.5) * 40; p.vy = (Math.random() - 0.5) * 40; });
         SoundController.startSuspense();
+        setTimeout(stop, 12000); // 延長到12秒
     };
 
-    const stop = (winner) => {
+    const stop = () => {
+        const winnerIdx = Math.floor(Math.random() * list.length);
+        const winner = list[winnerIdx];
         setIsRunning(false);
-        mode.current = 'show_winner'; // 暫停渲染其他
+        mode.current = 'mosaic';
         SoundController.playWin();
-        onDrawEnd(winner);
+        setTimeout(() => onDrawEnd(winner), 500);
     };
 
     useEffect(() => {
@@ -340,6 +289,7 @@ const BattleCanvas = ({ list, t, onDrawEnd }) => {
         <div className="w-full h-full relative">
             <canvas ref={canvasRef} className="block w-full h-full" />
             {!isRunning && <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50"><button onClick={start} className="bg-red-600 text-white px-12 py-3 rounded-full font-bold text-2xl shadow-2xl border border-white/20 uppercase tracking-widest hover:scale-105 transition-transform">{t.drawBtn}</button></div>}
+            {isRunning && <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none"><h1 className="text-8xl font-black text-white drop-shadow-[0_0_30px_rgba(232,33,39,0.8)] animate-pulse uppercase tracking-widest">{t.running}</h1></div>}
         </div>
     );
 };
@@ -366,7 +316,7 @@ const LoginView = ({ t, onLogin, onBack }) => {
 
 const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState({name:'',phone:'',email:'',company:''});
+  const [form, setForm] = useState({name:'',phone:'',email:'',company:'',table:'',seat:''});
   const [photo, setPhoto] = useState(null);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
@@ -402,6 +352,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
               {!isCameraOpen && (
                   <div className="space-y-3">
                     {['name', 'phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
+                    {/* V58: No Seat Input for Guest */}
                     <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
                   </div>
               )}
@@ -421,10 +372,11 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan }) => {
   );
 };
 
-// --- Projector View (Updated) ---
+// --- Projector View ---
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes }) => {
     const [winner, setWinner] = useState(null);
     const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h => h.attendeeId === p.id));
+    const currentPrizeWinner = drawHistory.find(h => h.prize === currentPrize);
 
     useEffect(() => {
         const handleKey = async (e) => { 
@@ -467,26 +419,28 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     return (
         <div className="min-h-screen bg-black text-white relative flex flex-col items-center overflow-hidden">
             <button onClick={onBack} className="absolute top-6 left-6 text-white/30 hover:text-white z-50 transition-colors"><ChevronLeft size={24}/></button>
-            
-            {/* 上層 Header (20%) - 獎品橫向排列 */}
             <div className="flex-none h-[20vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-b border-white/10 flex items-center justify-between px-8 relative shadow-xl w-full">
                  <div className="flex-1 flex flex-col md:flex-row items-center justify-center gap-4 md:gap-8 w-full">
                     <span className="text-yellow-500 font-bold tracking-widest uppercase text-lg md:text-xl whitespace-nowrap">{t.currentPrize}:</span>
                     <h1 className="text-4xl md:text-6xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] leading-tight text-center">{currentPrize || "WAITING..."}</h1>
                  </div>
             </div>
-
-            {/* 中層 Canvas (60%) */}
             <div className="flex-1 w-full relative z-10 bg-black overflow-hidden flex items-center justify-center">
-                {eligible.length > 0 ? (
-                    // V71: 替換為 BattleCanvas (碰撞淘汰)
-                    <BattleCanvas list={eligible} t={t} onDrawEnd={handleDrawEnd} />
+                {currentPrizeWinner ? (
+                    <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500">
+                        <div className="text-2xl text-yellow-500 font-bold mb-6 uppercase tracking-[0.3em] border-b-2 border-yellow-500 pb-2">{t.drawn}</div>
+                        <div className="relative">
+                            {currentPrizeWinner.photo ? <img src={currentPrizeWinner.photo} className="w-80 h-80 rounded-full border-8 border-gray-700 grayscale hover:grayscale-0 transition-all object-cover"/> : <div className="w-64 h-64 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-gray-700 mb-8"><User size={100}/></div>}
+                        </div>
+                        <h1 className="text-7xl font-black text-gray-400 mt-6">{currentPrizeWinner.name}</h1>
+                        <div className="text-white/30 mt-2">{t.winnerIs}</div>
+                    </div>
+                ) : eligible.length > 0 ? (
+                    <GalaxyCanvas list={eligible} t={t} onDrawEnd={handleDrawEnd} />
                 ) : (
                     <div className="text-center text-white/30"><Trophy size={100} className="mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p></div>
                 )}
             </div>
-            
-            {/* 下層 Marquee (20%) */}
             <div className="flex-none h-[20vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-t border-white/10 flex items-center justify-center overflow-hidden w-full">
                 {drawHistory.length > 0 && (
                     <div className="w-full max-w-7xl overflow-x-auto px-10 pb-4">
@@ -502,8 +456,6 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                     </div>
                 )}
             </div>
-
-            {/* Winner Overlay */}
             {winner && (
                 <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center animate-in zoom-in duration-300">
                     <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
@@ -524,7 +476,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     );
 };
 
-// ... (Reception, Prize, Main App - Keep V59 Logic) ...
+// --- Reception Dashboard ---
 const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan, drawHistory }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
@@ -551,6 +503,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
         lastTime.current = now;
         let targetId = data.id || (data.type==='new_reg' && attendees.find(x=>x.phone===normalizePhone(data.phone))?.id);
         const p = attendees.find(x=>x.id===targetId);
+        
         if(!p) setScanRes({type:'error', msg:t.notFound});
         else if(p.checkedIn) setScanRes({type:'duplicate', msg:t.duplicate, p});
         else {
@@ -593,7 +546,12 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
       e.preventDefault();
       if(!seatForm.table) return;
       if(db) await addDoc(collection(db, "seating_plan"), { 
-          name: seatForm.name, phone: normalizePhone(seatForm.phone), email: normalizeEmail(seatForm.email), dept: seatForm.dept, table: seatForm.table, seat: seatForm.seat 
+          name: seatForm.name, 
+          phone: normalizePhone(seatForm.phone), 
+          email: normalizeEmail(seatForm.email), 
+          dept: seatForm.dept, 
+          table: seatForm.table, 
+          seat: seatForm.seat 
       });
       setSeatForm({ name:'', phone:'', email: '', dept: '', table: '', seat: '' });
   };
@@ -611,28 +569,132 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
           <div className="flex gap-2 mb-6 bg-white/5 p-1 rounded-xl">
               {['scan','list','seating'].map(k=><button key={k} onClick={()=>{setTab(k);setIsScan(false)}} className={`px-4 py-2 rounded-lg text-sm ${tab===k?'bg-blue-600':'text-white/50'}`}>{t[k]}</button>)}
           </div>
-          {tab==='scan' && (<div className="w-full max-w-md">{isScan ? <div id="reader" className="bg-black rounded-xl overflow-hidden mb-4"></div> : <button onClick={()=>setIsScan(true)} className="w-full py-12 border-2 border-dashed border-white/20 rounded-xl text-white/50 flex flex-col items-center gap-2 hover:bg-white/5"><Camera size={32}/> {t.scanCam}</button>}{scanRes && <div className={`p-4 rounded-xl text-center font-bold ${scanRes.type==='success'?'bg-green-600':'bg-red-600'}`}>{scanRes.msg} {scanRes.p?.name}</div>}</div>)}
+          
+          {tab==='scan' && (
+              <div className="w-full max-w-md">
+                  {isScan ? <div id="reader" className="bg-black rounded-xl overflow-hidden mb-4"></div> : <button onClick={()=>setIsScan(true)} className="w-full py-12 border-2 border-dashed border-white/20 rounded-xl text-white/50 flex flex-col items-center gap-2 hover:bg-white/5"><Camera size={32}/> {t.scanCam}</button>}
+                  {scanRes && <div className={`p-4 rounded-xl text-center font-bold ${scanRes.type==='success'?'bg-green-600':'bg-red-600'}`}>{scanRes.msg} {scanRes.p?.name}</div>}
+              </div>
+          )}
+
           {tab==='list' && (
               <div className="w-full flex-1 flex flex-col h-[70vh]">
                   <div className="p-4 bg-white/5 rounded-t-xl border-b border-white/10">
-                      <div className="mb-4 relative"><Search className="absolute top-2.5 left-3 text-white/30" size={16}/><input placeholder={t.searchList} value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-white/10 rounded-lg pl-9 pr-4 py-2 text-sm outline-none"/></div>
-                      <form onSubmit={handleAddGuest} className="flex gap-2 flex-wrap mb-4 bg-white/5 p-2 rounded-lg"><div className="w-full text-xs text-white/40 mb-1">{t.addGuest}</div><input placeholder="Name" value={adminForm.name} onChange={e=>setAdminForm({...adminForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]"/><input placeholder="Phone" value={adminForm.phone} onChange={e=>setAdminForm({...adminForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none"/><input placeholder="Email" value={adminForm.email} onChange={e=>setAdminForm({...adminForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-32 text-xs outline-none"/><input placeholder="Dept" value={adminForm.dept} onChange={e=>setAdminForm({...adminForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none"/><input placeholder="T" value={adminForm.table} onChange={e=>setAdminForm({...adminForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/><input placeholder="S" value={adminForm.seat} onChange={e=>setAdminForm({...adminForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/><button className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button></form>
-                      <div className="flex justify-between text-xs text-white/50"><span>Total: {attendees.length}</span><span className="text-emerald-400">Arrived: {attendees.filter(x=>x.checkedIn).length}</span></div>
+                      <div className="mb-4 relative">
+                          <Search className="absolute top-2.5 left-3 text-white/30" size={16}/>
+                          <input placeholder={t.searchList} value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-white/10 rounded-lg pl-9 pr-4 py-2 text-sm outline-none"/>
+                      </div>
+                      
+                      <form onSubmit={handleAddGuest} className="flex gap-2 flex-wrap mb-4 bg-white/5 p-2 rounded-lg">
+                          <div className="w-full text-xs text-white/40 mb-1">{t.addGuest}</div>
+                          <input placeholder="Name" value={adminForm.name} onChange={e=>setAdminForm({...adminForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]"/>
+                          <input placeholder="Phone" value={adminForm.phone} onChange={e=>setAdminForm({...adminForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none"/>
+                          <input placeholder="Email" value={adminForm.email} onChange={e=>setAdminForm({...adminForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-32 text-xs outline-none"/>
+                          <input placeholder="Dept" value={adminForm.dept} onChange={e=>setAdminForm({...adminForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none"/>
+                          <input placeholder="T" value={adminForm.table} onChange={e=>setAdminForm({...adminForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/>
+                          <input placeholder="S" value={adminForm.seat} onChange={e=>setAdminForm({...adminForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/>
+                          <button className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
+                      </form>
+                      
+                      <div className="flex justify-between text-xs text-white/50">
+                          <span>Total: {attendees.length}</span>
+                          <span className="text-emerald-400">Arrived: {attendees.filter(x=>x.checkedIn).length}</span>
+                      </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-b-xl p-2"><table className="w-full text-left border-collapse"><thead className="text-xs text-white/40 uppercase border-b border-white/10"><tr><th className="p-2">Name</th><th className="p-2 hidden md:table-cell">Phone</th><th className="p-2 hidden md:table-cell">Email</th><th className="p-2 hidden md:table-cell">Dept</th><th className="p-2">Table</th><th className="p-2">Seat</th><th className="p-2 text-yellow-500">{t.wonPrize}</th><th className="p-2 text-center">Status</th><th className="p-2 text-right">Del</th></tr></thead><tbody className="divide-y divide-white/5">{filteredList.map(p=>{const winnerRec = drawHistory.find(h=>h.attendeeId===p.id);return (<tr key={p.id} className="hover:bg-white/5 text-sm"><td className="p-2 font-bold flex items-center gap-2">{p.photo ? <img src={p.photo} className="w-6 h-6 rounded-full object-cover"/> : <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center"><User size={12}/></div>}{p.name}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.phone}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.email}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.dept}</td><td className="p-2 font-mono text-blue-400">{p.table}</td><td className="p-2 font-mono">{p.seat}</td><td className="p-2 text-xs text-yellow-400 font-bold">{winnerRec ? winnerRec.prize : '-'}</td><td className="p-2 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-1 rounded text-[10px]">{t.checkin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-2 py-1 rounded text-[10px]">{t.cancel}</button>}</td><td className="p-2 text-right"><button onClick={()=>deletePerson(p.id)} className="p-1 text-white/30 hover:text-red-500"><Trash2 size={14}/></button></td></tr>);})}</tbody></table></div>
+
+                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-b-xl p-2">
+                      <table className="w-full text-left border-collapse">
+                          <thead className="text-xs text-white/40 uppercase border-b border-white/10">
+                              <tr>
+                                  <th className="p-2">Name</th>
+                                  <th className="p-2 hidden md:table-cell">Phone</th>
+                                  <th className="p-2 hidden md:table-cell">Email</th>
+                                  <th className="p-2 hidden md:table-cell">Dept</th>
+                                  <th className="p-2">Table</th>
+                                  <th className="p-2">Seat</th>
+                                  <th className="p-2 text-yellow-500">{t.wonPrize}</th>
+                                  <th className="p-2 text-center">Status</th>
+                                  <th className="p-2 text-right">Del</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                              {filteredList.map(p=>{
+                                  const winnerRec = drawHistory.find(h=>h.attendeeId===p.id);
+                                  return (
+                                      <tr key={p.id} className="hover:bg-white/5 text-sm">
+                                          <td className="p-2 font-bold flex items-center gap-2">{p.photo ? <img src={p.photo} className="w-6 h-6 rounded-full object-cover"/> : <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center"><User size={12}/></div>}{p.name}</td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.phone}</td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.email}</td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.dept}</td>
+                                          <td className="p-2 font-mono text-blue-400">{p.table}</td>
+                                          <td className="p-2 font-mono">{p.seat}</td>
+                                          <td className="p-2 text-xs text-yellow-400 font-bold">{winnerRec ? winnerRec.prize : '-'}</td>
+                                          <td className="p-2 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-1 rounded text-[10px]">{t.checkin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-2 py-1 rounded text-[10px]">{t.cancel}</button>}</td>
+                                          <td className="p-2 text-right"><button onClick={()=>deletePerson(p.id)} className="p-1 text-white/30 hover:text-red-500"><Trash2 size={14}/></button></td>
+                                      </tr>
+                                  );
+                              })}
+                          </tbody>
+                      </table>
+                  </div>
               </div>
           )}
+
           {tab==='seating' && (
               <div className="w-full flex-1 flex flex-col gap-4">
-                  <div className="flex gap-2"><input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none text-sm"/><label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label><button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button></div>
-                  <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2"><div className="w-full text-xs text-white/40 mb-1">{t.addSeat}</div><input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" /><input placeholder={t.phone} value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none" /><input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" /><input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" /><input placeholder="T" value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" /><input placeholder="S" value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" /><button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button></div>
-                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2"><table className="w-full text-left border-collapse"><thead className="text-xs text-white/40 uppercase border-b border-white/10"><tr><th className="p-2">Name</th><th className="p-2 hidden md:table-cell">Phone</th><th className="p-2 hidden md:table-cell">Email</th><th className="p-2 hidden md:table-cell">Dept</th><th className="p-2">Table</th><th className="p-2">Seat</th><th className="p-2 text-right">Del</th></tr></thead><tbody className="divide-y divide-white/5">{filteredSeat.map(s=>(<tr key={s.id} className="hover:bg-white/5 text-sm"><td className="p-2 font-bold">{s.name}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.phone}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.email}</td><td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.dept}</td><td className="p-2 font-mono text-blue-400">{s.table}</td><td className="p-2 font-mono">{s.seat}</td><td className="p-2 text-right"><button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500 ml-2"><Trash2 size={14}/></button></td></tr>))}</tbody></table></div>
+                  <div className="flex gap-2">
+                      <input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none text-sm"/>
+                      <label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label>
+                      <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button>
+                  </div>
+                  
+                  <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2">
+                      <div className="w-full text-xs text-white/40 mb-1">{t.addSeat}</div>
+                      <input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" />
+                      <input placeholder={t.phone} value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none" />
+                      <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
+                      <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
+                      <input placeholder="T" value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
+                      <input placeholder="S" value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
+                      <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2">
+                      <table className="w-full text-left border-collapse">
+                          <thead className="text-xs text-white/40 uppercase border-b border-white/10">
+                              <tr>
+                                  <th className="p-2">Name</th>
+                                  <th className="p-2 hidden md:table-cell">Phone</th>
+                                  <th className="p-2 hidden md:table-cell">Email</th>
+                                  <th className="p-2 hidden md:table-cell">Dept</th>
+                                  <th className="p-2">Table</th>
+                                  <th className="p-2">Seat</th>
+                                  <th className="p-2 text-right">Del</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                              {filteredSeat.map(s=>(
+                                  <tr key={s.id} className="hover:bg-white/5 text-sm">
+                                      <td className="p-2 font-bold">{s.name}</td>
+                                      <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.phone}</td>
+                                      <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.email}</td>
+                                      <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.dept}</td>
+                                      <td className="p-2 font-mono text-blue-400">{s.table}</td>
+                                      <td className="p-2 font-mono">{s.seat}</td>
+                                      <td className="p-2 text-right"><button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500 ml-2"><Trash2 size={14}/></button></td>
+                                  </tr>
+                              ))}
+                          </tbody>
+                      </table>
+                  </div>
               </div>
           )}
        </main>
     </div>
   );
 };
+
+// ... (PrizeDashboard, LoginView, GuestView - 保持 V58 邏輯) ...
 const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, setCurrentPrize }) => {
   const [prizes, setPrizes] = useState([]); 
   const [newPrizeName, setNewPrizeName] = useState("");
