@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 視覺強化版",
+    title: "Tesla Annual Dinner", sub: "2025 最終修復版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
@@ -70,10 +70,11 @@ const translations = {
     genDummySeat: "生成 100 筆測試座位", clearSeats: "清空座位表", confirmClearSeats: "確定要清空所有座位表嗎？",
     checkSeat: "查詢座位", inputHint: "輸入電話或 Email 查詢", backToReg: "返回登記",
     seatResult: "查詢結果", status: "狀態", notCheckedIn: "未簽到", registered: "已登記", notRegistered: "未登記",
-    youWon: "恭喜獲得"
+    youWon: "恭喜獲得", nextRound: "按 ENTER 進入下一輪",
+    winnerLabel: "得主"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Max Pixels",
+    title: "Tesla Annual Dinner", sub: "2025 Final Fix",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Auto seat assignment",
@@ -98,7 +99,8 @@ const translations = {
     genDummySeat: "Gen 100 Dummy Seats", clearSeats: "Clear Seats", confirmClearSeats: "Delete ALL seating plan?",
     checkSeat: "Check Seat", inputHint: "Enter Phone or Email", backToReg: "Back to Register",
     seatResult: "Result", status: "Status", notCheckedIn: "Not In", registered: "Registered", notRegistered: "Not Reg",
-    youWon: "You Won"
+    youWon: "Congratulations!", nextRound: "Press ENTER for Next Round",
+    winnerLabel: "WINNER"
   }
 };
 
@@ -148,11 +150,18 @@ const Confetti = () => {
   const canvasRef = useRef(null);
   useEffect(() => {
     const c = canvasRef.current;
+    if(!c) return;
     const ctx = c.getContext('2d');
     c.width = window.innerWidth; c.height = window.innerHeight;
     const p = Array.from({length:300}).map(()=>({x:Math.random()*c.width, y:Math.random()*c.height,c:['#E82127','#FFFFFF','#808080', '#FFD700'][Math.floor(Math.random()*4)],s:Math.random()*8+2,d:Math.random()*5}));
-    const draw = () => { ctx.clearRect(0,0,c.width,c.height); p.forEach(i=>{i.y+=i.s;i.x+=Math.sin(i.d);if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}ctx.fillStyle=i.c;ctx.beginPath();ctx.arc(i.x,i.y,i.s/2,0,Math.PI*2);ctx.fill();}); requestAnimationFrame(draw); };
+    let animId;
+    const draw = () => { 
+        ctx.clearRect(0,0,c.width,c.height); 
+        p.forEach(i=>{i.y+=i.s;i.x+=Math.sin(i.d);if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}ctx.fillStyle=i.c;ctx.beginPath();ctx.arc(i.x,i.y,i.s/2,0,Math.PI*2);ctx.fill();}); 
+        animId = requestAnimationFrame(draw); 
+    };
     draw();
+    return () => cancelAnimationFrame(animId);
   }, []);
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
 };
@@ -193,7 +202,7 @@ const SoundController = {
   }
 };
 
-// --- Galaxy Canvas (Visuals: Tesla Big Text & BIGGER Particles) ---
+// --- Galaxy Canvas (Visuals: Tesla Big Text & All-Photo Particles) ---
 const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
     const canvasRef = useRef(null);
     const [isRunning, setIsRunning] = useState(false);
@@ -204,12 +213,13 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
     useEffect(() => {
         const canvas = canvasRef.current;
         const container = canvas?.parentElement;
-        if (!canvas || !container) return; // Allow empty list for init
+        if (!canvas || !container) return; 
         
         const ctx = canvas.getContext('2d');
         
         const resize = () => { 
             // 🔥 V98: 使用容器的寬高，確保填滿中間區域
+            if (container.clientWidth === 0 || container.clientHeight === 0) return;
             canvas.width = container.clientWidth; 
             canvas.height = container.clientHeight; 
             initParticles();
@@ -218,8 +228,10 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
         const initParticles = () => {
             const w = canvas.width;
             const h = canvas.height;
-            // 🔥 V117: Significantly reduce minParticles to make each particle HUGE
-            const minParticles = 200; // was 500, then 600. Lower = Bigger blocks
+            if (w === 0 || h === 0) return; // Prevent IndexSizeError
+
+            // V95: Min particles for text shape
+            const minParticles = 200; // Lower count = Bigger blocks
             const totalParticles = Math.max(list.length, minParticles);
             
             // 1. Generate TESLA Text Mask
@@ -234,7 +246,6 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             
             // 🔥 V98: Bigger Font
             const fontSize = Math.min(w * 0.4, h * 0.95); 
-            // 🔥 V117: Thicker font
             offCtx.font = `900 ${fontSize}px sans-serif`; 
             offCtx.textAlign = 'center';
             offCtx.textBaseline = 'middle';
@@ -255,18 +266,16 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             let particleSize = Math.floor(Math.sqrt(areaPerPerson));
             
             if(particleSize < 4) particleSize = 4; 
-            // V98: Allow even bigger particles if few people
             if(particleSize > 150) particleSize = 150; 
 
-            // 🔥 V117: Step is slightly larger than particle to avoid overlap? No, we want tight fit now.
-            const step = particleSize; 
-            
+            const step = particleSize;
             let validPoints = [];
-            // Scan with half-step offset to center
-            for(let y=step/2; y<h; y+=step) {
-                for(let x=step/2; x<w; x+=step) {
+            // Use safe padding for scanning
+            const halfStep = Math.floor(step/2);
+            for(let y=halfStep; y<h; y+=step) {
+                for(let x=halfStep; x<w; x+=step) {
                     const idx = (Math.floor(y) * w + Math.floor(x)) * 4;
-                    if(imgData[idx] > 100) validPoints.push({x: x - step/2, y: y - step/2});
+                    if(imgData[idx] > 100) validPoints.push({x: x - halfStep, y: y - halfStep});
                 }
             }
 
@@ -286,15 +295,18 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                 // 🔥 V103: Force photo for ALL particles (Shadow Clone)
                 let p = null;
                 let img = null;
+                let isReal = false;
 
                 if (list.length > 0) {
                     // Cycle through real guests to reuse photos
                     const guestIndex = i % list.length;
                     p = list[guestIndex];
+                    isReal = true;
                     img = new Image();
                     img.src = p.photo && p.photo.startsWith('http') ? p.photo : `https://i.pravatar.cc/300?u=${p.id}`;
                 } else {
                     p = { id: `dummy_${i}`, name: '?' };
+                    isReal = false;
                 }
 
                 particleArray.push({
@@ -307,9 +319,9 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                     size: step, 
                     img: img,
                     data: p,
-                    angle: 0,
-                    // Fallback colors just in case
-                    color: ['#E82127','#FFFFFF','#808080','#333333'][Math.floor(Math.random()*4)]
+                    isReal: isReal,
+                    color: ['#E82127','#FFFFFF','#808080','#333333'][i%4],
+                    angle: 0
                 });
             }
             particles.current = particleArray;
@@ -351,20 +363,19 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                      }
                 } else {
                      // Mosaic
-                     // 🔥 V117: Zero gap for maximum size
-                     const gap = 0;
+                     // Zero gap
                      ctx.beginPath();
-                     ctx.rect(p.x, p.y, p.size - gap, p.size - gap);
+                     ctx.rect(p.x, p.y, p.size, p.size);
                      ctx.clip();
                      
                      if (p.img && p.img.complete && p.img.naturalWidth !== 0) {
-                         ctx.drawImage(p.img, p.x, p.y, p.size - gap, p.size - gap);
+                         ctx.drawImage(p.img, p.x, p.y, p.size, p.size);
                          ctx.strokeStyle = 'rgba(255,255,255,0.2)';
                          ctx.lineWidth = 0.5;
-                         ctx.strokeRect(p.x, p.y, p.size - gap, p.size - gap);
+                         ctx.strokeRect(p.x, p.y, p.size, p.size);
                      } else {
                          ctx.fillStyle = p.color; 
-                         ctx.fillRect(p.x, p.y, p.size - gap, p.size - gap); 
+                         ctx.fillRect(p.x, p.y, p.size, p.size); 
                      }
                 }
                 ctx.restore();
@@ -623,26 +634,25 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
             {/* 2. Canvas Area (Flex 1) - Maximize Space */}
             <div className="flex-1 w-full relative z-10 bg-black overflow-hidden flex items-center justify-center">
                 {winner ? (
-                     // 🔥 V113: Horizontal Info Layout
+                     // 🔥 V113: Horizontal Info Layout (Shrunk by 30% from V112)
                     <div className="flex flex-col items-center justify-center h-full w-full relative z-50">
                         <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
 
                         {/* Photo stays top */}
-                        <div className="relative mb-10">
+                        <div className="relative mb-6">
                             <div className="absolute inset-0 bg-yellow-500/30 blur-3xl rounded-full animate-pulse"></div>
                             {winner.photo ? <img src={winner.photo} className="relative w-96 h-96 rounded-full border-8 border-yellow-400 object-cover shadow-2xl"/> : <div className="w-96 h-96 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={150}/></div>}
                         </div>
                         
-                        {/* 🔥 V113: Name and Seat Info Horizontal Row */}
-                        {/* 🔥 V114: Scaled Down Info Row (-30%) */}
-                        <div className="flex flex-row items-center justify-center gap-6 bg-white/10 backdrop-blur-md px-12 py-4 rounded-full border border-white/20 shadow-xl mt-4">
-                            {/* Name: Text-5xl (was 6xl) */}
+                        {/* 🔥 V114: Scaled Down Info Row */}
+                        <div className="flex flex-row items-center justify-center gap-6 bg-white/10 backdrop-blur-md px-12 py-4 rounded-full border border-white/20 shadow-xl mt-4 mb-8">
+                            {/* Name */}
                             <h1 className="text-5xl font-black text-white tracking-wide">{winner.name}</h1>
                             
                             {/* Vertical Divider */}
                             <div className="w-1 h-12 bg-white/20 rounded-full"></div>
 
-                            {/* Seat Info: Text-3xl (was 4xl), Icon size 32 (was 40) */}
+                            {/* Seat Info */}
                             <div className="flex items-center gap-4 text-3xl font-bold text-yellow-400">
                                 <Armchair size={32} className="text-white/60"/> 
                                 <span>Table {winner.table || '-'}</span>
@@ -651,7 +661,8 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                             </div>
                         </div>
                         
-                        <p className="absolute bottom-4 text-white/30 text-sm animate-pulse">{t.nextRound}</p>
+                        {/* 🔥 V115: Relative Position to avoid overlap */}
+                        <p className="text-white/30 text-sm animate-pulse">{t.nextRound}</p>
                     </div>
                 ) : currentPrizeWinner ? (
                      <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500 z-20">
