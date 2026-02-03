@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 最終修復版",
+    title: "Tesla Annual Dinner", sub: "2025 穩定修復版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
@@ -74,7 +74,7 @@ const translations = {
     winnerLabel: "得主"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Final Fix",
+    title: "Tesla Annual Dinner", sub: "2025 Stable Fix",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Auto seat assignment",
@@ -150,18 +150,11 @@ const Confetti = () => {
   const canvasRef = useRef(null);
   useEffect(() => {
     const c = canvasRef.current;
-    if(!c) return;
     const ctx = c.getContext('2d');
     c.width = window.innerWidth; c.height = window.innerHeight;
     const p = Array.from({length:300}).map(()=>({x:Math.random()*c.width, y:Math.random()*c.height,c:['#E82127','#FFFFFF','#808080', '#FFD700'][Math.floor(Math.random()*4)],s:Math.random()*8+2,d:Math.random()*5}));
-    let animId;
-    const draw = () => { 
-        ctx.clearRect(0,0,c.width,c.height); 
-        p.forEach(i=>{i.y+=i.s;i.x+=Math.sin(i.d);if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}ctx.fillStyle=i.c;ctx.beginPath();ctx.arc(i.x,i.y,i.s/2,0,Math.PI*2);ctx.fill();}); 
-        animId = requestAnimationFrame(draw); 
-    };
+    const draw = () => { ctx.clearRect(0,0,c.width,c.height); p.forEach(i=>{i.y+=i.s;i.x+=Math.sin(i.d);if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}ctx.fillStyle=i.c;ctx.beginPath();ctx.arc(i.x,i.y,i.s/2,0,Math.PI*2);ctx.fill();}); requestAnimationFrame(draw); };
     draw();
-    return () => cancelAnimationFrame(animId);
   }, []);
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
 };
@@ -213,12 +206,11 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
     useEffect(() => {
         const canvas = canvasRef.current;
         const container = canvas?.parentElement;
-        if (!canvas || !container) return; 
+        if (!canvas || !container) return; // Allow empty list for init
         
         const ctx = canvas.getContext('2d');
         
         const resize = () => { 
-            // 🔥 V98: 使用容器的寬高，確保填滿中間區域
             if (container.clientWidth === 0 || container.clientHeight === 0) return;
             canvas.width = container.clientWidth; 
             canvas.height = container.clientHeight; 
@@ -228,10 +220,9 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
         const initParticles = () => {
             const w = canvas.width;
             const h = canvas.height;
-            if (w === 0 || h === 0) return; // Prevent IndexSizeError
+            if (w === 0 || h === 0) return; 
 
-            // V95: Min particles for text shape
-            const minParticles = 200; // Lower count = Bigger blocks
+            const minParticles = 200; 
             const totalParticles = Math.max(list.length, minParticles);
             
             // 1. Generate TESLA Text Mask
@@ -244,7 +235,6 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.fillRect(0, 0, w, h);
             offCtx.fillStyle = '#fff';
             
-            // 🔥 V98: Bigger Font
             const fontSize = Math.min(w * 0.4, h * 0.95); 
             offCtx.font = `900 ${fontSize}px sans-serif`; 
             offCtx.textAlign = 'center';
@@ -270,7 +260,6 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
 
             const step = particleSize;
             let validPoints = [];
-            // Use safe padding for scanning
             const halfStep = Math.floor(step/2);
             for(let y=halfStep; y<h; y+=step) {
                 for(let x=halfStep; x<w; x+=step) {
@@ -279,26 +268,22 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                 }
             }
 
-            // Shuffle valid points
             for (let i = validPoints.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [validPoints[i], validPoints[j]] = [validPoints[j], validPoints[i]];
             }
 
-            // 3. Assign Particles (Clone real guests to fill gaps)
             const particleArray = [];
             const countToGenerate = Math.max(validPoints.length, totalParticles);
             
             for(let i=0; i < countToGenerate; i++) {
                 const pt = validPoints[i % validPoints.length] || {x: Math.random()*w, y: Math.random()*h};
                 
-                // 🔥 V103: Force photo for ALL particles (Shadow Clone)
                 let p = null;
                 let img = null;
                 let isReal = false;
 
                 if (list.length > 0) {
-                    // Cycle through real guests to reuse photos
                     const guestIndex = i % list.length;
                     p = list[guestIndex];
                     isReal = true;
@@ -345,7 +330,6 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                 }
                 
                 ctx.save();
-                // 🔥 V108: Huge particles during draw (80%)
                 const currentSize = mode.current === 'galaxy' ? p.size * 0.8 : p.size; 
                 
                 if (mode.current === 'galaxy') {
@@ -362,20 +346,19 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                          ctx.fillRect(-currentSize/2, -currentSize/2, currentSize, currentSize); 
                      }
                 } else {
-                     // Mosaic
-                     // Zero gap
+                     const gap = 0;
                      ctx.beginPath();
-                     ctx.rect(p.x, p.y, p.size, p.size);
+                     ctx.rect(p.x, p.y, p.size - gap, p.size - gap);
                      ctx.clip();
                      
                      if (p.img && p.img.complete && p.img.naturalWidth !== 0) {
-                         ctx.drawImage(p.img, p.x, p.y, p.size, p.size);
+                         ctx.drawImage(p.img, p.x, p.y, p.size - gap, p.size - gap);
                          ctx.strokeStyle = 'rgba(255,255,255,0.2)';
                          ctx.lineWidth = 0.5;
-                         ctx.strokeRect(p.x, p.y, p.size, p.size);
+                         ctx.strokeRect(p.x, p.y, p.size - gap, p.size - gap);
                      } else {
                          ctx.fillStyle = p.color; 
-                         ctx.fillRect(p.x, p.y, p.size, p.size); 
+                         ctx.fillRect(p.x, p.y, p.size - gap, p.size - gap); 
                      }
                 }
                 ctx.restore();
@@ -473,10 +456,12 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
     if (!q) return;
     const isEmail = q.includes('@');
     const target = isEmail ? normalizeEmail(q) : normalizePhone(q);
-    let found = attendees.find(a => isEmail ? normalizeEmail(a.email) === target : normalizePhone(a.phone) === target);
+    
+    // 🔥 V100/V118: Robust String Comparison (Fixes crash on numbers)
+    let found = attendees.find(a => isEmail ? normalizeEmail(String(a.email)) === target : normalizePhone(String(a.phone)) === target);
     let status = t.registered;
     if (!found) {
-        found = seatingPlan.find(s => isEmail ? normalizeEmail(s.email) === target : normalizePhone(s.phone) === target);
+        found = seatingPlan.find(s => isEmail ? normalizeEmail(String(s.email)) === target : normalizePhone(String(s.phone)) === target);
         status = t.notRegistered;
     }
     if (found) { setSearchResult({ ...found, status }); setErr(""); } else { setSearchResult(null); setErr(t.notFound); }
@@ -634,25 +619,25 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
             {/* 2. Canvas Area (Flex 1) - Maximize Space */}
             <div className="flex-1 w-full relative z-10 bg-black overflow-hidden flex items-center justify-center">
                 {winner ? (
-                     // 🔥 V113: Horizontal Info Layout (Shrunk by 30% from V112)
+                     // 🔥 V113: Horizontal Info Layout
                     <div className="flex flex-col items-center justify-center h-full w-full relative z-50">
                         <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
 
                         {/* Photo stays top */}
-                        <div className="relative mb-6">
+                        <div className="relative mb-10">
                             <div className="absolute inset-0 bg-yellow-500/30 blur-3xl rounded-full animate-pulse"></div>
                             {winner.photo ? <img src={winner.photo} className="relative w-96 h-96 rounded-full border-8 border-yellow-400 object-cover shadow-2xl"/> : <div className="w-96 h-96 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={150}/></div>}
                         </div>
                         
-                        {/* 🔥 V114: Scaled Down Info Row */}
+                        {/* 🔥 V114: Scaled Down Info Row (-30% from V112) */}
                         <div className="flex flex-row items-center justify-center gap-6 bg-white/10 backdrop-blur-md px-12 py-4 rounded-full border border-white/20 shadow-xl mt-4 mb-8">
-                            {/* Name */}
+                            {/* Name: Text-5xl */}
                             <h1 className="text-5xl font-black text-white tracking-wide">{winner.name}</h1>
                             
                             {/* Vertical Divider */}
                             <div className="w-1 h-12 bg-white/20 rounded-full"></div>
 
-                            {/* Seat Info */}
+                            {/* Seat Info: Text-3xl, Icon size 32 */}
                             <div className="flex items-center gap-4 text-3xl font-bold text-yellow-400">
                                 <Armchair size={32} className="text-white/60"/> 
                                 <span>Table {winner.table || '-'}</span>
@@ -710,12 +695,23 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
       const s = search.toLowerCase();
       const prizeName = drawHistory.find(h=>h.attendeeId===p.id)?.prize || "";
       const dept = p.dept || "";
-      return p.name.toLowerCase().includes(s) || p.phone.includes(s) || (p.email && p.email.toLowerCase().includes(s)) || dept.toLowerCase().includes(s) || prizeName.toLowerCase().includes(s);
+      // 🔥 V118: Robust string filtering
+      return String(p.name||'').toLowerCase().includes(s) || 
+             String(p.phone||'').includes(s) || 
+             String(p.email||'').toLowerCase().includes(s) || 
+             String(dept||'').toLowerCase().includes(s) || 
+             String(prizeName||'').toLowerCase().includes(s);
   });
 
   const filteredSeat = seatingPlan.filter(s => {
       const q = search.toLowerCase();
-      return (s.name||'').toLowerCase().includes(q) || (s.phone||'').includes(q) || (s.email||'').toLowerCase().includes(q) || (s.dept||'').toLowerCase().includes(q) || (s.table||'').includes(q) || (s.seat||'').toLowerCase().includes(q);
+      // 🔥 V118: Robust string filtering
+      return String(s.name||'').toLowerCase().includes(q) || 
+             String(s.phone||'').includes(q) || 
+             String(s.email||'').toLowerCase().includes(q) || 
+             String(s.dept||'').toLowerCase().includes(q) || 
+             String(s.table||'').includes(q) || 
+             String(s.seat||'').toLowerCase().includes(q);
   });
 
   const handleScan = useCallback(async (text) => {
@@ -964,6 +960,78 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                           <td className="p-2 text-xs text-yellow-400 font-bold">{winnerRec ? winnerRec.prize : '-'}</td>
                                           <td className="p-2 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-1 rounded text-[10px]">{t.checkin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-2 py-1 rounded text-[10px]">{t.cancel}</button>}</td>
                                           <td className="p-2 text-right"><button onClick={()=>deletePerson(p.id)} className="p-1 text-white/30 hover:text-red-500"><Trash2 size={14}/></button></td>
+                                      </tr>
+                                  );
+                              })}
+                          </tbody>
+                      </table>
+                  </div>
+              </div>
+          )}
+
+          {tab==='seating' && (
+              <div className="w-full flex-1 flex flex-col gap-4">
+                  <div className="flex gap-2">
+                      <input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none text-sm"/>
+                      <label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label>
+                      <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button>
+                      {/* 🔥 V85: Dummy Seating Button */}
+                      <button onClick={handleGenerateDummySeating} className="bg-purple-600/20 text-purple-400 border border-purple-600/50 px-3 py-2 rounded-lg text-xs hover:bg-purple-600 hover:text-white transition-colors flex items-center gap-1"><Database size={14}/> {t.genDummySeat}</button>
+                      {/* 🔥 V87: Clear Seat */}
+                      <button onClick={handleClearSeating} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1"><Trash2 size={14}/></button>
+                  </div>
+                  
+                  <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2">
+                      <div className="w-full text-xs text-white/40 mb-1">{t.addSeat}</div>
+                      <input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" />
+                      <input placeholder={t.phone} value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none" />
+                      <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
+                      <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
+                      <input placeholder={t.table} value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
+                      <input placeholder={t.seat} value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
+                      <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2">
+                      <table className="w-full text-left border-collapse">
+                          <thead className="text-xs text-white/40 uppercase border-b border-white/10">
+                              <tr>
+                                  <th className="p-2">Name</th>
+                                  <th className="p-2 hidden md:table-cell">Phone</th>
+                                  <th className="p-2 hidden md:table-cell">Email</th>
+                                  <th className="p-2 hidden md:table-cell">Dept</th>
+                                  <th className="p-2">Table</th>
+                                  <th className="p-2">Seat</th>
+                                  {/* 🔥 V89: New Status Column */}
+                                  <th className="p-2 text-center">{t.status}</th>
+                                  <th className="p-2 text-right">Del</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                              {filteredSeat.map(s=>{
+                                  // 🔥 V89: Find attendee status
+                                  const match = attendees.find(a => 
+                                      (s.phone && normalizePhone(a.phone) === normalizePhone(s.phone)) || 
+                                      (s.email && normalizeEmail(a.email) === normalizeEmail(s.email))
+                                  );
+                                  const isCheckedIn = match?.checkedIn;
+                                  
+                                  return (
+                                      <tr key={s.id} className="hover:bg-white/5 text-sm">
+                                          <td className="p-2 font-bold">{s.name}</td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.phone}</td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.email}</td>
+                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.dept}</td>
+                                          <td className="p-2 font-mono text-blue-400">{s.table}</td>
+                                          <td className="p-2 font-mono">{s.seat}</td>
+                                          {/* 🔥 V89: Status Indicator */}
+                                          <td className="p-2 text-center">
+                                              {isCheckedIn ? 
+                                                  <span className="text-green-400 bg-green-400/20 px-2 py-1 rounded text-xs border border-green-400/50">已到場</span> : 
+                                                  <span className="text-white/30 text-xs border border-white/10 px-2 py-1 rounded">未簽到</span>
+                                              }
+                                          </td>
+                                          <td className="p-2 text-right"><button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500 ml-2"><Trash2 size={14}/></button></td>
                                       </tr>
                                   );
                               })}
