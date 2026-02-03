@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 穩定修復版",
+    title: "Tesla Annual Dinner", sub: "2025 極限滿版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "請輸入電話或 Email",
@@ -75,7 +75,7 @@ const translations = {
     pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Stable Fix",
+    title: "Tesla Annual Dinner", sub: "2025 Max Scale",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Enter Phone or Email",
@@ -232,7 +232,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             const h = canvas.height;
             if (w === 0 || h === 0) return; 
 
-            // 🔥 V130: Reduced minParticles to increase individual photo size by ~20%
+            // 🔥 V130: Reduced minParticles to increase individual photo size
             const minParticles = 120; // Lower count = Bigger blocks
             const totalParticles = Math.max(list.length, minParticles);
             
@@ -246,16 +246,16 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.fillRect(0, 0, w, h);
             offCtx.fillStyle = '#fff';
             
-            // 🔥 V129: Dynamic Full Scale Font Calculation
+            // 🔥 V133: Extreme Full Scale Font Calculation
             const testFontSize = 100;
             offCtx.font = `900 ${testFontSize}px sans-serif`;
             const textMetrics = offCtx.measureText("TESLA");
             const textWidth = textMetrics.width;
             
-            // Calculate font size to fit width (90%) or height (80%)
-            const widthRatio = (w * 0.9) / textWidth;
+            // 🔥 V133: Push limits to 110% width (utilizing side bearings) and 100% height
+            const widthRatio = (w * 1.1) / textWidth; 
             const targetFontSizeFromWidth = testFontSize * widthRatio;
-            const targetFontSizeFromHeight = h * 0.8;
+            const targetFontSizeFromHeight = h * 1.0;
             
             const fontSize = Math.min(targetFontSizeFromWidth, targetFontSizeFromHeight);
             
@@ -305,13 +305,11 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             for(let i=0; i < countToGenerate; i++) {
                 const pt = validPoints[i % validPoints.length] || {x: Math.random()*w, y: Math.random()*h};
                 
-                // 🔥 V103: Force photo for ALL particles (Shadow Clone)
                 let p = null;
                 let img = null;
                 let isReal = false;
 
                 if (list.length > 0) {
-                    // Cycle through real guests to reuse photos
                     const guestIndex = i % list.length;
                     p = list[guestIndex];
                     isReal = true;
@@ -1165,8 +1163,8 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   <th className="p-3 text-left hidden md:table-cell">Dept</th>
                                   <th className="p-3 text-center">Table</th>
                                   <th className="p-3 text-center">Seat</th>
-                                  <th className="p-3 text-left text-yellow-500">{t.wonPrize}</th>
-                                  <th className="p-3 text-center">Status</th>
+                                  {/* 🔥 V89: New Status Column */}
+                                  <th className="p-3 text-center">{t.status}</th>
                                   <th className="p-3 text-center">Del</th>
                               </tr>
                           </thead>
@@ -1220,78 +1218,6 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                               }
                                           </td>
                                           <td className="p-3 text-center"><button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10 transition-colors"><Trash2 size={16}/></button></td>
-                                      </tr>
-                                  );
-                              })}
-                          </tbody>
-                      </table>
-                  </div>
-              </div>
-          )}
-
-          {tab==='seating' && (
-              <div className="w-full flex-1 flex flex-col gap-4">
-                  <div className="flex gap-2">
-                      <input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none text-sm"/>
-                      <label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label>
-                      <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button>
-                      {/* 🔥 V85: Dummy Seating Button */}
-                      <button onClick={handleGenerateDummySeating} className="bg-purple-600/20 text-purple-400 border border-purple-600/50 px-3 py-2 rounded-lg text-xs hover:bg-purple-600 hover:text-white transition-colors flex items-center gap-1"><Database size={14}/> {t.genDummySeat}</button>
-                      {/* 🔥 V125: Clear Seat with Text */}
-                      <button onClick={handleClearSeating} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><Trash2 size={14}/> {t.clearSeats}</button>
-                  </div>
-                  
-                  <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2">
-                      <div className="w-full text-xs text-white/40 mb-1">{t.addSeat}</div>
-                      <input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" />
-                      <input placeholder={t.phone} value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none" />
-                      <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
-                      <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
-                      <input placeholder={t.table} value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
-                      <input placeholder={t.seat} value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
-                      <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2">
-                      <table className="w-full text-left border-collapse">
-                          <thead className="text-xs text-white/40 uppercase border-b border-white/10">
-                              <tr>
-                                  <th className="p-3 text-left">Name</th>
-                                  <th className="p-3 text-left hidden md:table-cell">Phone</th>
-                                  <th className="p-3 text-left hidden md:table-cell">Email</th>
-                                  <th className="p-3 text-left hidden md:table-cell">Dept</th>
-                                  <th className="p-3 text-center">Table</th>
-                                  <th className="p-3 text-center">Seat</th>
-                                  {/* 🔥 V89: New Status Column */}
-                                  <th className="p-3 text-center">{t.status}</th>
-                                  <th className="p-3 text-center">Del</th>
-                              </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/5">
-                              {filteredSeat.map(s=>{
-                                  // 🔥 V89: Find attendee status
-                                  const match = attendees.find(a => 
-                                      (s.phone && normalizePhone(a.phone) === normalizePhone(s.phone)) || 
-                                      (s.email && normalizeEmail(a.email) === normalizeEmail(s.email))
-                                  );
-                                  const isCheckedIn = match?.checkedIn;
-                                  
-                                  return (
-                                      <tr key={s.id} className="hover:bg-white/5 text-sm">
-                                          <td className="p-3 font-bold text-left">{s.name}</td>
-                                          <td className="p-3 text-xs text-white/60 hidden md:table-cell text-left">{s.phone}</td>
-                                          <td className="p-3 text-xs text-white/60 hidden md:table-cell text-left">{s.email}</td>
-                                          <td className="p-3 text-xs text-white/60 hidden md:table-cell text-left">{s.dept}</td>
-                                          <td className="p-3 font-mono text-blue-400 text-center text-lg">{s.table}</td>
-                                          <td className="p-3 font-mono text-center text-lg">{s.seat}</td>
-                                          {/* 🔥 V89: Status Indicator */}
-                                          <td className="p-3 text-center">
-                                              {isCheckedIn ? 
-                                                  <span className="text-green-400 bg-green-400/20 px-2 py-1 rounded text-xs border border-green-400/50">已到場</span> : 
-                                                  <span className="text-white/30 text-xs border border-white/10 px-2 py-1 rounded">未簽到</span>
-                                              }
-                                          </td>
-                                          <td className="p-3 text-center"><button onClick={()=>handleDeleteSeating(s.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10"><Trash2 size={16}/></button></td>
                                       </tr>
                                   );
                               })}
