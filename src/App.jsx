@@ -45,10 +45,10 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 穩定修復版",
+    title: "Tesla Annual Dinner", sub: "2025 粒子增大版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
-    regTitle: "賓客登記", regSub: "系統將依資料自動分配座位",
+    regTitle: "賓客登記", regSub: "請輸入電話或 Email",
     name: "姓名", phone: "電話", email: "電郵", dept: "部門",
     generateBtn: "確認登記", back: "返回", yourCode: "入場憑證", yourSeat: "您的座位",
     showToStaff: "請出示給工作人員掃描", next: "完成",
@@ -71,13 +71,14 @@ const translations = {
     checkSeat: "查詢座位", inputHint: "輸入電話或 Email 查詢", backToReg: "返回登記",
     seatResult: "查詢結果", status: "狀態", notCheckedIn: "未簽到", registered: "已登記", notRegistered: "未登記",
     youWon: "恭喜獲得", nextRound: "按 ENTER 進入下一輪",
-    winnerLabel: "得主"
+    winnerLabel: "得主", saveTicket: "下載入場憑證", screenshotHint: "或截圖保存此畫面",
+    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Stable Fix",
+    title: "Tesla Annual Dinner", sub: "2025 Big Particles",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
-    regTitle: "Register", regSub: "Auto seat assignment",
+    regTitle: "Register", regSub: "Enter Phone or Email",
     name: "Name", phone: "Phone", email: "Email", dept: "Dept",
     generateBtn: "Submit", back: "Back", yourCode: "Entry Pass", yourSeat: "Your Seat",
     showToStaff: "Show to Staff", next: "Finish",
@@ -100,7 +101,8 @@ const translations = {
     checkSeat: "Check Seat", inputHint: "Enter Phone or Email", backToReg: "Back to Register",
     seatResult: "Result", status: "Status", notCheckedIn: "Not In", registered: "Registered", notRegistered: "Not Reg",
     youWon: "Congratulations!", nextRound: "Press ENTER for Next Round",
-    winnerLabel: "WINNER"
+    winnerLabel: "WINNER", saveTicket: "Download Ticket", screenshotHint: "or Screenshot to Save",
+    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In"
   }
 };
 
@@ -150,11 +152,18 @@ const Confetti = () => {
   const canvasRef = useRef(null);
   useEffect(() => {
     const c = canvasRef.current;
+    if(!c) return;
     const ctx = c.getContext('2d');
     c.width = window.innerWidth; c.height = window.innerHeight;
     const p = Array.from({length:300}).map(()=>({x:Math.random()*c.width, y:Math.random()*c.height,c:['#E82127','#FFFFFF','#808080', '#FFD700'][Math.floor(Math.random()*4)],s:Math.random()*8+2,d:Math.random()*5}));
-    const draw = () => { ctx.clearRect(0,0,c.width,c.height); p.forEach(i=>{i.y+=i.s;i.x+=Math.sin(i.d);if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}ctx.fillStyle=i.c;ctx.beginPath();ctx.arc(i.x,i.y,i.s/2,0,Math.PI*2);ctx.fill();}); requestAnimationFrame(draw); };
+    let animId;
+    const draw = () => { 
+        ctx.clearRect(0,0,c.width,c.height); 
+        p.forEach(i=>{i.y+=i.s;i.x+=Math.sin(i.d);if(i.y>c.height){i.y=0;i.x=Math.random()*c.width;}ctx.fillStyle=i.c;ctx.beginPath();ctx.arc(i.x,i.y,i.s/2,0,Math.PI*2);ctx.fill();}); 
+        animId = requestAnimationFrame(draw); 
+    };
     draw();
+    return () => cancelAnimationFrame(animId);
   }, []);
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
 };
@@ -211,6 +220,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
         const ctx = canvas.getContext('2d');
         
         const resize = () => { 
+            // 🔥 V98: 使用容器的寬高，確保填滿中間區域
             if (container.clientWidth === 0 || container.clientHeight === 0) return;
             canvas.width = container.clientWidth; 
             canvas.height = container.clientHeight; 
@@ -222,7 +232,8 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             const h = canvas.height;
             if (w === 0 || h === 0) return; 
 
-            const minParticles = 200; 
+            // 🔥 V130: Reduced minParticles to increase individual photo size by ~20%
+            const minParticles = 120; // Lower count = Bigger blocks
             const totalParticles = Math.max(list.length, minParticles);
             
             // 1. Generate TESLA Text Mask
@@ -235,7 +246,19 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.fillRect(0, 0, w, h);
             offCtx.fillStyle = '#fff';
             
-            const fontSize = Math.min(w * 0.4, h * 0.95); 
+            // 🔥 V129: Dynamic Full Scale Font Calculation
+            const testFontSize = 100;
+            offCtx.font = `900 ${testFontSize}px sans-serif`;
+            const textMetrics = offCtx.measureText("TESLA");
+            const textWidth = textMetrics.width;
+            
+            // Calculate font size to fit width (90%) or height (80%)
+            const widthRatio = (w * 0.9) / textWidth;
+            const targetFontSizeFromWidth = testFontSize * widthRatio;
+            const targetFontSizeFromHeight = h * 0.8;
+            
+            const fontSize = Math.min(targetFontSizeFromWidth, targetFontSizeFromHeight);
+            
             offCtx.font = `900 ${fontSize}px sans-serif`; 
             offCtx.textAlign = 'center';
             offCtx.textBaseline = 'middle';
@@ -256,6 +279,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             let particleSize = Math.floor(Math.sqrt(areaPerPerson));
             
             if(particleSize < 4) particleSize = 4; 
+            // V98: Allow even bigger particles if few people
             if(particleSize > 150) particleSize = 150; 
 
             const step = particleSize;
@@ -268,22 +292,26 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                 }
             }
 
+            // Shuffle valid points
             for (let i = validPoints.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [validPoints[i], validPoints[j]] = [validPoints[j], validPoints[i]];
             }
 
+            // 3. Assign Particles (Clone real guests to fill gaps)
             const particleArray = [];
             const countToGenerate = Math.max(validPoints.length, totalParticles);
             
             for(let i=0; i < countToGenerate; i++) {
                 const pt = validPoints[i % validPoints.length] || {x: Math.random()*w, y: Math.random()*h};
                 
+                // 🔥 V103: Force photo for ALL particles (Shadow Clone)
                 let p = null;
                 let img = null;
                 let isReal = false;
 
                 if (list.length > 0) {
+                    // Cycle through real guests to reuse photos
                     const guestIndex = i % list.length;
                     p = list[guestIndex];
                     isReal = true;
@@ -330,6 +358,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                 }
                 
                 ctx.save();
+                // 🔥 V108: Huge particles during draw (80%)
                 const currentSize = mode.current === 'galaxy' ? p.size * 0.8 : p.size; 
                 
                 if (mode.current === 'galaxy') {
@@ -346,6 +375,8 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                          ctx.fillRect(-currentSize/2, -currentSize/2, currentSize, currentSize); 
                      }
                 } else {
+                     // Mosaic
+                     // 🔥 V117: Zero gap for maximum size
                      const gap = 0;
                      ctx.beginPath();
                      ctx.rect(p.x, p.y, p.size - gap, p.size - gap);
@@ -441,14 +472,114 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResult, setSearchResult] = useState(null);
+  
+  // 🔥 V122: Store full guest info for display
+  const [guestInfo, setGuestInfo] = useState(null);
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
   
+  const ticketRef = useRef(null); 
+
+  // Inject html2canvas for V121
+  useEffect(() => {
+    if (!document.querySelector('#html2canvas-script')) {
+      const script = document.createElement('script');
+      script.id = 'html2canvas-script';
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  const handleDownloadTicket = async () => {
+    if (!window.html2canvas || !ticketRef.current) {
+        alert(t.screenshotHint);
+        return;
+    }
+    try {
+        const canvas = await window.html2canvas(ticketRef.current, {
+            useCORS: true,
+            backgroundColor: '#000000',
+            scale: 2
+        });
+        const link = document.createElement('a');
+        link.download = 'Tesla_Dinner_Ticket.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    } catch (e) {
+        console.error("Download failed:", e);
+        alert(t.screenshotHint);
+    }
+  };
+
   const startCamera = async () => { setErr(''); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } }); setIsCameraOpen(true); setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100); } catch (e) { fileInputRef.current.click(); } };
   const takePhoto = async () => { if(!videoRef.current) return; const canvas = document.createElement('canvas'); const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const xOffset = (videoRef.current.videoWidth - size) / 2; const yOffset = (videoRef.current.videoHeight - size) / 2; ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size); const rawBase64 = canvas.toDataURL('image/jpeg'); const stream = videoRef.current.srcObject; if(stream) stream.getTracks().forEach(track => track.stop()); setIsCameraOpen(false); const compressed = await compressImage(rawBase64, false); setPhoto(compressed); };
   const handleFileChange = async (e) => { const file = e.target.files[0]; if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); } };
-  const handleSubmit = async (e) => { e.preventDefault(); setErr(''); if(!photo) { setErr(t.errPhoto); return; } setLoading(true); const cleanPhone = normalizePhone(form.phone); const cleanEmail = normalizeEmail(form.email); const dup = checkDuplicate(cleanPhone, cleanEmail); if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } let assignedTable = ""; let assignedSeat = ""; const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail); const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; } else if(phoneMatch) { assignedTable = phoneMatch.table; assignedSeat = phoneMatch.seat; } setMatchSeat({ table: assignedTable, seat: assignedSeat }); try { if (!db) throw new Error("Firebase not initialized"); const docRef = await addDoc(collection(db, "attendees"), { name: form.name, phone: cleanPhone, email: cleanEmail, company: form.company, table: assignedTable, seat: assignedSeat, photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() }); setNewId(docRef.id); setStep(2); } catch (error) { console.error(error); setErr("Network Error."); } setLoading(false); };
+  
+  // 🔥 V120: Handle Submit without name input
+  const handleSubmit = async (e) => { 
+      e.preventDefault(); 
+      setErr(''); 
+      if(!photo) { setErr(t.errPhoto); return; } 
+      
+      setLoading(true); 
+      const cleanPhone = normalizePhone(form.phone); 
+      const cleanEmail = normalizeEmail(form.email); 
+      const dup = checkDuplicate(cleanPhone, cleanEmail); 
+      
+      if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } 
+      if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } 
+      
+      // Auto-assign table/seat
+      let assignedTable = ""; 
+      let assignedSeat = ""; 
+      let autoName = "VIP Guest"; 
+      let autoDept = "-"; 
+
+      const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail); 
+      const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); 
+      
+      if(emailMatch) { 
+          assignedTable = emailMatch.table; 
+          assignedSeat = emailMatch.seat;
+          autoName = emailMatch.name || autoName;
+          autoDept = emailMatch.dept || autoDept; 
+      } else if(phoneMatch) { 
+          assignedTable = phoneMatch.table; 
+          assignedSeat = phoneMatch.seat; 
+          autoName = phoneMatch.name || autoName;
+          autoDept = phoneMatch.dept || autoDept; 
+      } 
+      
+      setMatchSeat({ table: assignedTable, seat: assignedSeat }); 
+      
+      const finalGuestData = { 
+          name: autoName, 
+          phone: cleanPhone, 
+          email: cleanEmail, 
+          company: form.company || "",
+          dept: autoDept, 
+          table: assignedTable, 
+          seat: assignedSeat, 
+          photo: photo, 
+          checkedIn: false, 
+          checkInTime: null, 
+          createdAt: new Date().toISOString() 
+      };
+
+      setGuestInfo(finalGuestData); 
+
+      try { 
+          if (!db) throw new Error("Firebase not initialized"); 
+          const docRef = await addDoc(collection(db, "attendees"), finalGuestData); 
+          setNewId(docRef.id); 
+          setStep(2); 
+      } catch (error) { 
+          console.error(error); 
+          setErr("Network Error."); 
+      } 
+      setLoading(false); 
+  };
   
   const handleSeatSearch = (e) => {
     e.preventDefault();
@@ -457,7 +588,6 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
     const isEmail = q.includes('@');
     const target = isEmail ? normalizeEmail(q) : normalizePhone(q);
     
-    // 🔥 V100/V118: Robust String Comparison (Fixes crash on numbers)
     let found = attendees.find(a => isEmail ? normalizeEmail(String(a.email)) === target : normalizePhone(String(a.phone)) === target);
     let status = t.registered;
     if (!found) {
@@ -495,7 +625,6 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                             </div>
                             <div className="text-2xl font-bold mb-2">{searchResult.name}</div>
                             <div className="text-sm text-white/60 mb-4">{searchResult.dept}</div>
-                            {/* 🔥 V88 Fix: Uniform Font Size */}
                             <div className="text-3xl font-black text-white bg-white/10 p-3 rounded-xl inline-block border border-white/20">
                                 Table {searchResult.table || '-'} / Seat {searchResult.seat || '-'}
                             </div>
@@ -518,7 +647,9 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                       </div>
                       {!isCameraOpen && (
                           <div className="space-y-3">
-                            {['name', 'phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'name' ? <User size={18}/> : field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
+                            {/* 🔥 V120: Name Removed from Input Fields */}
+                            {['phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
+                            
                             <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
                             <div className="pt-4 mt-4 border-t border-white/10 text-center">
                                 <button type="button" onClick={()=>setIsSearchMode(true)} className="text-yellow-500 text-sm hover:text-yellow-400 flex items-center justify-center gap-1 mx-auto transition-colors"><Search size={14}/> {t.checkSeat}</button>
@@ -528,11 +659,56 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                     </form>
                   ) : (
                     <div className="text-center animate-in zoom-in duration-300">
-                      <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_30px_rgba(255,255,255,0.1)] relative"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(JSON.stringify({id: newId}))}`} alt="QR" className="w-48 h-48 object-contain"/><div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-3 py-1 rounded-full shadow-lg flex items-center gap-1 font-bold tracking-wider"><Cloud size={10}/> SAVED</div></div>
-                      <h3 className="text-2xl font-bold text-white mb-1">{form.name}</h3>
-                      <div className="text-red-400 text-lg font-bold mb-4 flex justify-center items-center gap-2 bg-white/5 p-2 rounded-lg border border-red-500/30"><Armchair size={18}/> {matchedSeat && matchedSeat.table ? `${t.table} ${matchedSeat.table}` : t.seatTBD} {matchedSeat && matchedSeat.seat ? ` / ${t.seat} ${matchedSeat.seat}` : ""}</div>
-                      <p className="text-white/50 text-sm mb-8 leading-relaxed">{t.showToStaff}</p>
-                      <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:'',table:'',seat:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm">{t.next}</button>
+                      {/* 🔥 V121: Ticket Card Wrapper for Capture */}
+                      <div ref={ticketRef} className="bg-neutral-900 p-6 rounded-2xl border-2 border-yellow-500/50 shadow-2xl relative overflow-hidden max-w-sm mx-auto">
+                           {/* Background FX */}
+                           <div className="absolute -top-10 -right-10 w-32 h-32 bg-yellow-500/20 rounded-full blur-3xl"></div>
+                           
+                           <h3 className="text-lg font-bold text-yellow-500 text-center mb-4 tracking-widest uppercase border-b border-white/10 pb-2">Tesla Annual Dinner</h3>
+                           
+                           <div className="bg-white p-4 rounded-xl inline-block mb-4 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+                               {/* 🔥 V121: Updated QR Source */}
+                               <img 
+                                   src={`https://quickchart.io/qr?text=${encodeURIComponent(JSON.stringify({id: newId}))}&size=300&dark=000000&light=ffffff`} 
+                                   alt="QR" 
+                                   crossOrigin="anonymous"
+                                   className="w-48 h-48 object-contain"
+                               />
+                           </div>
+                           
+                           <div className="text-red-400 text-xl font-black mb-4 flex justify-center items-center gap-2 bg-white/5 p-3 rounded-lg border border-red-500/30">
+                               <Armchair size={24}/> 
+                               <span>Table {matchedSeat?.table || '-'}</span> 
+                               <span className="text-white/20">/</span> 
+                               <span>Seat {matchedSeat?.seat || '-'}</span>
+                           </div>
+
+                           {/* 🔥 V122: Added Detailed Info for Reception */}
+                           <div className="text-left text-xs text-white/70 space-y-2 border-t border-white/10 pt-4">
+                               <div className="flex justify-between">
+                                   <span className="text-white/40">{t.name}:</span>
+                                   <span className="font-bold text-white">{guestInfo?.name}</span>
+                               </div>
+                               <div className="flex justify-between">
+                                   <span className="text-white/40">{t.dept}:</span>
+                                   <span className="font-bold text-white">{guestInfo?.dept}</span>
+                               </div>
+                               <div className="flex justify-between">
+                                   <span className="text-white/40">{t.phone}:</span>
+                                   <span className="font-mono text-white">{guestInfo?.phone}</span>
+                               </div>
+                           </div>
+
+                           <p className="text-white/30 text-[10px] uppercase tracking-widest text-center mt-4 pt-2 border-t border-white/5">Entry Pass 2025</p>
+                      </div>
+
+                      {/* 🔥 V121: Download Button */}
+                      <button onClick={handleDownloadTicket} className="mt-6 w-full bg-yellow-600 hover:bg-yellow-500 text-white p-3 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
+                          <Download size={18}/> {t.saveTicket}
+                      </button>
+                      <p className="text-white/40 text-xs mt-2">{t.screenshotHint}</p>
+
+                      <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm mt-4">{t.next}</button>
                     </div>
                   )}
                 </>
@@ -543,7 +719,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
   );
 };
 
-// 🔥 Projector View: Fixed Layout with Bottom Button (V113: Horizontal Header, Clean Winner)
+// 🔥 Projector View: Fixed Layout with Bottom Button (V127: Responsive Header)
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes }) => {
     const [winner, setWinner] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -600,37 +776,36 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
         <div className="min-h-screen bg-black text-white relative flex flex-col overflow-hidden">
             
             {/* 1. Header (15%) - Fixed & Consistent Font Size */}
-            <div className="flex-none h-[15vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-b border-white/10 flex items-center justify-between px-8 relative shadow-xl w-full">
-                 <button onClick={onBack} className="text-white/30 hover:text-white transition-colors mr-6"><ChevronLeft size={32}/></button>
-                 {/* 🔥 V113: Forced Row Layout */}
-                 <div className="flex-1 flex flex-row items-center justify-center gap-6 w-full">
-                    {/* 🔥 V109: Dynamic Header Label */}
-                    <span className="text-yellow-500 font-bold tracking-widest uppercase text-5xl whitespace-nowrap">
+            <div className="flex-none h-[15vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-b border-white/10 flex items-center justify-between px-4 md:px-8 relative shadow-xl w-full">
+                 <button onClick={onBack} className="text-white/30 hover:text-white transition-colors mr-4 md:mr-6 flex items-center justify-center"><ChevronLeft size={32}/></button>
+                 {/* 🔥 V127: Responsive Header Text with max-width control */}
+                 <div className="flex-1 flex flex-row items-center justify-center gap-2 md:gap-6 w-full overflow-hidden">
+                    <span className="text-yellow-500 font-bold tracking-widest uppercase text-xl md:text-3xl lg:text-5xl whitespace-nowrap flex-shrink-0">
                         {winner ? t.winnerLabel : t.currentPrize}:
                     </span>
-                    {/* 🔥 V106: Fixed text-5xl for consistency */}
-                    <h1 className="text-5xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] leading-tight text-center whitespace-nowrap pb-1">
+                    {/* 🔥 V128: Allow wrap, smaller max font, robust display */}
+                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] leading-tight text-left whitespace-normal break-words pb-1">
                         {currentPrize || "WAITING..."}
                     </h1>
                  </div>
-                 <div className="w-10"></div>
+                 <div className="w-14"></div>
             </div>
 
             {/* 2. Canvas Area (Flex 1) - Maximize Space */}
             <div className="flex-1 w-full relative z-10 bg-black overflow-hidden flex items-center justify-center">
                 {winner ? (
-                     // 🔥 V113: Horizontal Info Layout
+                     // 🔥 V115: Cleanest Winner Display (Center of screen, no extra labels, fix overlap)
                     <div className="flex flex-col items-center justify-center h-full w-full relative z-50">
                         <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
 
-                        {/* Photo stays top */}
-                        <div className="relative mb-10">
+                        {/* Photo - Big but balanced */}
+                        <div className="relative mb-6">
                             <div className="absolute inset-0 bg-yellow-500/30 blur-3xl rounded-full animate-pulse"></div>
                             {winner.photo ? <img src={winner.photo} className="relative w-96 h-96 rounded-full border-8 border-yellow-400 object-cover shadow-2xl"/> : <div className="w-96 h-96 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={150}/></div>}
                         </div>
                         
                         {/* 🔥 V114: Scaled Down Info Row (-30% from V112) */}
-                        <div className="flex flex-row items-center justify-center gap-6 bg-white/10 backdrop-blur-md px-12 py-4 rounded-full border border-white/20 shadow-xl mt-4 mb-8">
+                        <div className="flex flex-row items-center justify-center gap-6 bg-white/10 backdrop-blur-md px-12 py-4 rounded-full border border-white/20 shadow-xl mt-4">
                             {/* Name: Text-5xl */}
                             <h1 className="text-5xl font-black text-white tracking-wide">{winner.name}</h1>
                             
@@ -646,8 +821,8 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                             </div>
                         </div>
                         
-                        {/* 🔥 V115: Relative Position to avoid overlap */}
-                        <p className="text-white/30 text-sm animate-pulse">{t.nextRound}</p>
+                        {/* 🔥 V115: Relative Margin Top to prevent overlap */}
+                        <p className="text-white/30 text-sm animate-pulse relative mt-12">{t.nextRound}</p>
                     </div>
                 ) : currentPrizeWinner ? (
                      <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500 z-20">
@@ -888,6 +1063,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
       alert("座位表已清空");
   };
 
+  // 🔥 V124: Refined Table Alignment
   return (
     <div className="min-h-[100dvh] bg-neutral-950 text-white flex flex-col">
        <header className="p-4 border-b border-white/10 flex justify-between items-center bg-neutral-900"><div className="font-bold text-lg flex gap-2"><QrCode/> Reception</div><button onClick={onLogout}><LogOut size={18}/></button></header>
@@ -931,19 +1107,20 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       </div>
                   </div>
 
+                  {/* 🔥 V124: Enhanced Table Alignment */}
                   <div className="flex-1 overflow-y-auto bg-white/5 rounded-b-xl p-2">
                       <table className="w-full text-left border-collapse">
                           <thead className="text-xs text-white/40 uppercase border-b border-white/10">
                               <tr>
-                                  <th className="p-2">Name</th>
-                                  <th className="p-2 hidden md:table-cell">Phone</th>
-                                  <th className="p-2 hidden md:table-cell">Email</th>
-                                  <th className="p-2 hidden md:table-cell">Dept</th>
-                                  <th className="p-2">Table</th>
-                                  <th className="p-2">Seat</th>
-                                  {/* 🔥 V89: New Status Column */}
-                                  <th className="p-2 text-center">{t.status}</th>
-                                  <th className="p-2 text-right">Del</th>
+                                  <th className="p-3 text-left">Name</th>
+                                  <th className="p-3 text-left hidden md:table-cell">Phone</th>
+                                  <th className="p-3 text-left hidden md:table-cell">Email</th>
+                                  <th className="p-3 text-left hidden md:table-cell">Dept</th>
+                                  <th className="p-3 text-center">Table</th>
+                                  <th className="p-3 text-center">Seat</th>
+                                  <th className="p-3 text-left text-yellow-500">{t.wonPrize}</th>
+                                  <th className="p-3 text-center">Status</th>
+                                  <th className="p-3 text-center">Del</th>
                               </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
@@ -951,15 +1128,27 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   const winnerRec = drawHistory.find(h=>h.attendeeId===p.id);
                                   return (
                                       <tr key={p.id} className="hover:bg-white/5 text-sm">
-                                          <td className="p-2 font-bold flex items-center gap-2">{p.photo ? <img src={p.photo} className="w-6 h-6 rounded-full object-cover"/> : <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center"><User size={12}/></div>}{p.name}</td>
-                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.phone}</td>
-                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.email}</td>
-                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{p.dept}</td>
-                                          <td className="p-2 font-mono text-blue-400">{p.table}</td>
-                                          <td className="p-2 font-mono">{p.seat}</td>
-                                          <td className="p-2 text-xs text-yellow-400 font-bold">{winnerRec ? winnerRec.prize : '-'}</td>
-                                          <td className="p-2 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/50 px-2 py-1 rounded text-[10px]">{t.checkin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-white/5 text-white/40 border border-white/10 px-2 py-1 rounded text-[10px]">{t.cancel}</button>}</td>
-                                          <td className="p-2 text-right"><button onClick={()=>deletePerson(p.id)} className="p-1 text-white/30 hover:text-red-500"><Trash2 size={14}/></button></td>
+                                          <td className="p-3">
+                                              <div className="flex items-center gap-3 font-bold">
+                                                  {p.photo ? <img src={p.photo} className="w-8 h-8 rounded-full object-cover"/> : <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><User size={14}/></div>}
+                                                  {p.name}
+                                              </div>
+                                          </td>
+                                          <td className="p-3 text-white/60 hidden md:table-cell text-left">{p.phone}</td>
+                                          <td className="p-3 text-white/60 hidden md:table-cell text-left max-w-[150px] truncate" title={p.email}>{p.email}</td>
+                                          <td className="p-3 text-white/60 hidden md:table-cell text-left">{p.dept}</td>
+                                          <td className="p-3 font-mono text-blue-400 text-center text-lg">{p.table}</td>
+                                          <td className="p-3 font-mono text-center text-lg">{p.seat}</td>
+                                          <td className="p-3 text-yellow-400 font-bold text-left">{winnerRec ? winnerRec.prize : '-'}</td>
+                                          {/* 🔥 V123: Custom Status Buttons */}
+                                          <td className="p-3 text-center">
+                                              {!p.checkedIn ? 
+                                                  <button onClick={()=>toggleCheckIn(p)} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-1 rounded text-xs hover:bg-red-600 hover:text-white transition-colors">{t.pendingCheckin}</button> 
+                                                  : 
+                                                  <button onClick={()=>toggleCancelCheckIn(p)} className="bg-green-600/20 text-green-400 border border-green-600/50 px-3 py-1 rounded text-xs hover:bg-red-900/50 hover:text-red-300 transition-colors">{t.checkedInStatus}</button>
+                                              }
+                                          </td>
+                                          <td className="p-3 text-center"><button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10 transition-colors"><Trash2 size={16}/></button></td>
                                       </tr>
                                   );
                               })}
@@ -977,8 +1166,8 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button>
                       {/* 🔥 V85: Dummy Seating Button */}
                       <button onClick={handleGenerateDummySeating} className="bg-purple-600/20 text-purple-400 border border-purple-600/50 px-3 py-2 rounded-lg text-xs hover:bg-purple-600 hover:text-white transition-colors flex items-center gap-1"><Database size={14}/> {t.genDummySeat}</button>
-                      {/* 🔥 V87: Clear Seat */}
-                      <button onClick={handleClearSeating} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1"><Trash2 size={14}/></button>
+                      {/* 🔥 V125: Clear Seat with Text */}
+                      <button onClick={handleClearSeating} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><Trash2 size={14}/> {t.clearSeats}</button>
                   </div>
                   
                   <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2">
@@ -996,15 +1185,15 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       <table className="w-full text-left border-collapse">
                           <thead className="text-xs text-white/40 uppercase border-b border-white/10">
                               <tr>
-                                  <th className="p-2">Name</th>
-                                  <th className="p-2 hidden md:table-cell">Phone</th>
-                                  <th className="p-2 hidden md:table-cell">Email</th>
-                                  <th className="p-2 hidden md:table-cell">Dept</th>
-                                  <th className="p-2">Table</th>
-                                  <th className="p-2">Seat</th>
+                                  <th className="p-3 text-left">Name</th>
+                                  <th className="p-3 text-left hidden md:table-cell">Phone</th>
+                                  <th className="p-3 text-left hidden md:table-cell">Email</th>
+                                  <th className="p-3 text-left hidden md:table-cell">Dept</th>
+                                  <th className="p-3 text-center">Table</th>
+                                  <th className="p-3 text-center">Seat</th>
                                   {/* 🔥 V89: New Status Column */}
-                                  <th className="p-2 text-center">{t.status}</th>
-                                  <th className="p-2 text-right">Del</th>
+                                  <th className="p-3 text-center">{t.status}</th>
+                                  <th className="p-3 text-center">Del</th>
                               </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
@@ -1018,20 +1207,20 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   
                                   return (
                                       <tr key={s.id} className="hover:bg-white/5 text-sm">
-                                          <td className="p-2 font-bold">{s.name}</td>
-                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.phone}</td>
-                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.email}</td>
-                                          <td className="p-2 text-xs text-white/60 hidden md:table-cell">{s.dept}</td>
-                                          <td className="p-2 font-mono text-blue-400">{s.table}</td>
-                                          <td className="p-2 font-mono">{s.seat}</td>
+                                          <td className="p-3 font-bold text-left">{s.name}</td>
+                                          <td className="p-3 text-xs text-white/60 hidden md:table-cell text-left">{s.phone}</td>
+                                          <td className="p-3 text-xs text-white/60 hidden md:table-cell text-left">{s.email}</td>
+                                          <td className="p-3 text-xs text-white/60 hidden md:table-cell text-left">{s.dept}</td>
+                                          <td className="p-3 font-mono text-blue-400 text-center text-lg">{s.table}</td>
+                                          <td className="p-3 font-mono text-center text-lg">{s.seat}</td>
                                           {/* 🔥 V89: Status Indicator */}
-                                          <td className="p-2 text-center">
+                                          <td className="p-3 text-center">
                                               {isCheckedIn ? 
                                                   <span className="text-green-400 bg-green-400/20 px-2 py-1 rounded text-xs border border-green-400/50">已到場</span> : 
                                                   <span className="text-white/30 text-xs border border-white/10 px-2 py-1 rounded">未簽到</span>
                                               }
                                           </td>
-                                          <td className="p-2 text-right"><button onClick={()=>handleDeleteSeating(s.id)} className="text-white/20 hover:text-red-500 ml-2"><Trash2 size={14}/></button></td>
+                                          <td className="p-3 text-center"><button onClick={()=>handleDeleteSeating(s.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10"><Trash2 size={16}/></button></td>
                                       </tr>
                                   );
                               })}
