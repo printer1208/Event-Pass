@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 粒子增大版",
+    title: "Tesla Annual Dinner", sub: "2025 穩定修復版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "請輸入電話或 Email",
@@ -75,7 +75,7 @@ const translations = {
     pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Big Particles",
+    title: "Tesla Annual Dinner", sub: "2025 Stable Fix",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Enter Phone or Email",
@@ -358,7 +358,6 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                 }
                 
                 ctx.save();
-                // 🔥 V108: Huge particles during draw (80%)
                 const currentSize = mode.current === 'galaxy' ? p.size * 0.8 : p.size; 
                 
                 if (mode.current === 'galaxy') {
@@ -441,7 +440,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
 };
 
 // ==========================================
-// 5. 頁面組件 (Views) - Defined before App
+// 5. 頁面組件 (Views)
 // ==========================================
 
 const LoginView = ({ t, onLogin, onBack }) => {
@@ -720,13 +719,31 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
 };
 
 // 🔥 Projector View: Fixed Layout with Bottom Button (V127: Responsive Header)
-const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes }) => {
+const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes, seatingPlan }) => { // 🔥 V131 Added seatingPlan prop
     const [winner, setWinner] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     
-    // V82: Use attendees but exclude winners
-    const eligible = attendees.filter(p => p.checkedIn && !drawHistory.some(h => h.attendeeId === p.id));
-    const currentPrizeWinner = drawHistory.find(h => h.prize === currentPrize);
+    // 🔥 V131: Enhanced Attendee Data (Merge seat info if missing)
+    const enrichedAttendees = attendees.map(a => {
+        // If attendee already has seat, use it
+        if (a.table && a.seat) return a;
+        
+        // Otherwise try to find match in seatingPlan
+        const match = seatingPlan.find(s => 
+            (s.email && normalizeEmail(s.email) === normalizeEmail(a.email)) || 
+            (s.phone && normalizePhone(s.phone) === normalizePhone(a.phone))
+        );
+        
+        if (match) {
+            return { ...a, table: match.table, seat: match.seat };
+        }
+        return a;
+    });
+
+    const eligible = enrichedAttendees.filter(p => p.checkedIn && !drawHistory.some(h => h.attendeeId === p.id));
+    
+    // Also enrich currentPrizeWinner if needed (though drawHistory usually has snapshot data)
+    let currentPrizeWinner = drawHistory.find(h => h.prize === currentPrize);
     
     // 🔥 V96: Trigger Draw (Supports Enter Key)
     const triggerDraw = () => {
@@ -778,7 +795,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
             {/* 1. Header (15%) - Fixed & Consistent Font Size */}
             <div className="flex-none h-[15vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-b border-white/10 flex items-center justify-between px-4 md:px-8 relative shadow-xl w-full">
                  <button onClick={onBack} className="text-white/30 hover:text-white transition-colors mr-4 md:mr-6 flex items-center justify-center"><ChevronLeft size={32}/></button>
-                 {/* 🔥 V127: Responsive Header Text with max-width control */}
+                 {/* 🔥 V126: Clean Header Structure */}
                  <div className="flex-1 flex flex-row items-center justify-center gap-2 md:gap-6 w-full overflow-hidden">
                     <span className="text-yellow-500 font-bold tracking-widest uppercase text-xl md:text-3xl lg:text-5xl whitespace-nowrap flex-shrink-0">
                         {winner ? t.winnerLabel : t.currentPrize}:
@@ -944,7 +961,37 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
       if (phoneExists) { alert(t.errPhone); return; }
       if (emailExists) { alert(t.errEmail); return; }
 
-      await addDoc(collection(db, "attendees"), { ...adminForm, phone: cleanPhone, email: cleanEmail, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() });
+      // 🔥 V131: Auto-assign table/seat AND Name from Seating Plan
+      let assignedTable = adminForm.table; 
+      let assignedSeat = adminForm.seat; 
+      let autoName = adminForm.name || "VIP Guest"; // Default name
+      let autoDept = adminForm.dept || "-";
+
+      // Try to find match in seating plan if seat info is missing OR name is missing
+      const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail && cleanEmail !== '');
+      const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone && cleanPhone !== '');
+      
+      const match = emailMatch || phoneMatch;
+
+      if (match) {
+          if (!assignedTable) assignedTable = match.table;
+          if (!assignedSeat) assignedSeat = match.seat;
+          if (!adminForm.name) autoName = match.name; // Auto-fill name if empty
+          if (!adminForm.dept) autoDept = match.dept;
+      }
+      
+      await addDoc(collection(db, "attendees"), { 
+          ...adminForm, 
+          name: autoName,
+          dept: autoDept,
+          phone: cleanPhone, 
+          email: cleanEmail, 
+          table: assignedTable, 
+          seat: assignedSeat, 
+          checkedIn: false, 
+          checkInTime: null, 
+          createdAt: new Date().toISOString() 
+      });
       setAdminForm({name:'',phone:'',email:'',dept:'',table:'',seat:''});
   };
 
@@ -1126,19 +1173,43 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                           <tbody className="divide-y divide-white/5">
                               {filteredList.map(p=>{
                                   const winnerRec = drawHistory.find(h=>h.attendeeId===p.id);
+                                  
+                                  // 🔥 V131: Sync Logic - Check seating plan if attendee has no seat
+                                  let displayTable = p.table;
+                                  let displaySeat = p.seat;
+                                  let displayName = p.name;
+                                  
+                                  // Live lookup from Seating Plan
+                                  if (!displayTable || !displaySeat) {
+                                      const match = seatingPlan.find(s => 
+                                          (s.email && normalizeEmail(s.email) === normalizeEmail(p.email)) || 
+                                          (s.phone && normalizePhone(s.phone) === normalizePhone(p.phone))
+                                      );
+                                      if (match) {
+                                          displayTable = match.table;
+                                          displaySeat = match.seat;
+                                          // Optional: Also sync name if attendee name is default
+                                          if (displayName === "VIP Guest") displayName = match.name;
+                                      }
+                                  }
+
                                   return (
                                       <tr key={p.id} className="hover:bg-white/5 text-sm">
                                           <td className="p-3">
                                               <div className="flex items-center gap-3 font-bold">
                                                   {p.photo ? <img src={p.photo} className="w-8 h-8 rounded-full object-cover"/> : <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><User size={14}/></div>}
-                                                  {p.name}
+                                                  {/* Use synced name if available */}
+                                                  {displayName}
                                               </div>
                                           </td>
                                           <td className="p-3 text-white/60 hidden md:table-cell text-left">{p.phone}</td>
                                           <td className="p-3 text-white/60 hidden md:table-cell text-left max-w-[150px] truncate" title={p.email}>{p.email}</td>
                                           <td className="p-3 text-white/60 hidden md:table-cell text-left">{p.dept}</td>
-                                          <td className="p-3 font-mono text-blue-400 text-center text-lg">{p.table}</td>
-                                          <td className="p-3 font-mono text-center text-lg">{p.seat}</td>
+                                          
+                                          {/* 🔥 V131: Use Live Synced Data */}
+                                          <td className={`p-3 font-mono text-center text-lg ${!p.table ? 'text-blue-300 italic' : 'text-blue-400'}`}>{displayTable || '-'}</td>
+                                          <td className={`p-3 font-mono text-center text-lg ${!p.seat ? 'text-white/50 italic' : ''}`}>{displaySeat || '-'}</td>
+                                          
                                           <td className="p-3 text-yellow-400 font-bold text-left">{winnerRec ? winnerRec.prize : '-'}</td>
                                           {/* 🔥 V123: Custom Status Buttons */}
                                           <td className="p-3 text-center">
@@ -1342,5 +1413,5 @@ export default function App() {
   
   if(view === 'admin') return <><StyleInjector/><ReceptionDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} setAttendees={setAttendees} seatingPlan={seatingPlan} drawHistory={drawHistory} /></>;
   if(view === 'prize') return <><StyleInjector/><PrizeDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} setCurrentPrize={setCurrentPrize} prizes={prizes} /></>;
-  if(view === 'projector') return <><StyleInjector/><ProjectorView t={t} onBack={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} prizes={prizes} /></>;
+  if(view === 'projector') return <><StyleInjector/><ProjectorView t={t} onBack={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} prizes={prizes} seatingPlan={seatingPlan} /></>;
 }
