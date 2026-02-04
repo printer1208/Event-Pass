@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 表格全顯版",
+    title: "Tesla Annual Dinner", sub: "2025 下載修復版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "請輸入電話或 Email",
@@ -75,7 +75,7 @@ const translations = {
     pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Full Table",
+    title: "Tesla Annual Dinner", sub: "2025 Fix Download",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Enter Phone or Email",
@@ -436,7 +436,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
 };
 
 // ==========================================
-// 5. 頁面組件 (Views) - Defined before App
+// 5. 頁面組件 (Views)
 // ==========================================
 
 const LoginView = ({ t, onLogin, onBack }) => {
@@ -485,6 +485,28 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
       document.body.appendChild(script);
     }
   }, []);
+  
+  // 🔥 V141: QR Code Fetching for Download Fix
+  const [qrCodeBase64, setQrCodeBase64] = useState(null);
+  useEffect(() => {
+      if (newId) {
+          const fetchQR = async () => {
+              try {
+                  const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(JSON.stringify({id: newId}))}&color=000000&bgcolor=ffffff`;
+                  const res = await fetch(url);
+                  const blob = await res.blob();
+                  const reader = new FileReader();
+                  reader.onloadend = () => setQrCodeBase64(reader.result);
+                  reader.readAsDataURL(blob);
+              } catch (e) {
+                  console.error("QR Fetch Error:", e);
+                  // Fallback
+                  setQrCodeBase64(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(JSON.stringify({id: newId}))}`);
+              }
+          };
+          fetchQR();
+      }
+  }, [newId]);
 
   const handleDownloadTicket = async () => {
     if (!window.html2canvas || !ticketRef.current) {
@@ -662,11 +684,10 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                            <h3 className="text-lg font-bold text-yellow-500 text-center mb-4 tracking-widest uppercase border-b border-white/10 pb-2">Tesla Annual Dinner</h3>
                            
                            <div className="bg-white p-4 rounded-xl inline-block mb-4 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-                               {/* 🔥 V121: Updated QR Source */}
+                               {/* 🔥 V141: Base64 QR Image to bypass CORS */}
                                <img 
-                                   src={`https://quickchart.io/qr?text=${encodeURIComponent(JSON.stringify({id: newId}))}&size=300&dark=000000&light=ffffff`} 
+                                   src={qrCodeBase64 || `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(JSON.stringify({id: newId}))}`}
                                    alt="QR" 
-                                   crossOrigin="anonymous"
                                    className="w-48 h-48 object-contain"
                                />
                            </div>
@@ -895,68 +916,28 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   const [seatForm, setSeatForm] = useState({name:'',phone:'',email:'',dept:'',table:'',seat:''});
   const lastTime = useRef(0);
 
-  // 🔥 V140: Force display columns, remove 'hidden'
   const filteredList = attendees.filter(p => {
       const s = search.toLowerCase();
       const prizeName = drawHistory.find(h=>h.attendeeId===p.id)?.prize || "";
       const dept = p.dept || "";
-      return String(p.name||'').toLowerCase().includes(s) || String(p.phone||'').includes(s) || String(p.email||'').toLowerCase().includes(s) || String(dept||'').toLowerCase().includes(s) || String(prizeName||'').toLowerCase().includes(s);
+      // 🔥 V118: Robust string filtering
+      return String(p.name||'').toLowerCase().includes(s) || 
+             String(p.phone||'').includes(s) || 
+             String(p.email||'').toLowerCase().includes(s) || 
+             String(dept||'').toLowerCase().includes(s) || 
+             String(prizeName||'').toLowerCase().includes(s);
   });
 
   const filteredSeat = seatingPlan.filter(s => {
       const q = search.toLowerCase();
-      return String(s.name||'').toLowerCase().includes(q) || String(s.phone||'').includes(q) || String(s.email||'').toLowerCase().includes(q) || String(s.dept||'').toLowerCase().includes(q) || String(s.table||'').includes(q) || String(s.seat||'').toLowerCase().includes(q);
+      // 🔥 V118: Robust string filtering
+      return String(s.name||'').toLowerCase().includes(q) || 
+             String(s.phone||'').includes(q) || 
+             String(s.email||'').toLowerCase().includes(q) || 
+             String(s.dept||'').toLowerCase().includes(q) || 
+             String(s.table||'').includes(q) || 
+             String(s.seat||'').toLowerCase().includes(q);
   });
-
-  // 🔥 V139: Multi-Select Logic
-  const [selectedGuestIds, setSelectedGuestIds] = useState(new Set());
-  const [selectedSeatIds, setSelectedSeatIds] = useState(new Set());
-
-  const toggleGuestSelection = (id) => {
-      const newSet = new Set(selectedGuestIds);
-      if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
-      setSelectedGuestIds(newSet);
-  };
-
-  const toggleAllGuests = () => {
-      if (filteredList.length === 0) return;
-      const allSelected = filteredList.every(p => selectedGuestIds.has(p.id));
-      const newSet = new Set(selectedGuestIds);
-      filteredList.forEach(p => { if (allSelected) newSet.delete(p.id); else newSet.add(p.id); });
-      setSelectedGuestIds(newSet);
-  };
-
-  const handleDeleteSelectedGuests = async () => {
-      if (!selectedGuestIds.size) return;
-      if (!confirm(`Are you sure you want to delete ${selectedGuestIds.size} guests?`)) return;
-      const batch = writeBatch(db);
-      selectedGuestIds.forEach(id => { batch.delete(doc(db, "attendees", id)); });
-      await batch.commit();
-      setSelectedGuestIds(new Set());
-  };
-
-  const toggleSeatSelection = (id) => {
-      const newSet = new Set(selectedSeatIds);
-      if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
-      setSelectedSeatIds(newSet);
-  };
-
-  const toggleAllSeats = () => {
-      if (filteredSeat.length === 0) return;
-      const allSelected = filteredSeat.every(s => selectedSeatIds.has(s.id));
-      const newSet = new Set(selectedSeatIds);
-      filteredSeat.forEach(s => { if (allSelected) newSet.delete(s.id); else newSet.add(s.id); });
-      setSelectedSeatIds(newSet);
-  };
-
-  const handleDeleteSelectedSeats = async () => {
-      if (!selectedSeatIds.size) return;
-      if (!confirm(`Are you sure you want to delete ${selectedSeatIds.size} seats?`)) return;
-      const batch = writeBatch(db);
-      selectedSeatIds.forEach(id => { batch.delete(doc(db, "seating_plan", id)); });
-      await batch.commit();
-      setSelectedSeatIds(new Set());
-  };
 
   const handleScan = useCallback(async (text) => {
     const now = Date.now();
@@ -998,28 +979,66 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
     await batch.commit(); alert(t.importSuccess);
   };
   
+  // 🔥 V83: Manual Add Guard
   const handleAddGuest = async (e) => {
       e.preventDefault();
       if(!adminForm.name) return;
+      
       const cleanPhone = normalizePhone(adminForm.phone);
       const cleanEmail = normalizeEmail(adminForm.email);
+
+      // Check Duplicates
       const phoneExists = attendees.some(a => normalizePhone(a.phone) === cleanPhone && cleanPhone !== '');
       const emailExists = attendees.some(a => normalizeEmail(a.email) === cleanEmail && cleanEmail !== '');
+
       if (phoneExists) { alert(t.errPhone); return; }
       if (emailExists) { alert(t.errEmail); return; }
-      let assignedTable = adminForm.table; let assignedSeat = adminForm.seat; let autoName = adminForm.name || "VIP Guest"; let autoDept = adminForm.dept || "-";
+
+      // 🔥 V131: Auto-assign table/seat AND Name from Seating Plan
+      let assignedTable = adminForm.table; 
+      let assignedSeat = adminForm.seat; 
+      let autoName = adminForm.name || "VIP Guest"; // Default name
+      let autoDept = adminForm.dept || "-";
+
+      // Try to find match in seating plan if seat info is missing OR name is missing
       const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail && cleanEmail !== '');
       const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone && cleanPhone !== '');
+      
       const match = emailMatch || phoneMatch;
-      if (match) { if (!assignedTable) assignedTable = match.table; if (!assignedSeat) assignedSeat = match.seat; if (!adminForm.name) autoName = match.name; if (!adminForm.dept) autoDept = match.dept; }
-      await addDoc(collection(db, "attendees"), { ...adminForm, name: autoName, dept: autoDept, phone: cleanPhone, email: cleanEmail, table: assignedTable, seat: assignedSeat, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() });
+
+      if (match) {
+          if (!assignedTable) assignedTable = match.table;
+          if (!assignedSeat) assignedSeat = match.seat;
+          if (!adminForm.name) autoName = match.name; // Auto-fill name if empty
+          if (!adminForm.dept) autoDept = match.dept;
+      }
+      
+      await addDoc(collection(db, "attendees"), { 
+          ...adminForm, 
+          name: autoName,
+          dept: autoDept,
+          phone: cleanPhone, 
+          email: cleanEmail, 
+          table: assignedTable, 
+          seat: assignedSeat, 
+          checkedIn: false, 
+          checkInTime: null, 
+          createdAt: new Date().toISOString() 
+      });
       setAdminForm({name:'',phone:'',email:'',dept:'',table:'',seat:''});
   };
 
   const handleAddSeating = async (e) => {
       e.preventDefault();
       if(!seatForm.table) return;
-      if(db) await addDoc(collection(db, "seating_plan"), { name: seatForm.name, phone: normalizePhone(seatForm.phone), email: normalizeEmail(seatForm.email), dept: seatForm.dept, table: seatForm.table, seat: seatForm.seat });
+      if(db) await addDoc(collection(db, "seating_plan"), { 
+          name: seatForm.name, 
+          phone: normalizePhone(seatForm.phone), 
+          email: normalizeEmail(seatForm.email), 
+          dept: seatForm.dept, 
+          table: seatForm.table, 
+          seat: seatForm.seat 
+      });
       setSeatForm({ name:'', phone:'', email: '', dept: '', table: '', seat: '' });
   };
 
@@ -1028,11 +1047,103 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   const toggleCancelCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: false, checkInTime: null }); };
   const deletePerson = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "attendees", id)); };
   const downloadTemplate = () => { const content = "\uFEFFName,Phone,Email,Dept,Table,Seat\nElon Musk,0912345678,elon@tesla.com,Engineering,1,A"; const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "seating_template.csv"; link.click(); };
-  const handleGenerateDummy = async () => { if (!confirm("確定要生成 100 筆測試資料嗎？")) return; const existingIds = attendees.map(a => { const match = a.name.match(/^Guest (\d+)$/); return match ? parseInt(match[1]) : 0; }); const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0; const start = maxId + 1; const end = maxId + 100; const batch = writeBatch(db); for (let i = start; i <= end; i++) { const ref = doc(db, "attendees", `guest_${i}`); batch.set(ref, { name: `Guest ${i}`, phone: `9000${String(i).padStart(4, '0')}`, email: `guest${i}@test.com`, dept: `Dept ${String.fromCharCode(65 + (i % 5))}`, table: `${Math.ceil(i / 10)}`, seat: String.fromCharCode(65 + ((i - 1) % 10)), photo: `https://i.pravatar.cc/300?u=guest_${i}`, checkedIn: true, checkInTime: new Date().toISOString(), createdAt: new Date().toISOString() }); } await batch.commit(); alert(`已生成 Guest ${start} - Guest ${end}`); };
-  const handleClearAllGuests = async () => { if (!confirm(t.confirmClearGuests)) return; const batch = writeBatch(db); attendees.forEach(p => { const ref = doc(db, "attendees", p.id); batch.delete(ref); }); await batch.commit(); alert("已清空所有賓客！"); };
-  const handleGenerateDummySeating = async () => { if (!confirm("確定要生成 100 筆新的座位資料嗎？")) return; const existingIds = seatingPlan.map(s => { const match = s.name.match(/^Guest (\d+)$/); return match ? parseInt(match[1]) : 0; }); const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0; const start = maxId + 1; const end = maxId + 100; const batch = writeBatch(db); for (let i = start; i <= end; i++) { const ref = doc(collection(db, "seating_plan")); batch.set(ref, { name: `Guest ${i}`, phone: `9000${String(i).padStart(4, '0')}`, email: `guest${i}@test.com`, dept: `Dept ${String.fromCharCode(65 + (i % 5))}`, table: `${Math.ceil(i / 10)}`, seat: String.fromCharCode(65 + ((i - 1) % 10)) }); } await batch.commit(); alert(`已生成座位資料 Guest ${start} - Guest ${end}`); };
-  const handleClearSeating = async () => { if(!confirm(t.confirmClearSeats)) return; const batch = writeBatch(db); seatingPlan.forEach(s => batch.delete(doc(db, "seating_plan", s.id))); await batch.commit(); alert("座位表已清空"); };
 
+  // 🔥 V93: Smart Dummy Generator (Skip Duplicates)
+  const handleGenerateDummy = async () => {
+    if (!confirm("確定要生成 100 筆測試資料嗎？\n(系統會自動從現有編號接續生成)")) return;
+    
+    // 1. 找出目前最大的 Guest ID
+    const existingIds = attendees
+        .map(a => {
+            const match = a.name.match(/^Guest (\d+)$/);
+            return match ? parseInt(match[1]) : 0;
+        });
+    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+    
+    const start = maxId + 1;
+    const end = maxId + 100; // V98: 100
+
+    const batch = writeBatch(db);
+    for (let i = start; i <= end; i++) {
+        // 使用 guest_{i} 作為 ID 確保唯一性
+        const ref = doc(db, "attendees", `guest_${i}`);
+        // Tesla Brand Colors: Red, Black, White, Grey
+        const colors = ['e82127', '000000', 'ffffff', '808080'];
+        const color = colors[i % 4];
+        const bg = colors[(i+1) % 4];
+        
+        batch.set(ref, {
+            name: `Guest ${i}`,
+            phone: `9000${String(i).padStart(4, '0')}`,
+            email: `guest${i}@test.com`,
+            dept: `Dept ${String.fromCharCode(65 + (i % 5))}`, // A, B, C, D, E
+            table: `${Math.ceil(i / 10)}`,
+            seat: String.fromCharCode(65 + ((i - 1) % 10)), // A-J
+            // V91: Tesla Brand Colors (Pravatar for realism)
+            photo: `https://i.pravatar.cc/300?u=guest_${i}`,
+            checkedIn: true, // Default Checked In for testing
+            checkInTime: new Date().toISOString(),
+            createdAt: new Date().toISOString()
+        });
+    }
+    
+    await batch.commit();
+    alert(`已生成 Guest ${start} - Guest ${end}`);
+  };
+
+  // 🔥 V84: Bulk Clear Guests
+  const handleClearAllGuests = async () => {
+    if (!confirm(t.confirmClearGuests)) return;
+    const batch = writeBatch(db);
+    attendees.forEach(p => {
+        const ref = doc(db, "attendees", p.id);
+        batch.delete(ref);
+    });
+    await batch.commit();
+    alert("已清空所有賓客！");
+  };
+
+  // 🔥 V98: Smart Dummy Seat Generator (Continuous & Sync with Guests)
+  const handleGenerateDummySeating = async () => {
+    if (!confirm("確定要生成 100 筆新的座位資料嗎？\n(系統會自動從現有編號接續生成)")) return;
+    
+    // 找出目前最大的 Seat User ID
+    const existingIds = seatingPlan
+        .map(s => {
+            const match = s.name.match(/^Guest (\d+)$/);
+            return match ? parseInt(match[1]) : 0;
+        });
+    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+    
+    const start = maxId + 1;
+    const end = maxId + 100;
+
+    const batch = writeBatch(db);
+    for (let i = start; i <= end; i++) {
+        const ref = doc(collection(db, "seating_plan"));
+        batch.set(ref, {
+            name: `Guest ${i}`,
+            phone: `9000${String(i).padStart(4, '0')}`,
+            email: `guest${i}@test.com`, 
+            dept: `Dept ${String.fromCharCode(65 + (i % 5))}`,
+            table: `${Math.ceil(i / 10)}`,
+            seat: String.fromCharCode(65 + ((i - 1) % 10))
+        });
+    }
+    await batch.commit();
+    alert(`已生成座位資料 Guest ${start} - Guest ${end}`);
+  };
+
+  // 🔥 V87: Bulk Clear Seating
+  const handleClearSeating = async () => {
+      if(!confirm(t.confirmClearSeats)) return;
+      const batch = writeBatch(db);
+      seatingPlan.forEach(s => batch.delete(doc(db, "seating_plan", s.id)));
+      await batch.commit();
+      alert("座位表已清空");
+  };
+
+  // 🔥 V124: Refined Table Alignment
   return (
     <div className="min-h-[100dvh] bg-neutral-950 text-white flex flex-col">
        <header className="p-4 border-b border-white/10 flex justify-between items-center bg-neutral-900"><div className="font-bold text-lg flex gap-2"><QrCode/> Reception</div><button onClick={onLogout}><LogOut size={18}/></button></header>
@@ -1147,7 +1258,9 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       )}
                       <label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label>
                       <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button>
+                      {/* 🔥 V85: Dummy Seating Button */}
                       <button onClick={handleGenerateDummySeating} className="bg-purple-600/20 text-purple-400 border border-purple-600/50 px-3 py-2 rounded-lg text-xs hover:bg-purple-600 hover:text-white transition-colors flex items-center gap-1"><Database size={14}/> {t.genDummySeat}</button>
+                      {/* 🔥 V125: Clear Seat with Text */}
                       <button onClick={handleClearSeating} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><Trash2 size={14}/> {t.clearSeats}</button>
                   </div>
                   
@@ -1162,8 +1275,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
                   </div>
 
-                  {/* 🔥 V140: Added overflow-x-auto for horizontal scrolling */}
-                  <div className="flex-1 overflow-y-auto overflow-x-auto bg-white/5 rounded-xl p-2">
+                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2">
                       <table className="w-full text-left border-collapse min-w-[800px]">
                           <thead className="text-xs text-white/40 uppercase border-b border-white/10">
                               <tr>
