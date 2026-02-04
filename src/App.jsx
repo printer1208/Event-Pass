@@ -5,7 +5,7 @@ import {
   ArrowRight, UserPlus, LogOut, Globe, Mail,
   Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
   Cloud, Zap, Image as ImageIcon, MonitorPlay, Aperture, Gift,
-  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid, Briefcase, Database
+  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid, Briefcase, Database, CheckSquare, Square
 } from 'lucide-react';
 
 // --- Firebase ---
@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "",
+    title: "Tesla Annual Dinner", sub: "2025 表格全顯版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "請輸入電話或 Email",
@@ -72,10 +72,10 @@ const translations = {
     seatResult: "查詢結果", status: "狀態", notCheckedIn: "未簽到", registered: "已登記", notRegistered: "未登記",
     youWon: "恭喜獲得", nextRound: "按 ENTER 進入下一輪",
     winnerLabel: "得主", saveTicket: "下載入場憑證", screenshotHint: "或截圖保存此畫面",
-    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In"
+    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "",
+    title: "Tesla Annual Dinner", sub: "2025 Full Table",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Enter Phone or Email",
@@ -102,7 +102,7 @@ const translations = {
     seatResult: "Result", status: "Status", notCheckedIn: "Not In", registered: "Registered", notRegistered: "Not Reg",
     youWon: "Congratulations!", nextRound: "Press ENTER for Next Round",
     winnerLabel: "WINNER", saveTicket: "Download Ticket", screenshotHint: "or Screenshot to Save",
-    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In"
+    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "Delete Selected"
   }
 };
 
@@ -372,8 +372,6 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                          ctx.fillRect(-currentSize/2, -currentSize/2, currentSize, currentSize); 
                      }
                 } else {
-                     // Mosaic
-                     // 🔥 V117: Zero gap for maximum size
                      const gap = 0;
                      ctx.beginPath();
                      ctx.rect(p.x, p.y, p.size - gap, p.size - gap);
@@ -897,28 +895,68 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   const [seatForm, setSeatForm] = useState({name:'',phone:'',email:'',dept:'',table:'',seat:''});
   const lastTime = useRef(0);
 
+  // 🔥 V140: Force display columns, remove 'hidden'
   const filteredList = attendees.filter(p => {
       const s = search.toLowerCase();
       const prizeName = drawHistory.find(h=>h.attendeeId===p.id)?.prize || "";
       const dept = p.dept || "";
-      // 🔥 V118: Robust string filtering
-      return String(p.name||'').toLowerCase().includes(s) || 
-             String(p.phone||'').includes(s) || 
-             String(p.email||'').toLowerCase().includes(s) || 
-             String(dept||'').toLowerCase().includes(s) || 
-             String(prizeName||'').toLowerCase().includes(s);
+      return String(p.name||'').toLowerCase().includes(s) || String(p.phone||'').includes(s) || String(p.email||'').toLowerCase().includes(s) || String(dept||'').toLowerCase().includes(s) || String(prizeName||'').toLowerCase().includes(s);
   });
 
   const filteredSeat = seatingPlan.filter(s => {
       const q = search.toLowerCase();
-      // 🔥 V118: Robust string filtering
-      return String(s.name||'').toLowerCase().includes(q) || 
-             String(s.phone||'').includes(q) || 
-             String(s.email||'').toLowerCase().includes(q) || 
-             String(s.dept||'').toLowerCase().includes(q) || 
-             String(s.table||'').includes(q) || 
-             String(s.seat||'').toLowerCase().includes(q);
+      return String(s.name||'').toLowerCase().includes(q) || String(s.phone||'').includes(q) || String(s.email||'').toLowerCase().includes(q) || String(s.dept||'').toLowerCase().includes(q) || String(s.table||'').includes(q) || String(s.seat||'').toLowerCase().includes(q);
   });
+
+  // 🔥 V139: Multi-Select Logic
+  const [selectedGuestIds, setSelectedGuestIds] = useState(new Set());
+  const [selectedSeatIds, setSelectedSeatIds] = useState(new Set());
+
+  const toggleGuestSelection = (id) => {
+      const newSet = new Set(selectedGuestIds);
+      if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
+      setSelectedGuestIds(newSet);
+  };
+
+  const toggleAllGuests = () => {
+      if (filteredList.length === 0) return;
+      const allSelected = filteredList.every(p => selectedGuestIds.has(p.id));
+      const newSet = new Set(selectedGuestIds);
+      filteredList.forEach(p => { if (allSelected) newSet.delete(p.id); else newSet.add(p.id); });
+      setSelectedGuestIds(newSet);
+  };
+
+  const handleDeleteSelectedGuests = async () => {
+      if (!selectedGuestIds.size) return;
+      if (!confirm(`Are you sure you want to delete ${selectedGuestIds.size} guests?`)) return;
+      const batch = writeBatch(db);
+      selectedGuestIds.forEach(id => { batch.delete(doc(db, "attendees", id)); });
+      await batch.commit();
+      setSelectedGuestIds(new Set());
+  };
+
+  const toggleSeatSelection = (id) => {
+      const newSet = new Set(selectedSeatIds);
+      if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
+      setSelectedSeatIds(newSet);
+  };
+
+  const toggleAllSeats = () => {
+      if (filteredSeat.length === 0) return;
+      const allSelected = filteredSeat.every(s => selectedSeatIds.has(s.id));
+      const newSet = new Set(selectedSeatIds);
+      filteredSeat.forEach(s => { if (allSelected) newSet.delete(s.id); else newSet.add(s.id); });
+      setSelectedSeatIds(newSet);
+  };
+
+  const handleDeleteSelectedSeats = async () => {
+      if (!selectedSeatIds.size) return;
+      if (!confirm(`Are you sure you want to delete ${selectedSeatIds.size} seats?`)) return;
+      const batch = writeBatch(db);
+      selectedSeatIds.forEach(id => { batch.delete(doc(db, "seating_plan", id)); });
+      await batch.commit();
+      setSelectedSeatIds(new Set());
+  };
 
   const handleScan = useCallback(async (text) => {
     const now = Date.now();
@@ -960,66 +998,28 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
     await batch.commit(); alert(t.importSuccess);
   };
   
-  // 🔥 V83: Manual Add Guard
   const handleAddGuest = async (e) => {
       e.preventDefault();
       if(!adminForm.name) return;
-      
       const cleanPhone = normalizePhone(adminForm.phone);
       const cleanEmail = normalizeEmail(adminForm.email);
-
-      // Check Duplicates
       const phoneExists = attendees.some(a => normalizePhone(a.phone) === cleanPhone && cleanPhone !== '');
       const emailExists = attendees.some(a => normalizeEmail(a.email) === cleanEmail && cleanEmail !== '');
-
       if (phoneExists) { alert(t.errPhone); return; }
       if (emailExists) { alert(t.errEmail); return; }
-
-      // 🔥 V131: Auto-assign table/seat AND Name from Seating Plan
-      let assignedTable = adminForm.table; 
-      let assignedSeat = adminForm.seat; 
-      let autoName = adminForm.name || "VIP Guest"; // Default name
-      let autoDept = adminForm.dept || "-";
-
-      // Try to find match in seating plan if seat info is missing OR name is missing
+      let assignedTable = adminForm.table; let assignedSeat = adminForm.seat; let autoName = adminForm.name || "VIP Guest"; let autoDept = adminForm.dept || "-";
       const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail && cleanEmail !== '');
       const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone && cleanPhone !== '');
-      
       const match = emailMatch || phoneMatch;
-
-      if (match) {
-          if (!assignedTable) assignedTable = match.table;
-          if (!assignedSeat) assignedSeat = match.seat;
-          if (!adminForm.name) autoName = match.name; // Auto-fill name if empty
-          if (!adminForm.dept) autoDept = match.dept;
-      }
-      
-      await addDoc(collection(db, "attendees"), { 
-          ...adminForm, 
-          name: autoName,
-          dept: autoDept,
-          phone: cleanPhone, 
-          email: cleanEmail, 
-          table: assignedTable, 
-          seat: assignedSeat, 
-          checkedIn: false, 
-          checkInTime: null, 
-          createdAt: new Date().toISOString() 
-      });
+      if (match) { if (!assignedTable) assignedTable = match.table; if (!assignedSeat) assignedSeat = match.seat; if (!adminForm.name) autoName = match.name; if (!adminForm.dept) autoDept = match.dept; }
+      await addDoc(collection(db, "attendees"), { ...adminForm, name: autoName, dept: autoDept, phone: cleanPhone, email: cleanEmail, table: assignedTable, seat: assignedSeat, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() });
       setAdminForm({name:'',phone:'',email:'',dept:'',table:'',seat:''});
   };
 
   const handleAddSeating = async (e) => {
       e.preventDefault();
       if(!seatForm.table) return;
-      if(db) await addDoc(collection(db, "seating_plan"), { 
-          name: seatForm.name, 
-          phone: normalizePhone(seatForm.phone), 
-          email: normalizeEmail(seatForm.email), 
-          dept: seatForm.dept, 
-          table: seatForm.table, 
-          seat: seatForm.seat 
-      });
+      if(db) await addDoc(collection(db, "seating_plan"), { name: seatForm.name, phone: normalizePhone(seatForm.phone), email: normalizeEmail(seatForm.email), dept: seatForm.dept, table: seatForm.table, seat: seatForm.seat });
       setSeatForm({ name:'', phone:'', email: '', dept: '', table: '', seat: '' });
   };
 
@@ -1028,103 +1028,11 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   const toggleCancelCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: false, checkInTime: null }); };
   const deletePerson = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "attendees", id)); };
   const downloadTemplate = () => { const content = "\uFEFFName,Phone,Email,Dept,Table,Seat\nElon Musk,0912345678,elon@tesla.com,Engineering,1,A"; const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "seating_template.csv"; link.click(); };
+  const handleGenerateDummy = async () => { if (!confirm("確定要生成 100 筆測試資料嗎？")) return; const existingIds = attendees.map(a => { const match = a.name.match(/^Guest (\d+)$/); return match ? parseInt(match[1]) : 0; }); const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0; const start = maxId + 1; const end = maxId + 100; const batch = writeBatch(db); for (let i = start; i <= end; i++) { const ref = doc(db, "attendees", `guest_${i}`); batch.set(ref, { name: `Guest ${i}`, phone: `9000${String(i).padStart(4, '0')}`, email: `guest${i}@test.com`, dept: `Dept ${String.fromCharCode(65 + (i % 5))}`, table: `${Math.ceil(i / 10)}`, seat: String.fromCharCode(65 + ((i - 1) % 10)), photo: `https://i.pravatar.cc/300?u=guest_${i}`, checkedIn: true, checkInTime: new Date().toISOString(), createdAt: new Date().toISOString() }); } await batch.commit(); alert(`已生成 Guest ${start} - Guest ${end}`); };
+  const handleClearAllGuests = async () => { if (!confirm(t.confirmClearGuests)) return; const batch = writeBatch(db); attendees.forEach(p => { const ref = doc(db, "attendees", p.id); batch.delete(ref); }); await batch.commit(); alert("已清空所有賓客！"); };
+  const handleGenerateDummySeating = async () => { if (!confirm("確定要生成 100 筆新的座位資料嗎？")) return; const existingIds = seatingPlan.map(s => { const match = s.name.match(/^Guest (\d+)$/); return match ? parseInt(match[1]) : 0; }); const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0; const start = maxId + 1; const end = maxId + 100; const batch = writeBatch(db); for (let i = start; i <= end; i++) { const ref = doc(collection(db, "seating_plan")); batch.set(ref, { name: `Guest ${i}`, phone: `9000${String(i).padStart(4, '0')}`, email: `guest${i}@test.com`, dept: `Dept ${String.fromCharCode(65 + (i % 5))}`, table: `${Math.ceil(i / 10)}`, seat: String.fromCharCode(65 + ((i - 1) % 10)) }); } await batch.commit(); alert(`已生成座位資料 Guest ${start} - Guest ${end}`); };
+  const handleClearSeating = async () => { if(!confirm(t.confirmClearSeats)) return; const batch = writeBatch(db); seatingPlan.forEach(s => batch.delete(doc(db, "seating_plan", s.id))); await batch.commit(); alert("座位表已清空"); };
 
-  // 🔥 V93: Smart Dummy Generator (Skip Duplicates)
-  const handleGenerateDummy = async () => {
-    if (!confirm("確定要生成 100 筆測試資料嗎？\n(系統會自動從現有編號接續生成)")) return;
-    
-    // 1. 找出目前最大的 Guest ID
-    const existingIds = attendees
-        .map(a => {
-            const match = a.name.match(/^Guest (\d+)$/);
-            return match ? parseInt(match[1]) : 0;
-        });
-    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
-    
-    const start = maxId + 1;
-    const end = maxId + 100; // V98: 100
-
-    const batch = writeBatch(db);
-    for (let i = start; i <= end; i++) {
-        // 使用 guest_{i} 作為 ID 確保唯一性
-        const ref = doc(db, "attendees", `guest_${i}`);
-        // Tesla Brand Colors: Red, Black, White, Grey
-        const colors = ['e82127', '000000', 'ffffff', '808080'];
-        const color = colors[i % 4];
-        const bg = colors[(i+1) % 4];
-        
-        batch.set(ref, {
-            name: `Guest ${i}`,
-            phone: `9000${String(i).padStart(4, '0')}`,
-            email: `guest${i}@test.com`,
-            dept: `Dept ${String.fromCharCode(65 + (i % 5))}`, // A, B, C, D, E
-            table: `${Math.ceil(i / 10)}`,
-            seat: String.fromCharCode(65 + ((i - 1) % 10)), // A-J
-            // V91: Tesla Brand Colors (Pravatar for realism)
-            photo: `https://i.pravatar.cc/300?u=guest_${i}`,
-            checkedIn: true, // Default Checked In for testing
-            checkInTime: new Date().toISOString(),
-            createdAt: new Date().toISOString()
-        });
-    }
-    
-    await batch.commit();
-    alert(`已生成 Guest ${start} - Guest ${end}`);
-  };
-
-  // 🔥 V84: Bulk Clear Guests
-  const handleClearAllGuests = async () => {
-    if (!confirm(t.confirmClearGuests)) return;
-    const batch = writeBatch(db);
-    attendees.forEach(p => {
-        const ref = doc(db, "attendees", p.id);
-        batch.delete(ref);
-    });
-    await batch.commit();
-    alert("已清空所有賓客！");
-  };
-
-  // 🔥 V98: Smart Dummy Seat Generator (Continuous & Sync with Guests)
-  const handleGenerateDummySeating = async () => {
-    if (!confirm("確定要生成 100 筆新的座位資料嗎？\n(系統會自動從現有編號接續生成)")) return;
-    
-    // 找出目前最大的 Seat User ID
-    const existingIds = seatingPlan
-        .map(s => {
-            const match = s.name.match(/^Guest (\d+)$/);
-            return match ? parseInt(match[1]) : 0;
-        });
-    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
-    
-    const start = maxId + 1;
-    const end = maxId + 100;
-
-    const batch = writeBatch(db);
-    for (let i = start; i <= end; i++) {
-        const ref = doc(collection(db, "seating_plan"));
-        batch.set(ref, {
-            name: `Guest ${i}`,
-            phone: `9000${String(i).padStart(4, '0')}`,
-            email: `guest${i}@test.com`, 
-            dept: `Dept ${String.fromCharCode(65 + (i % 5))}`,
-            table: `${Math.ceil(i / 10)}`,
-            seat: String.fromCharCode(65 + ((i - 1) % 10))
-        });
-    }
-    await batch.commit();
-    alert(`已生成座位資料 Guest ${start} - Guest ${end}`);
-  };
-
-  // 🔥 V87: Bulk Clear Seating
-  const handleClearSeating = async () => {
-      if(!confirm(t.confirmClearSeats)) return;
-      const batch = writeBatch(db);
-      seatingPlan.forEach(s => batch.delete(doc(db, "seating_plan", s.id)));
-      await batch.commit();
-      alert("座位表已清空");
-  };
-
-  // 🔥 V124: Refined Table Alignment
   return (
     <div className="min-h-[100dvh] bg-neutral-950 text-white flex flex-col">
        <header className="p-4 border-b border-white/10 flex justify-between items-center bg-neutral-900"><div className="font-bold text-lg flex gap-2"><QrCode/> Reception</div><button onClick={onLogout}><LogOut size={18}/></button></header>
@@ -1143,11 +1051,12 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
           {tab==='list' && (
               <div className="w-full flex-1 flex flex-col h-[70vh]">
                   <div className="p-4 bg-white/5 rounded-t-xl border-b border-white/10">
-                      <div className="mb-4 flex gap-2">
+                      <div className="mb-4 flex gap-2 items-center">
                           <div className="relative flex-1"><Search className="absolute top-2.5 left-3 text-white/30" size={16}/><input placeholder={t.searchList} value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-white/10 rounded-lg pl-9 pr-4 py-2 text-sm outline-none"/></div>
-                          {/* 🔥 V83/V84: Data Tools */}
+                          {selectedGuestIds.size > 0 && (
+                             <button onClick={handleDeleteSelectedGuests} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><Trash2 size={14}/> {t.deleteSelected} ({selectedGuestIds.size})</button>
+                          )}
                           <button onClick={handleGenerateDummy} className="bg-yellow-600/20 text-yellow-400 border border-yellow-600/50 px-3 py-2 rounded-lg text-xs hover:bg-yellow-600 hover:text-white transition-colors flex items-center gap-1"><Database size={14}/> {t.genDummy}</button>
-                          {/* 🔥 V84: Clear Guests */}
                           <button onClick={handleClearAllGuests} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1"><Trash2 size={14}/> {t.clearGuests}</button>
                       </div>
                       
@@ -1168,15 +1077,17 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       </div>
                   </div>
 
-                  {/* 🔥 V124: Enhanced Table Alignment */}
-                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-b-xl p-2">
-                      <table className="w-full text-left border-collapse">
+                  {/* 🔥 V140: Added overflow-x-auto for horizontal scrolling */}
+                  <div className="flex-1 overflow-y-auto overflow-x-auto bg-white/5 rounded-b-xl p-2">
+                      <table className="w-full text-left border-collapse min-w-[800px]">
                           <thead className="text-xs text-white/40 uppercase border-b border-white/10">
                               <tr>
+                                  <th className="p-3 w-10 text-center"><button onClick={toggleAllGuests} className="hover:text-white transition-colors">{filteredList.length > 0 && filteredList.every(p => selectedGuestIds.has(p.id)) ? <CheckSquare size={16}/> : <Square size={16}/>}</button></th>
                                   <th className="p-3 text-left">Name</th>
-                                  <th className="p-3 text-left hidden md:table-cell">Phone</th>
-                                  <th className="p-3 text-left hidden md:table-cell">Email</th>
-                                  <th className="p-3 text-left hidden md:table-cell">Dept</th>
+                                  {/* 🔥 V140: Removed 'hidden' class to force show columns */}
+                                  <th className="p-3 text-left">Phone</th>
+                                  <th className="p-3 text-left">Email</th>
+                                  <th className="p-3 text-left">Dept</th>
                                   <th className="p-3 text-center">Table</th>
                                   <th className="p-3 text-center">Seat</th>
                                   <th className="p-3 text-left text-yellow-500">{t.wonPrize}</th>
@@ -1187,45 +1098,29 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                           <tbody className="divide-y divide-white/5">
                               {filteredList.map(p=>{
                                   const winnerRec = drawHistory.find(h=>h.attendeeId===p.id);
-                                  
-                                  // 🔥 V131: Sync Logic - Check seating plan if attendee has no seat
-                                  let displayTable = p.table;
-                                  let displaySeat = p.seat;
-                                  let displayName = p.name;
-                                  
-                                  // Live lookup from Seating Plan
+                                  let displayTable = p.table; let displaySeat = p.seat; let displayName = p.name;
                                   if (!displayTable || !displaySeat) {
-                                      const match = seatingPlan.find(s => 
-                                          (s.email && normalizeEmail(s.email) === normalizeEmail(p.email)) || 
-                                          (s.phone && normalizePhone(s.phone) === normalizePhone(p.phone))
-                                      );
-                                      if (match) {
-                                          displayTable = match.table;
-                                          displaySeat = match.seat;
-                                          // Optional: Also sync name if attendee name is default
-                                          if (displayName === "VIP Guest") displayName = match.name;
-                                      }
+                                      const match = seatingPlan.find(s => (s.email && normalizeEmail(s.email) === normalizeEmail(p.email)) || (s.phone && normalizePhone(s.phone) === normalizePhone(p.phone)));
+                                      if (match) { displayTable = match.table; displaySeat = match.seat; if (displayName === "VIP Guest") displayName = match.name; }
                                   }
-
+                                  const isSelected = selectedGuestIds.has(p.id);
                                   return (
-                                      <tr key={p.id} className="hover:bg-white/5 text-sm">
+                                      <tr key={p.id} className={`hover:bg-white/5 text-sm transition-colors ${isSelected ? 'bg-white/10' : ''}`}>
+                                          <td className="p-3 text-center"><button onClick={() => toggleGuestSelection(p.id)} className={`transition-colors ${isSelected ? 'text-blue-400' : 'text-white/20 hover:text-white/50'}`}>{isSelected ? <CheckSquare size={16}/> : <Square size={16}/>}</button></td>
                                           <td className="p-3">
                                               <div className="flex items-center gap-3 font-bold">
                                                   {p.photo ? <img src={p.photo} className="w-8 h-8 rounded-full object-cover"/> : <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><User size={14}/></div>}
-                                                  {/* Use synced name if available */}
                                                   {displayName}
                                               </div>
                                           </td>
-                                          <td className="p-3 text-white/60 hidden md:table-cell text-left">{p.phone}</td>
-                                          <td className="p-3 text-white/60 hidden md:table-cell text-left max-w-[150px] truncate" title={p.email}>{p.email}</td>
-                                          <td className="p-3 text-white/60 hidden md:table-cell text-left">{p.dept}</td>
+                                          {/* 🔥 V140: Removed 'hidden' class */}
+                                          <td className="p-3 text-white/60 text-left">{p.phone}</td>
+                                          <td className="p-3 text-white/60 text-left max-w-[150px] truncate" title={p.email}>{p.email}</td>
+                                          <td className="p-3 text-white/60 text-left">{p.dept}</td>
                                           
-                                          {/* 🔥 V131: Use Live Synced Data */}
                                           <td className={`p-3 font-mono text-center text-lg ${!p.table ? 'text-blue-300 italic' : 'text-blue-400'}`}>{displayTable || '-'}</td>
                                           <td className={`p-3 font-mono text-center text-lg ${!p.seat ? 'text-white/50 italic' : ''}`}>{displaySeat || '-'}</td>
-                                          
                                           <td className="p-3 text-yellow-400 font-bold text-left">{winnerRec ? winnerRec.prize : '-'}</td>
-                                          {/* 🔥 V123: Custom Status Buttons */}
                                           <td className="p-3 text-center">
                                               {!p.checkedIn ? 
                                                   <button onClick={()=>toggleCheckIn(p)} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-1 rounded text-xs hover:bg-red-600 hover:text-white transition-colors">{t.pendingCheckin}</button> 
@@ -1247,11 +1142,12 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
               <div className="w-full flex-1 flex flex-col gap-4">
                   <div className="flex gap-2">
                       <input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none text-sm"/>
+                      {selectedSeatIds.size > 0 && (
+                          <button onClick={handleDeleteSelectedSeats} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><Trash2 size={14}/> {t.deleteSelected} ({selectedSeatIds.size})</button>
+                      )}
                       <label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label>
                       <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button>
-                      {/* 🔥 V85: Dummy Seating Button */}
                       <button onClick={handleGenerateDummySeating} className="bg-purple-600/20 text-purple-400 border border-purple-600/50 px-3 py-2 rounded-lg text-xs hover:bg-purple-600 hover:text-white transition-colors flex items-center gap-1"><Database size={14}/> {t.genDummySeat}</button>
-                      {/* 🔥 V125: Clear Seat with Text */}
                       <button onClick={handleClearSeating} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><Trash2 size={14}/> {t.clearSeats}</button>
                   </div>
                   
@@ -1266,45 +1162,40 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2">
-                      <table className="w-full text-left border-collapse">
+                  {/* 🔥 V140: Added overflow-x-auto for horizontal scrolling */}
+                  <div className="flex-1 overflow-y-auto overflow-x-auto bg-white/5 rounded-xl p-2">
+                      <table className="w-full text-left border-collapse min-w-[800px]">
                           <thead className="text-xs text-white/40 uppercase border-b border-white/10">
                               <tr>
+                                  <th className="p-3 w-10 text-center"><button onClick={toggleAllSeats} className="hover:text-white transition-colors">{filteredSeat.length > 0 && filteredSeat.every(s => selectedSeatIds.has(s.id)) ? <CheckSquare size={16}/> : <Square size={16}/>}</button></th>
                                   <th className="p-3 text-left">Name</th>
-                                  <th className="p-3 text-left hidden md:table-cell">Phone</th>
-                                  <th className="p-3 text-left hidden md:table-cell">Email</th>
-                                  <th className="p-3 text-left hidden md:table-cell">Dept</th>
+                                  {/* 🔥 V140: Removed 'hidden' class to force show columns */}
+                                  <th className="p-3 text-left">Phone</th>
+                                  <th className="p-3 text-left">Email</th>
+                                  <th className="p-3 text-left">Dept</th>
                                   <th className="p-3 text-center">Table</th>
                                   <th className="p-3 text-center">Seat</th>
-                                  {/* 🔥 V89: New Status Column */}
-                                  <th className="p-3 text-center">{t.status}</th>
+                                  <th className="p-3 text-center">Status</th>
                                   <th className="p-3 text-center">Del</th>
                               </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
                               {filteredSeat.map(s=>{
-                                  // 🔥 V89: Find attendee status
-                                  const match = attendees.find(a => 
-                                      (s.phone && normalizePhone(a.phone) === normalizePhone(s.phone)) || 
-                                      (s.email && normalizeEmail(a.email) === normalizeEmail(s.email))
-                                  );
+                                  const match = attendees.find(a => (s.phone && normalizePhone(a.phone) === normalizePhone(s.phone)) || (s.email && normalizeEmail(a.email) === normalizeEmail(s.email)));
                                   const isCheckedIn = match?.checkedIn;
-                                  
+                                  const isSelected = selectedSeatIds.has(s.id);
                                   return (
-                                      <tr key={s.id} className="hover:bg-white/5 text-sm">
+                                      <tr key={s.id} className={`hover:bg-white/5 text-sm transition-colors ${isSelected ? 'bg-white/10' : ''}`}>
+                                          <td className="p-3 text-center"><button onClick={() => toggleSeatSelection(s.id)} className={`transition-colors ${isSelected ? 'text-blue-400' : 'text-white/20 hover:text-white/50'}`}>{isSelected ? <CheckSquare size={16}/> : <Square size={16}/>}</button></td>
                                           <td className="p-3 font-bold text-left">{s.name}</td>
-                                          <td className="p-3 text-xs text-white/60 hidden md:table-cell text-left">{s.phone}</td>
-                                          <td className="p-3 text-xs text-white/60 hidden md:table-cell text-left">{s.email}</td>
-                                          <td className="p-3 text-xs text-white/60 hidden md:table-cell text-left">{s.dept}</td>
+                                          {/* 🔥 V140: Removed 'hidden' class */}
+                                          <td className="p-3 text-xs text-white/60 text-left">{s.phone}</td>
+                                          <td className="p-3 text-xs text-white/60 text-left">{s.email}</td>
+                                          <td className="p-3 text-xs text-white/60 text-left">{s.dept}</td>
+                                          
                                           <td className="p-3 font-mono text-blue-400 text-center text-lg">{s.table}</td>
                                           <td className="p-3 font-mono text-center text-lg">{s.seat}</td>
-                                          {/* 🔥 V89: Status Indicator */}
-                                          <td className="p-3 text-center">
-                                              {isCheckedIn ? 
-                                                  <span className="text-green-400 bg-green-400/20 px-2 py-1 rounded text-xs border border-green-400/50">已到場</span> : 
-                                                  <span className="text-white/30 text-xs border border-white/10 px-2 py-1 rounded">未簽到</span>
-                                              }
-                                          </td>
+                                          <td className="p-3 text-center">{isCheckedIn ? <span className="text-green-400 bg-green-400/20 px-2 py-1 rounded text-xs border border-green-400/50">已到場</span> : <span className="text-white/30 text-xs border border-white/10 px-2 py-1 rounded">未簽到</span>}</td>
                                           <td className="p-3 text-center"><button onClick={()=>handleDeleteSeating(s.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10"><Trash2 size={16}/></button></td>
                                       </tr>
                                   );
