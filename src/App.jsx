@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 極限滿版",
+    title: "Tesla Annual Dinner", sub: "",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "請輸入電話或 Email",
@@ -75,7 +75,7 @@ const translations = {
     pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Max Scale",
+    title: "Tesla Annual Dinner", sub: "",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Enter Phone or Email",
@@ -232,9 +232,10 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             const h = canvas.height;
             if (w === 0 || h === 0) return; 
 
-            // 🔥 V130: Reduced minParticles to increase individual photo size
-            const minParticles = 120; // Lower count = Bigger blocks
-            const totalParticles = Math.max(list.length, minParticles);
+            // 🔥 V135: Dynamic density - use actual guest count if low to maximize size
+            const minParticles = 40; 
+            const targetCount = list.length > 0 ? list.length : 100;
+            const totalParticles = Math.max(targetCount, minParticles);
             
             // 1. Generate TESLA Text Mask
             const offCanvas = document.createElement('canvas');
@@ -246,14 +247,14 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.fillRect(0, 0, w, h);
             offCtx.fillStyle = '#fff';
             
-            // 🔥 V133: Extreme Full Scale Font Calculation
+            // 🔥 V135: Extreme Full Scale Font Calculation
             const testFontSize = 100;
             offCtx.font = `900 ${testFontSize}px sans-serif`;
             const textMetrics = offCtx.measureText("TESLA");
             const textWidth = textMetrics.width;
             
-            // 🔥 V133: Push limits to 110% width (utilizing side bearings) and 100% height
-            const widthRatio = (w * 1.1) / textWidth; 
+            // 🔥 V135: Push width to 1.3 for MAX fill
+            const widthRatio = (w * 1.3) / textWidth; 
             const targetFontSizeFromWidth = testFontSize * widthRatio;
             const targetFontSizeFromHeight = h * 1.0;
             
@@ -279,8 +280,8 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             let particleSize = Math.floor(Math.sqrt(areaPerPerson));
             
             if(particleSize < 4) particleSize = 4; 
-            // V98: Allow even bigger particles if few people
-            if(particleSize > 150) particleSize = 150; 
+            // V135: Allow MASSIVE particles
+            if(particleSize > 500) particleSize = 500; 
 
             const step = particleSize;
             let validPoints = [];
@@ -330,9 +331,8 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                     size: step, 
                     img: img,
                     data: p,
-                    isReal: isReal,
-                    color: ['#E82127','#FFFFFF','#808080','#333333'][i%4],
-                    angle: 0
+                    angle: 0,
+                    color: ['#E82127','#FFFFFF','#808080','#333333'][i%4]
                 });
             }
             particles.current = particleArray;
@@ -381,7 +381,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                      
                      if (p.img && p.img.complete && p.img.naturalWidth !== 0) {
                          ctx.drawImage(p.img, p.x, p.y, p.size - gap, p.size - gap);
-                         ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                         ctx.strokeStyle = 'rgba(255,255,255,0.1)'; 
                          ctx.lineWidth = 0.5;
                          ctx.strokeRect(p.x, p.y, p.size - gap, p.size - gap);
                      } else {
@@ -438,7 +438,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
 };
 
 // ==========================================
-// 5. 頁面組件 (Views)
+// 5. 頁面組件 (Views) - Defined before App
 // ==========================================
 
 const LoginView = ({ t, onLogin, onBack }) => {
@@ -733,7 +733,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
         );
         
         if (match) {
-            return { ...a, table: match.table, seat: match.seat };
+            return { ...a, table: match.table, seat: match.seat, dept: match.dept || a.dept }; // 🔥 V135: Sync Dept too
         }
         return a;
     });
@@ -760,6 +760,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                     photo: winner.photo || "", 
                     table: winner.table || "", 
                     seat: winner.seat || "", 
+                    dept: winner.dept || "", // 🔥 Save Dept
                     prize: currentPrize || "Grand Prize", 
                     wonAt: new Date().toISOString() 
                 });
@@ -809,41 +810,56 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
             {/* 2. Canvas Area (Flex 1) - Maximize Space */}
             <div className="flex-1 w-full relative z-10 bg-black overflow-hidden flex items-center justify-center">
                 {winner ? (
-                     // 🔥 V115: Cleanest Winner Display (Center of screen, no extra labels, fix overlap)
+                     // 🔥 V115: Cleanest Winner Display
                     <div className="flex flex-col items-center justify-center h-full w-full relative z-50">
                         <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
 
                         {/* Photo - Big but balanced */}
                         <div className="relative mb-6">
                             <div className="absolute inset-0 bg-yellow-500/30 blur-3xl rounded-full animate-pulse"></div>
-                            {winner.photo ? <img src={winner.photo} className="relative w-96 h-96 rounded-full border-8 border-yellow-400 object-cover shadow-2xl"/> : <div className="w-96 h-96 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={150}/></div>}
+                            {/* 🔥 V137: RESTORED BIG PHOTO (55vh) */}
+                            {winner.photo ? <img src={winner.photo} className="relative w-[55vh] h-[55vh] rounded-full border-8 border-yellow-400 object-cover shadow-2xl"/> : <div className="w-[55vh] h-[55vh] rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={150}/></div>}
                         </div>
                         
-                        {/* 🔥 V114: Scaled Down Info Row (-30% from V112) */}
-                        <div className="flex flex-row items-center justify-center gap-6 bg-white/10 backdrop-blur-md px-12 py-4 rounded-full border border-white/20 shadow-xl mt-4">
-                            {/* Name: Text-5xl */}
-                            <h1 className="text-5xl font-black text-white tracking-wide">{winner.name}</h1>
-                            
-                            {/* Vertical Divider */}
-                            <div className="w-1 h-12 bg-white/20 rounded-full"></div>
+                        {/* 🔥 V138: Extra Compact Info Container (-10% size) */}
+                        <div className="flex flex-col items-center gap-2 mb-4">
+                             {/* Main Info Row */}
+                            <div className="flex flex-row items-center justify-center gap-5 bg-white/10 backdrop-blur-md px-8 py-2 rounded-full border border-white/20 shadow-xl">
+                                {/* Name & Dept Group */}
+                                <div className="flex flex-col items-center md:items-end">
+                                    {/* 🔥 Name: text-3xl (Smaller) */}
+                                    <h1 className="text-3xl font-black text-white tracking-wide leading-none">{winner.name}</h1>
+                                    {/* Dept */}
+                                    {winner.dept && <span className="text-xs text-yellow-500/80 font-bold uppercase tracking-wider mt-1">{winner.dept}</span>}
+                                </div>
+                                
+                                {/* Vertical Divider */}
+                                <div className="w-0.5 h-10 bg-white/20 rounded-full"></div>
 
-                            {/* Seat Info: Text-3xl, Icon size 32 */}
-                            <div className="flex items-center gap-4 text-3xl font-bold text-yellow-400">
-                                <Armchair size={32} className="text-white/60"/> 
-                                <span>Table {winner.table || '-'}</span>
-                                <span className="text-white/20">/</span>
-                                <span>Seat {winner.seat || '-'}</span>
+                                {/* Seat Info: text-xl (Smaller) */}
+                                <div className="flex items-center gap-2 text-xl font-bold text-yellow-400">
+                                    <Armchair size={24} className="text-white/60"/> 
+                                    <span>Table {winner.table || '-'}</span>
+                                    <span className="text-white/20">/</span>
+                                    <span>Seat {winner.seat || '-'}</span>
+                                </div>
+                            </div>
+
+                            {/* Phone Number - Separate Pill below */}
+                            <div className="text-white/40 font-mono text-sm tracking-[0.2em] bg-black/40 px-5 py-0.5 rounded-full border border-white/5">
+                                {winner.phone}
                             </div>
                         </div>
                         
                         {/* 🔥 V115: Relative Margin Top to prevent overlap */}
-                        <p className="text-white/30 text-sm animate-pulse relative mt-12">{t.nextRound}</p>
+                        <p className="text-white/30 text-sm animate-pulse relative mt-4">{t.nextRound}</p>
                     </div>
                 ) : currentPrizeWinner ? (
                      <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500 z-20">
                         <div className="text-2xl text-white/50 font-bold mb-4 uppercase tracking-[0.3em]">{t.drawn}</div>
                         <div className="relative mb-6">
-                            {currentPrizeWinner.photo ? <img src={currentPrizeWinner.photo} className="w-64 h-64 rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover"/> : <div className="w-64 h-64 rounded-full bg-neutral-800 flex items-center justify-center border-8 border-gray-700 mb-8"><User size={100}/></div>}
+                            {/* 🔥 V134: Force big photo for existing winner too */}
+                            {currentPrizeWinner.photo ? <img src={currentPrizeWinner.photo} className="w-[50vh] h-[50vh] rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover"/> : <div className="w-[50vh] h-[50vh] rounded-full bg-neutral-800 flex items-center justify-center border-8 border-gray-700 mb-8"><User size={100}/></div>}
                         </div>
                         <h1 className="text-7xl font-black text-gray-400 mt-2">{currentPrizeWinner.name}</h1>
                         <div className="text-white/30 mt-4 text-xl">{t.winnerIs}</div>
@@ -1163,8 +1179,8 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   <th className="p-3 text-left hidden md:table-cell">Dept</th>
                                   <th className="p-3 text-center">Table</th>
                                   <th className="p-3 text-center">Seat</th>
-                                  {/* 🔥 V89: New Status Column */}
-                                  <th className="p-3 text-center">{t.status}</th>
+                                  <th className="p-3 text-left text-yellow-500">{t.wonPrize}</th>
+                                  <th className="p-3 text-center">Status</th>
                                   <th className="p-3 text-center">Del</th>
                               </tr>
                           </thead>
@@ -1218,6 +1234,78 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                               }
                                           </td>
                                           <td className="p-3 text-center"><button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10 transition-colors"><Trash2 size={16}/></button></td>
+                                      </tr>
+                                  );
+                              })}
+                          </tbody>
+                      </table>
+                  </div>
+              </div>
+          )}
+
+          {tab==='seating' && (
+              <div className="w-full flex-1 flex flex-col gap-4">
+                  <div className="flex gap-2">
+                      <input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none text-sm"/>
+                      <label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label>
+                      <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button>
+                      {/* 🔥 V85: Dummy Seating Button */}
+                      <button onClick={handleGenerateDummySeating} className="bg-purple-600/20 text-purple-400 border border-purple-600/50 px-3 py-2 rounded-lg text-xs hover:bg-purple-600 hover:text-white transition-colors flex items-center gap-1"><Database size={14}/> {t.genDummySeat}</button>
+                      {/* 🔥 V125: Clear Seat with Text */}
+                      <button onClick={handleClearSeating} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><Trash2 size={14}/> {t.clearSeats}</button>
+                  </div>
+                  
+                  <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2">
+                      <div className="w-full text-xs text-white/40 mb-1">{t.addSeat}</div>
+                      <input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" />
+                      <input placeholder={t.phone} value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none" />
+                      <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
+                      <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
+                      <input placeholder={t.table} value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
+                      <input placeholder={t.seat} value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
+                      <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2">
+                      <table className="w-full text-left border-collapse">
+                          <thead className="text-xs text-white/40 uppercase border-b border-white/10">
+                              <tr>
+                                  <th className="p-3 text-left">Name</th>
+                                  <th className="p-3 text-left hidden md:table-cell">Phone</th>
+                                  <th className="p-3 text-left hidden md:table-cell">Email</th>
+                                  <th className="p-3 text-left hidden md:table-cell">Dept</th>
+                                  <th className="p-3 text-center">Table</th>
+                                  <th className="p-3 text-center">Seat</th>
+                                  {/* 🔥 V89: New Status Column */}
+                                  <th className="p-3 text-center">{t.status}</th>
+                                  <th className="p-3 text-center">Del</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                              {filteredSeat.map(s=>{
+                                  // 🔥 V89: Find attendee status
+                                  const match = attendees.find(a => 
+                                      (s.phone && normalizePhone(a.phone) === normalizePhone(s.phone)) || 
+                                      (s.email && normalizeEmail(a.email) === normalizeEmail(s.email))
+                                  );
+                                  const isCheckedIn = match?.checkedIn;
+                                  
+                                  return (
+                                      <tr key={s.id} className="hover:bg-white/5 text-sm">
+                                          <td className="p-3 font-bold text-left">{s.name}</td>
+                                          <td className="p-3 text-xs text-white/60 hidden md:table-cell text-left">{s.phone}</td>
+                                          <td className="p-3 text-xs text-white/60 hidden md:table-cell text-left">{s.email}</td>
+                                          <td className="p-3 text-xs text-white/60 hidden md:table-cell text-left">{s.dept}</td>
+                                          <td className="p-3 font-mono text-blue-400 text-center text-lg">{s.table}</td>
+                                          <td className="p-3 font-mono text-center text-lg">{s.seat}</td>
+                                          {/* 🔥 V89: Status Indicator */}
+                                          <td className="p-3 text-center">
+                                              {isCheckedIn ? 
+                                                  <span className="text-green-400 bg-green-400/20 px-2 py-1 rounded text-xs border border-green-400/50">已到場</span> : 
+                                                  <span className="text-white/30 text-xs border border-white/10 px-2 py-1 rounded">未簽到</span>
+                                              }
+                                          </td>
+                                          <td className="p-3 text-center"><button onClick={()=>handleDeleteSeating(s.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10"><Trash2 size={16}/></button></td>
                                       </tr>
                                   );
                               })}
