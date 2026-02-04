@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 下載修復版",
+    title: "Tesla Annual Dinner", sub: "2025 本地生成版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "請輸入電話或 Email",
@@ -75,7 +75,7 @@ const translations = {
     pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Fix Download",
+    title: "Tesla Annual Dinner", sub: "2025 Local QR",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Enter Phone or Email",
@@ -475,8 +475,43 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
   const fileInputRef = useRef(null);
   
   const ticketRef = useRef(null); 
+  // 🔥 V142: Local QR Lib Ready State
+  const [isQrLibReady, setIsQrLibReady] = useState(false);
+  const qrContainerRef = useRef(null);
 
-  // Inject html2canvas for V121
+  // 🔥 V142: Inject qrcodejs
+  useEffect(() => {
+    if (!document.querySelector('#qrcode-lib')) {
+      const script = document.createElement('script');
+      script.id = 'qrcode-lib';
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+      script.onload = () => setIsQrLibReady(true);
+      document.body.appendChild(script);
+    } else {
+        setIsQrLibReady(true);
+    }
+  }, []);
+
+  // 🔥 V142: Generate QR Locally
+  useEffect(() => {
+    if (isQrLibReady && newId && qrContainerRef.current) {
+        qrContainerRef.current.innerHTML = ""; // Clear previous
+        try {
+            new window.QRCode(qrContainerRef.current, {
+                text: JSON.stringify({id: newId}),
+                width: 192,
+                height: 192,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : window.QRCode.CorrectLevel.H
+            });
+        } catch (e) {
+            console.error("QR Gen Error", e);
+        }
+    }
+  }, [isQrLibReady, newId]);
+
+  // Inject html2canvas for Download
   useEffect(() => {
     if (!document.querySelector('#html2canvas-script')) {
       const script = document.createElement('script');
@@ -485,28 +520,6 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
       document.body.appendChild(script);
     }
   }, []);
-  
-  // 🔥 V141: QR Code Fetching for Download Fix
-  const [qrCodeBase64, setQrCodeBase64] = useState(null);
-  useEffect(() => {
-      if (newId) {
-          const fetchQR = async () => {
-              try {
-                  const url = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(JSON.stringify({id: newId}))}&color=000000&bgcolor=ffffff`;
-                  const res = await fetch(url);
-                  const blob = await res.blob();
-                  const reader = new FileReader();
-                  reader.onloadend = () => setQrCodeBase64(reader.result);
-                  reader.readAsDataURL(blob);
-              } catch (e) {
-                  console.error("QR Fetch Error:", e);
-                  // Fallback
-                  setQrCodeBase64(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(JSON.stringify({id: newId}))}`);
-              }
-          };
-          fetchQR();
-      }
-  }, [newId]);
 
   const handleDownloadTicket = async () => {
     if (!window.html2canvas || !ticketRef.current) {
@@ -684,12 +697,8 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                            <h3 className="text-lg font-bold text-yellow-500 text-center mb-4 tracking-widest uppercase border-b border-white/10 pb-2">Tesla Annual Dinner</h3>
                            
                            <div className="bg-white p-4 rounded-xl inline-block mb-4 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-                               {/* 🔥 V141: Base64 QR Image to bypass CORS */}
-                               <img 
-                                   src={qrCodeBase64 || `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(JSON.stringify({id: newId}))}`}
-                                   alt="QR" 
-                                   className="w-48 h-48 object-contain"
-                               />
+                               {/* 🔥 V142: Local QR Code Container */}
+                               <div ref={qrContainerRef} className="w-48 h-48 flex items-center justify-center bg-white"></div>
                            </div>
                            
                            <div className="text-red-400 text-xl font-black mb-4 flex justify-center items-center gap-2 bg-white/5 p-3 rounded-lg border border-red-500/30">
@@ -938,6 +947,56 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
              String(s.table||'').includes(q) || 
              String(s.seat||'').toLowerCase().includes(q);
   });
+
+  // 🔥 V139: Multi-Select Logic
+  const [selectedGuestIds, setSelectedGuestIds] = useState(new Set());
+  const [selectedSeatIds, setSelectedSeatIds] = useState(new Set());
+
+  const toggleGuestSelection = (id) => {
+      const newSet = new Set(selectedGuestIds);
+      if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
+      setSelectedGuestIds(newSet);
+  };
+
+  const toggleAllGuests = () => {
+      if (filteredList.length === 0) return;
+      const allSelected = filteredList.every(p => selectedGuestIds.has(p.id));
+      const newSet = new Set(selectedGuestIds);
+      filteredList.forEach(p => { if (allSelected) newSet.delete(p.id); else newSet.add(p.id); });
+      setSelectedGuestIds(newSet);
+  };
+
+  const handleDeleteSelectedGuests = async () => {
+      if (!selectedGuestIds.size) return;
+      if (!confirm(`Are you sure you want to delete ${selectedGuestIds.size} guests?`)) return;
+      const batch = writeBatch(db);
+      selectedGuestIds.forEach(id => { batch.delete(doc(db, "attendees", id)); });
+      await batch.commit();
+      setSelectedGuestIds(new Set());
+  };
+
+  const toggleSeatSelection = (id) => {
+      const newSet = new Set(selectedSeatIds);
+      if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
+      setSelectedSeatIds(newSet);
+  };
+
+  const toggleAllSeats = () => {
+      if (filteredSeat.length === 0) return;
+      const allSelected = filteredSeat.every(s => selectedSeatIds.has(s.id));
+      const newSet = new Set(selectedSeatIds);
+      filteredSeat.forEach(s => { if (allSelected) newSet.delete(s.id); else newSet.add(s.id); });
+      setSelectedSeatIds(newSet);
+  };
+
+  const handleDeleteSelectedSeats = async () => {
+      if (!selectedSeatIds.size) return;
+      if (!confirm(`Are you sure you want to delete ${selectedSeatIds.size} seats?`)) return;
+      const batch = writeBatch(db);
+      selectedSeatIds.forEach(id => { batch.delete(doc(db, "seating_plan", id)); });
+      await batch.commit();
+      setSelectedSeatIds(new Set());
+  };
 
   const handleScan = useCallback(async (text) => {
     const now = Date.now();
