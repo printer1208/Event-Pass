@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "",
+    title: "Tesla Annual Dinner", sub: "2025 查詢 QR 版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "請輸入電話或 Email",
@@ -75,7 +75,7 @@ const translations = {
     pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "",
+    title: "Tesla Annual Dinner", sub: "2025 Search QR",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Enter Phone or Email",
@@ -168,7 +168,6 @@ const Confetti = () => {
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
 };
 
-// ... (SoundController & GalaxyCanvas remain same as V142, no changes needed there)
 const SoundController = {
   ctx: null, oscList: [],
   init: function() { const AC = window.AudioContext || window.webkitAudioContext; if (AC) this.ctx = new AC(); },
@@ -205,6 +204,7 @@ const SoundController = {
   }
 };
 
+// --- Galaxy Canvas (Visuals: Tesla Big Text & All-Photo Particles) ---
 const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
     const canvasRef = useRef(null);
     const [isRunning, setIsRunning] = useState(false);
@@ -215,11 +215,12 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
     useEffect(() => {
         const canvas = canvasRef.current;
         const container = canvas?.parentElement;
-        if (!canvas || !container) return; 
+        if (!canvas || !container) return; // Allow empty list for init
         
         const ctx = canvas.getContext('2d');
         
         const resize = () => { 
+            // 🔥 V98: 使用容器的寬高，確保填滿中間區域
             if (container.clientWidth === 0 || container.clientHeight === 0) return;
             canvas.width = container.clientWidth; 
             canvas.height = container.clientHeight; 
@@ -231,10 +232,12 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             const h = canvas.height;
             if (w === 0 || h === 0) return; 
 
+            // 🔥 V135: Dynamic density - use actual guest count if low to maximize size
             const minParticles = 40; 
             const targetCount = list.length > 0 ? list.length : 100;
             const totalParticles = Math.max(targetCount, minParticles);
             
+            // 1. Generate TESLA Text Mask
             const offCanvas = document.createElement('canvas');
             offCanvas.width = w;
             offCanvas.height = h;
@@ -244,11 +247,13 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.fillRect(0, 0, w, h);
             offCtx.fillStyle = '#fff';
             
+            // 🔥 V135: Extreme Full Scale Font Calculation
             const testFontSize = 100;
             offCtx.font = `900 ${testFontSize}px sans-serif`;
             const textMetrics = offCtx.measureText("TESLA");
             const textWidth = textMetrics.width;
             
+            // 🔥 V135: Push width to 1.3 for MAX fill
             const widthRatio = (w * 1.3) / textWidth; 
             const targetFontSizeFromWidth = testFontSize * widthRatio;
             const targetFontSizeFromHeight = h * 1.0;
@@ -262,6 +267,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             
             const imgData = offCtx.getImageData(0,0,w,h).data;
             
+            // 2. Smart Size Calculation
             let whitePixels = 0;
             const sampleStep = 4;
             for(let y=0; y<h; y+=sampleStep) {
@@ -274,6 +280,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             let particleSize = Math.floor(Math.sqrt(areaPerPerson));
             
             if(particleSize < 4) particleSize = 4; 
+            // V135: Allow MASSIVE particles
             if(particleSize > 500) particleSize = 500; 
 
             const step = particleSize;
@@ -286,11 +293,13 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                 }
             }
 
+            // Shuffle valid points
             for (let i = validPoints.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [validPoints[i], validPoints[j]] = [validPoints[j], validPoints[i]];
             }
 
+            // 3. Assign Particles (Clone real guests to fill gaps)
             const particleArray = [];
             const countToGenerate = Math.max(validPoints.length, totalParticles);
             
@@ -427,7 +436,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
 };
 
 // ==========================================
-// 5. 頁面組件 (Views)
+// 5. 頁面組件 (Views) - Defined before App
 // ==========================================
 
 const LoginView = ({ t, onLogin, onBack }) => {
@@ -466,45 +475,6 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
   const fileInputRef = useRef(null);
   
   const ticketRef = useRef(null); 
-  // 🔥 V142: Local QR Lib Ready State
-  const [isQrLibReady, setIsQrLibReady] = useState(false);
-  const qrContainerRef = useRef(null);
-
-  // 🔥 V142: Inject qrcodejs
-  useEffect(() => {
-    if (!document.querySelector('#qrcode-lib')) {
-      const script = document.createElement('script');
-      script.id = 'qrcode-lib';
-      script.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
-      script.onload = () => setIsQrLibReady(true);
-      document.body.appendChild(script);
-    } else {
-        setIsQrLibReady(true);
-    }
-  }, []);
-
-  // 🔥 V142: Generate QR Locally
-  useEffect(() => {
-    if (isQrLibReady && newId && qrContainerRef.current) {
-        qrContainerRef.current.innerHTML = ""; // Clear previous
-        try {
-            new window.QRCode(qrContainerRef.current, {
-                text: JSON.stringify({id: newId}),
-                width: 192,
-                height: 192,
-                colorDark : "#000000",
-                colorLight : "#ffffff",
-                correctLevel : window.QRCode.CorrectLevel.H
-            });
-        } catch (e) {
-            console.error("QR Gen Error", e);
-        }
-    }
-  }, [isQrLibReady, newId]);
-
-  const handleDownloadTicket = async () => {
-    // 🔥 V143: Removed Download Logic - Just screenshot
-  };
 
   const startCamera = async () => { setErr(''); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } }); setIsCameraOpen(true); setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100); } catch (e) { fileInputRef.current.click(); } };
   const takePhoto = async () => { if(!videoRef.current) return; const canvas = document.createElement('canvas'); const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const xOffset = (videoRef.current.videoWidth - size) / 2; const yOffset = (videoRef.current.videoHeight - size) / 2; ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size); const rawBase64 = canvas.toDataURL('image/jpeg'); const stream = videoRef.current.srcObject; if(stream) stream.getTracks().forEach(track => track.stop()); setIsCameraOpen(false); const compressed = await compressImage(rawBase64, false); setPhoto(compressed); };
@@ -583,12 +553,19 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
     const target = isEmail ? normalizeEmail(q) : normalizePhone(q);
     
     let found = attendees.find(a => isEmail ? normalizeEmail(String(a.email)) === target : normalizePhone(String(a.phone)) === target);
+    
+    // 🔥 V149: Add flag to know if found in attendees (isRegistered)
+    let isAttendee = true;
     let status = t.registered;
+    
     if (!found) {
         found = seatingPlan.find(s => isEmail ? normalizeEmail(String(s.email)) === target : normalizePhone(String(s.phone)) === target);
         status = t.notRegistered;
+        isAttendee = false;
     }
-    if (found) { setSearchResult({ ...found, status }); setErr(""); } else { setSearchResult(null); setErr(t.notFound); }
+    
+    // Pass isAttendee flag to searchResult
+    if (found) { setSearchResult({ ...found, status, isAttendee }); setErr(""); } else { setSearchResult(null); setErr(t.notFound); }
   };
 
   return (
@@ -618,10 +595,23 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                                 <span className="text-sm text-yellow-500">{t.seatResult}</span>
                                 <span className={`text-xs px-2 py-0.5 rounded ${searchResult.status === t.registered ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/50'}`}>{searchResult.status}</span>
                             </div>
+                            
+                            {/* 🔥 V149: Show QR if Registered */}
+                            {searchResult.isAttendee && (
+                                <div className="bg-white p-2 rounded-xl inline-block mb-4">
+                                    <img 
+                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(JSON.stringify({id: searchResult.id}))}`}
+                                        alt="QR"
+                                        className="w-32 h-32 object-contain"
+                                    />
+                                </div>
+                            )}
+
                             <div className="text-2xl font-bold mb-2">{searchResult.name}</div>
                             <div className="text-sm text-white/60 mb-4">{searchResult.dept}</div>
+                            {/* 🔥 V148: Check Seat - Only Table */}
                             <div className="text-3xl font-black text-white bg-white/10 p-3 rounded-xl inline-block border border-white/20">
-                                Table {searchResult.table || '-'} / Seat {searchResult.seat || '-'}
+                                Table {searchResult.table || '-'}
                             </div>
                         </div>
                     )}
@@ -662,8 +652,12 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                            <h3 className="text-lg font-bold text-yellow-500 text-center mb-4 tracking-widest uppercase border-b border-white/10 pb-2">Tesla Annual Dinner</h3>
                            
                            <div className="bg-white p-4 rounded-xl inline-block mb-4 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-                               {/* 🔥 V142: Local QR Code Container */}
-                               <div ref={qrContainerRef} className="w-48 h-48 flex items-center justify-center bg-white"></div>
+                               {/* 🔥 V143: Standard IMG for QR */}
+                               <img 
+                                   src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(JSON.stringify({id: newId}))}`}
+                                   alt="QR" 
+                                   className="w-48 h-48 object-contain"
+                               />
                            </div>
                            
                            {/* 🔥 V147: Only Table Info */}
@@ -1201,7 +1195,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                           <input placeholder="Email" value={adminForm.email} onChange={e=>setAdminForm({...adminForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-32 text-xs outline-none"/>
                           <input placeholder="Dept" value={adminForm.dept} onChange={e=>setAdminForm({...adminForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none"/>
                           <input placeholder="T" value={adminForm.table} onChange={e=>setAdminForm({...adminForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/>
-                          {/* 🔥 V147: Removed Seat Input */}
+                          <input placeholder="S" value={adminForm.seat} onChange={e=>setAdminForm({...adminForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/>
                           <button className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
                       </form>
                       
@@ -1223,7 +1217,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   <th className="p-3 text-left">Email</th>
                                   <th className="p-3 text-left">Dept</th>
                                   <th className="p-3 text-center">Table</th>
-                                  {/* 🔥 V147: Removed Seat Column */}
+                                  <th className="p-3 text-center">Seat</th>
                                   <th className="p-3 text-left text-yellow-500">{t.wonPrize}</th>
                                   <th className="p-3 text-center">Status</th>
                                   <th className="p-3 text-center">Del</th>
@@ -1253,7 +1247,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                           <td className="p-3 text-white/60 text-left">{p.dept}</td>
                                           
                                           <td className={`p-3 font-mono text-center text-lg ${!p.table ? 'text-blue-300 italic' : 'text-blue-400'}`}>{displayTable || '-'}</td>
-                                          {/* 🔥 V147: Removed Seat Cell */}
+                                          <td className={`p-3 font-mono text-center text-lg ${!p.seat ? 'text-white/50 italic' : ''}`}>{displaySeat || '-'}</td>
                                           <td className="p-3 text-yellow-400 font-bold text-left">{winnerRec ? winnerRec.prize : '-'}</td>
                                           <td className="p-3 text-center">
                                               {!p.checkedIn ? 
@@ -1294,7 +1288,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
                       <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
                       <input placeholder={t.table} value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
-                      {/* 🔥 V147: Removed Seat Input */}
+                      <input placeholder={t.seat} value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
                       <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
                   </div>
 
