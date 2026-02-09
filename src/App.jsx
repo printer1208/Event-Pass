@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 查詢 QR 版",
+    title: "Tesla Annual Dinner", sub: "2025 手機優化版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "請輸入電話或 Email",
@@ -75,7 +75,7 @@ const translations = {
     pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Search QR",
+    title: "Tesla Annual Dinner", sub: "2025 Mobile First",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Enter Phone or Email",
@@ -204,7 +204,7 @@ const SoundController = {
   }
 };
 
-// --- Galaxy Canvas (Visuals: Tesla Big Text & All-Photo Particles) ---
+// --- Galaxy Canvas ---
 const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
     const canvasRef = useRef(null);
     const [isRunning, setIsRunning] = useState(false);
@@ -215,12 +215,11 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
     useEffect(() => {
         const canvas = canvasRef.current;
         const container = canvas?.parentElement;
-        if (!canvas || !container) return; // Allow empty list for init
+        if (!canvas || !container) return; 
         
         const ctx = canvas.getContext('2d');
         
         const resize = () => { 
-            // 🔥 V98: 使用容器的寬高，確保填滿中間區域
             if (container.clientWidth === 0 || container.clientHeight === 0) return;
             canvas.width = container.clientWidth; 
             canvas.height = container.clientHeight; 
@@ -232,12 +231,10 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             const h = canvas.height;
             if (w === 0 || h === 0) return; 
 
-            // 🔥 V135: Dynamic density - use actual guest count if low to maximize size
             const minParticles = 40; 
             const targetCount = list.length > 0 ? list.length : 100;
             const totalParticles = Math.max(targetCount, minParticles);
             
-            // 1. Generate TESLA Text Mask
             const offCanvas = document.createElement('canvas');
             offCanvas.width = w;
             offCanvas.height = h;
@@ -247,13 +244,11 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.fillRect(0, 0, w, h);
             offCtx.fillStyle = '#fff';
             
-            // 🔥 V135: Extreme Full Scale Font Calculation
             const testFontSize = 100;
             offCtx.font = `900 ${testFontSize}px sans-serif`;
             const textMetrics = offCtx.measureText("TESLA");
             const textWidth = textMetrics.width;
             
-            // 🔥 V135: Push width to 1.3 for MAX fill
             const widthRatio = (w * 1.3) / textWidth; 
             const targetFontSizeFromWidth = testFontSize * widthRatio;
             const targetFontSizeFromHeight = h * 1.0;
@@ -267,7 +262,6 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             
             const imgData = offCtx.getImageData(0,0,w,h).data;
             
-            // 2. Smart Size Calculation
             let whitePixels = 0;
             const sampleStep = 4;
             for(let y=0; y<h; y+=sampleStep) {
@@ -280,7 +274,6 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             let particleSize = Math.floor(Math.sqrt(areaPerPerson));
             
             if(particleSize < 4) particleSize = 4; 
-            // V135: Allow MASSIVE particles
             if(particleSize > 500) particleSize = 500; 
 
             const step = particleSize;
@@ -293,13 +286,11 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                 }
             }
 
-            // Shuffle valid points
             for (let i = validPoints.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [validPoints[i], validPoints[j]] = [validPoints[j], validPoints[i]];
             }
 
-            // 3. Assign Particles (Clone real guests to fill gaps)
             const particleArray = [];
             const countToGenerate = Math.max(validPoints.length, totalParticles);
             
@@ -436,7 +427,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
 };
 
 // ==========================================
-// 5. 頁面組件 (Views) - Defined before App
+// 5. 頁面組件 (Views)
 // ==========================================
 
 const LoginView = ({ t, onLogin, onBack }) => {
@@ -467,82 +458,89 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResult, setSearchResult] = useState(null);
-  
-  // 🔥 V122: Store full guest info for display
   const [guestInfo, setGuestInfo] = useState(null);
-
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
-  
   const ticketRef = useRef(null); 
+  
+  // 🔥 V142: Local QR Lib Ready State
+  const [isQrLibReady, setIsQrLibReady] = useState(false);
+  const qrContainerRef = useRef(null);
+  const qrCheckRef = useRef(null); // Ref for Check Seat QR
+
+  // 🔥 V142: Inject qrcodejs
+  useEffect(() => {
+    if (!document.querySelector('#qrcode-lib')) {
+      const script = document.createElement('script');
+      script.id = 'qrcode-lib';
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
+      script.onload = () => setIsQrLibReady(true);
+      document.body.appendChild(script);
+    } else {
+        setIsQrLibReady(true);
+    }
+  }, []);
+
+  // 🔥 V142: Generate Ticket QR Locally
+  useEffect(() => {
+    if (isQrLibReady && newId && qrContainerRef.current) {
+        qrContainerRef.current.innerHTML = ""; // Clear previous
+        try {
+            new window.QRCode(qrContainerRef.current, {
+                text: JSON.stringify({id: newId}),
+                width: 192,
+                height: 192,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : window.QRCode.CorrectLevel.H
+            });
+        } catch (e) {
+            console.error("QR Gen Error", e);
+        }
+    }
+  }, [isQrLibReady, newId]);
+
+    // 🔥 V149: Generate Check Seat QR Locally
+    useEffect(() => {
+        if (isQrLibReady && searchResult && searchResult.isAttendee && qrCheckRef.current) {
+            qrCheckRef.current.innerHTML = ""; // Clear previous
+            try {
+                new window.QRCode(qrCheckRef.current, {
+                    text: JSON.stringify({id: searchResult.id}),
+                    width: 128,
+                    height: 128,
+                    colorDark : "#000000",
+                    colorLight : "#ffffff",
+                    correctLevel : window.QRCode.CorrectLevel.H
+                });
+            } catch (e) {
+                console.error("QR Gen Error", e);
+            }
+        }
+    }, [isQrLibReady, searchResult]);
 
   const startCamera = async () => { setErr(''); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } }); setIsCameraOpen(true); setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100); } catch (e) { fileInputRef.current.click(); } };
   const takePhoto = async () => { if(!videoRef.current) return; const canvas = document.createElement('canvas'); const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const xOffset = (videoRef.current.videoWidth - size) / 2; const yOffset = (videoRef.current.videoHeight - size) / 2; ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size); const rawBase64 = canvas.toDataURL('image/jpeg'); const stream = videoRef.current.srcObject; if(stream) stream.getTracks().forEach(track => track.stop()); setIsCameraOpen(false); const compressed = await compressImage(rawBase64, false); setPhoto(compressed); };
   const handleFileChange = async (e) => { const file = e.target.files[0]; if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); } };
   
-  // 🔥 V120: Handle Submit without name input
   const handleSubmit = async (e) => { 
       e.preventDefault(); 
       setErr(''); 
       if(!photo) { setErr(t.errPhoto); return; } 
-      
       setLoading(true); 
       const cleanPhone = normalizePhone(form.phone); 
       const cleanEmail = normalizeEmail(form.email); 
       const dup = checkDuplicate(cleanPhone, cleanEmail); 
-      
-      if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } 
-      if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } 
-      
-      // Auto-assign table/seat
-      let assignedTable = ""; 
-      let assignedSeat = ""; 
-      let autoName = "VIP Guest"; 
-      let autoDept = "-"; 
-
+      if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } 
+      let assignedTable = ""; let assignedSeat = ""; let autoName = "VIP Guest"; let autoDept = "-"; 
       const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail); 
       const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); 
-      
-      if(emailMatch) { 
-          assignedTable = emailMatch.table; 
-          assignedSeat = emailMatch.seat;
-          autoName = emailMatch.name || autoName;
-          autoDept = emailMatch.dept || autoDept; 
-      } else if(phoneMatch) { 
-          assignedTable = phoneMatch.table; 
-          assignedSeat = phoneMatch.seat; 
-          autoName = phoneMatch.name || autoName;
-          autoDept = phoneMatch.dept || autoDept; 
-      } 
-      
+      if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; autoName = emailMatch.name || autoName; autoDept = emailMatch.dept || autoDept; } 
+      else if(phoneMatch) { assignedTable = phoneMatch.table; assignedSeat = phoneMatch.seat; autoName = phoneMatch.name || autoName; autoDept = phoneMatch.dept || autoDept; } 
       setMatchSeat({ table: assignedTable, seat: assignedSeat }); 
-      
-      const finalGuestData = { 
-          name: autoName, 
-          phone: cleanPhone, 
-          email: cleanEmail, 
-          company: form.company || "",
-          dept: autoDept, 
-          table: assignedTable, 
-          seat: assignedSeat, 
-          photo: photo, 
-          checkedIn: false, 
-          checkInTime: null, 
-          createdAt: new Date().toISOString() 
-      };
-
+      const finalGuestData = { name: autoName, phone: cleanPhone, email: cleanEmail, company: form.company || "", dept: autoDept, table: assignedTable, seat: assignedSeat, photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() };
       setGuestInfo(finalGuestData); 
-
-      try { 
-          if (!db) throw new Error("Firebase not initialized"); 
-          const docRef = await addDoc(collection(db, "attendees"), finalGuestData); 
-          setNewId(docRef.id); 
-          setStep(2); 
-      } catch (error) { 
-          console.error(error); 
-          setErr("Network Error."); 
-      } 
-      setLoading(false); 
+      try { if (!db) throw new Error("Firebase not initialized"); const docRef = await addDoc(collection(db, "attendees"), finalGuestData); setNewId(docRef.id); setStep(2); } catch (error) { console.error(error); setErr("Network Error."); } setLoading(false); 
   };
   
   const handleSeatSearch = (e) => {
@@ -551,148 +549,115 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
     if (!q) return;
     const isEmail = q.includes('@');
     const target = isEmail ? normalizeEmail(q) : normalizePhone(q);
-    
     let found = attendees.find(a => isEmail ? normalizeEmail(String(a.email)) === target : normalizePhone(String(a.phone)) === target);
-    
-    // 🔥 V149: Add flag to know if found in attendees (isRegistered)
     let isAttendee = true;
     let status = t.registered;
-    
     if (!found) {
         found = seatingPlan.find(s => isEmail ? normalizeEmail(String(s.email)) === target : normalizePhone(String(s.phone)) === target);
         status = t.notRegistered;
         isAttendee = false;
     }
-    
-    // Pass isAttendee flag to searchResult
     if (found) { setSearchResult({ ...found, status, isAttendee }); setErr(""); } else { setSearchResult(null); setErr(t.notFound); }
   };
 
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
-      <div className="relative bg-neutral-900/80 border border-white/10 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl">
-        <div className="bg-gradient-to-r from-red-700 to-red-900 p-8 text-white text-center relative">
-          {!isCameraOpen && <button onClick={onBack} className="absolute left-6 top-6 text-white/70 hover:text-white z-10"><ChevronLeft/></button>}
-          <h2 className="text-2xl font-bold tracking-wide relative z-10">{t.regTitle}</h2>
-          {/* 🔥 V145: Hide subtitle in Step 2 */}
-          {step === 1 && <p className="text-white/80 text-xs mt-2 uppercase tracking-widest relative z-10">{t.regSub}</p>}
+      <div className="relative bg-neutral-900/80 border border-white/10 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl"> {/* 🔥 V150: max-w-lg */}
+        <div className="bg-gradient-to-r from-red-700 to-red-900 p-6 md:p-8 text-white text-center relative">
+          {!isCameraOpen && <button onClick={onBack} className="absolute left-6 top-6 text-white/70 hover:text-white z-10 p-2"><ChevronLeft size={24}/></button>}
+          <h2 className="text-3xl font-bold tracking-wide relative z-10">{t.regTitle}</h2>
+          {step === 1 && <p className="text-white/80 text-sm mt-2 uppercase tracking-widest relative z-10">{t.regSub}</p>}
         </div>
-        <div className="p-8">
+        <div className="p-6 md:p-8">
             {isSearchMode ? (
                 <div className="space-y-6 animate-in fade-in zoom-in duration-300">
-                    <h3 className="text-xl font-bold text-center mb-4 text-yellow-500">{t.checkSeat}</h3>
-                    <div className="space-y-3">
+                    <h3 className="text-2xl font-bold text-center mb-4 text-yellow-500">{t.checkSeat}</h3>
+                    <div className="space-y-4">
                         <div className="relative">
-                            <Search className="absolute top-3.5 left-4 text-white/30" size={18}/>
-                            <input autoFocus value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-yellow-500 transition-all placeholder:text-white/20" placeholder={t.inputHint} />
+                            <Search className="absolute top-4 left-4 text-white/30" size={20}/>
+                            <input autoFocus value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="w-full bg-white/5 border border-white/10 text-white p-4 pl-12 rounded-xl outline-none focus:border-yellow-500 transition-all placeholder:text-white/20 text-base" placeholder={t.inputHint} />
                         </div>
-                        <button onClick={handleSeatSearch} className="w-full bg-yellow-600 hover:bg-yellow-500 text-white p-3 rounded-xl font-bold shadow-lg transition-all">{t.searchList}</button>
+                        <button onClick={handleSeatSearch} className="w-full bg-yellow-600 hover:bg-yellow-500 text-white p-4 rounded-xl font-bold shadow-lg transition-all text-lg">{t.searchList}</button>
                     </div>
-                    {err && <div className="text-red-400 text-center text-sm bg-red-500/10 p-2 rounded-lg">{err}</div>}
+                    {err && <div className="text-red-400 text-center text-sm bg-red-500/10 p-3 rounded-lg border border-red-500/20">{err}</div>}
                     {searchResult && (
-                        <div className="mt-4 p-5 bg-white/10 rounded-2xl border border-yellow-500/50 text-center shadow-lg">
-                            <div className="flex justify-between items-center mb-2 border-b border-white/10 pb-2">
-                                <span className="text-sm text-yellow-500">{t.seatResult}</span>
-                                <span className={`text-xs px-2 py-0.5 rounded ${searchResult.status === t.registered ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/50'}`}>{searchResult.status}</span>
+                        <div className="mt-6 p-6 bg-white/10 rounded-2xl border border-yellow-500/50 text-center shadow-xl">
+                            <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                                <span className="text-sm text-yellow-500 font-bold uppercase tracking-wider">{t.seatResult}</span>
+                                <span className={`text-xs px-3 py-1 rounded-full font-bold ${searchResult.status === t.registered ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/50'}`}>{searchResult.status}</span>
                             </div>
                             
-                            {/* 🔥 V149: Show QR if Registered */}
+                            {/* 🔥 V149: Show QR if Registered (Local Gen) */}
                             {searchResult.isAttendee && (
-                                <div className="bg-white p-2 rounded-xl inline-block mb-4">
-                                    <img 
-                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(JSON.stringify({id: searchResult.id}))}`}
-                                        alt="QR"
-                                        className="w-32 h-32 object-contain"
-                                    />
+                                <div className="bg-white p-2 rounded-xl inline-block mb-6 shadow-lg">
+                                    <div ref={qrCheckRef} className="w-32 h-32 flex items-center justify-center bg-white"></div>
                                 </div>
                             )}
 
-                            <div className="text-2xl font-bold mb-2">{searchResult.name}</div>
-                            <div className="text-sm text-white/60 mb-4">{searchResult.dept}</div>
-                            {/* 🔥 V148: Check Seat - Only Table */}
-                            <div className="text-3xl font-black text-white bg-white/10 p-3 rounded-xl inline-block border border-white/20">
+                            <div className="text-3xl font-bold mb-2 text-white">{searchResult.name}</div>
+                            <div className="text-base text-white/60 mb-6">{searchResult.dept}</div>
+                            <div className="text-4xl font-black text-white bg-white/10 p-4 rounded-xl inline-block border border-white/20 shadow-inner">
                                 Table {searchResult.table || '-'}
                             </div>
                         </div>
                     )}
-                    <button onClick={()=>{setIsSearchMode(false);setSearchResult(null);setSearchQuery("");setErr("")}} className="w-full text-white/50 hover:text-white text-sm mt-4 underline">{t.backToReg}</button>
+                    <button onClick={()=>{setIsSearchMode(false);setSearchResult(null);setSearchQuery("");setErr("")}} className="w-full text-white/50 hover:text-white text-base mt-6 underline">{t.backToReg}</button>
                 </div>
             ) : (
                 <>
                   {step === 1 ? (
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                      {err && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm flex items-center animate-pulse"><AlertTriangle size={16} className="mr-2"/>{err}</div>}
-                      <div className="flex flex-col items-center mb-4">
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                      {err && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-xl text-sm flex items-center animate-pulse"><AlertTriangle size={20} className="mr-3"/>{err}</div>}
+                      <div className="flex flex-col items-center mb-6">
                           {isCameraOpen ? (
-                              <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black border-2 border-red-500 shadow-2xl"><video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" /><button type="button" onClick={takePhoto} className="absolute bottom-4 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-white border-4 border-gray-300 hover:scale-110 transition-transform"><Aperture className="w-full h-full p-2 text-black"/></button></div>
+                              <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-black border-4 border-red-500 shadow-2xl"><video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" /><button type="button" onClick={takePhoto} className="absolute bottom-6 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full bg-white border-4 border-gray-300 hover:scale-110 transition-transform shadow-xl"><Aperture className="w-full h-full p-4 text-black"/></button></div>
                           ) : (
-                              <div className="flex flex-col items-center gap-3 w-full"><div className={`w-32 h-32 rounded-full border-2 border-dashed flex items-center justify-center overflow-hidden relative shadow-lg ${photo ? 'border-red-500' : 'border-white/30'}`}>{photo ? <img src={photo} alt="Selfie" className="w-full h-full object-cover" /> : <User size={48} className="text-white/20"/>}</div><div className="flex gap-2"><button type="button" onClick={startCamera} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><Camera size={14}/> {t.photoBtn}</button><button type="button" onClick={()=>fileInputRef.current.click()} className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><ImageIcon size={14}/> {t.uploadBtn}</button></div></div>
+                              <div className="flex flex-col items-center gap-4 w-full"><div onClick={startCamera} className={`w-40 h-40 rounded-full border-4 border-dashed flex items-center justify-center overflow-hidden relative shadow-2xl cursor-pointer hover:bg-white/5 transition-colors ${photo ? 'border-red-500' : 'border-white/30'}`}>{photo ? <img src={photo} alt="Selfie" className="w-full h-full object-cover" /> : <Camera size={64} className="text-white/20"/>}</div><div className="flex gap-3"><button type="button" onClick={startCamera} className="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg"><Camera size={18}/> {t.photoBtn || "Take Photo"}</button><button type="button" onClick={()=>fileInputRef.current.click()} className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg"><ImageIcon size={18}/> {t.uploadBtn || "Upload"}</button></div></div>
                           )}
                           <input type="file" accept="image/*" capture="user" ref={fileInputRef} className="hidden" onChange={handleFileChange}/>
                       </div>
                       {!isCameraOpen && (
-                          <div className="space-y-3">
-                            {/* 🔥 V120: Name Removed from Input Fields */}
-                            {['phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-3.5 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'phone' ? <Phone size={18}/> : <Mail size={18}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-3 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
+                          <div className="space-y-4">
+                            {['phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-4 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'phone' ? <Phone size={20}/> : <Mail size={20}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-4 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20 text-base" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
                             
-                            <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-4 rounded-xl font-bold shadow-lg transition-all active:scale-95 mt-6 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-sm">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
-                            <div className="pt-4 mt-4 border-t border-white/10 text-center">
-                                <button type="button" onClick={()=>setIsSearchMode(true)} className="text-yellow-500 text-sm hover:text-yellow-400 flex items-center justify-center gap-1 mx-auto transition-colors"><Search size={14}/> {t.checkSeat}</button>
+                            <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-5 rounded-xl font-bold shadow-xl transition-all active:scale-95 mt-4 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-lg">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
+                            <div className="pt-6 mt-6 border-t border-white/10 text-center">
+                                <button type="button" onClick={()=>setIsSearchMode(true)} className="text-yellow-500 text-base hover:text-yellow-400 flex items-center justify-center gap-2 mx-auto transition-colors font-bold"><Search size={18}/> {t.checkSeat}</button>
                             </div>
                           </div>
                       )}
                     </form>
                   ) : (
                     <div className="text-center animate-in zoom-in duration-300">
-                      {/* 🔥 V121: Ticket Card Wrapper for Capture */}
-                      <div ref={ticketRef} className="bg-neutral-900 p-6 rounded-2xl border-2 border-yellow-500/50 shadow-2xl relative overflow-hidden max-w-sm mx-auto">
-                           {/* Background FX */}
-                           <div className="absolute -top-10 -right-10 w-32 h-32 bg-yellow-500/20 rounded-full blur-3xl"></div>
+                      <div ref={ticketRef} className="bg-neutral-900 p-8 rounded-3xl border-2 border-yellow-500/50 shadow-2xl relative overflow-hidden max-w-sm mx-auto">
+                           <div className="absolute -top-20 -right-20 w-40 h-40 bg-yellow-500/20 rounded-full blur-3xl"></div>
+                           <h3 className="text-xl font-bold text-yellow-500 text-center mb-6 tracking-widest uppercase border-b border-white/10 pb-4">Tesla Annual Dinner</h3>
                            
-                           <h3 className="text-lg font-bold text-yellow-500 text-center mb-4 tracking-widest uppercase border-b border-white/10 pb-2">Tesla Annual Dinner</h3>
-                           
-                           <div className="bg-white p-4 rounded-xl inline-block mb-4 shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-                               {/* 🔥 V143: Standard IMG for QR */}
-                               <img 
-                                   src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(JSON.stringify({id: newId}))}`}
-                                   alt="QR" 
-                                   className="w-48 h-48 object-contain"
-                               />
+                           {/* 🔥 V142: Local QR Code Container */}
+                           <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_40px_rgba(255,255,255,0.1)]">
+                               <div ref={qrContainerRef} className="w-48 h-48 flex items-center justify-center bg-white"></div>
                            </div>
                            
-                           {/* 🔥 V147: Only Table Info */}
-                           <div className="text-yellow-400 text-2xl font-black mb-4 flex justify-center items-center gap-2">
-                               <Armchair size={24}/> 
+                           {/* 🔥 V147: Table Only */}
+                           <div className="text-yellow-400 text-3xl font-black mb-6 flex justify-center items-center gap-3">
+                               <Armchair size={32}/> 
                                <span>Table {matchedSeat?.table || '-'}</span>
                            </div>
 
-                           {/* 🔥 V122: Added Detailed Info for Reception */}
-                           <div className="text-left text-xs text-white/70 space-y-2 border-t border-white/10 pt-4">
-                               <div className="flex justify-between">
-                                   <span className="text-white/40">{t.name}:</span>
-                                   <span className="font-bold text-white">{guestInfo?.name}</span>
-                               </div>
-                               <div className="flex justify-between">
-                                   <span className="text-white/40">{t.dept}:</span>
-                                   <span className="font-bold text-white">{guestInfo?.dept}</span>
-                               </div>
-                               <div className="flex justify-between">
-                                   <span className="text-white/40">{t.phone}:</span>
-                                   <span className="font-mono text-white">{guestInfo?.phone}</span>
-                               </div>
+                           <div className="text-left text-sm text-white/70 space-y-3 border-t border-white/10 pt-6">
+                               <div className="flex justify-between"><span className="text-white/40">{t.name}:</span><span className="font-bold text-white text-base">{guestInfo?.name}</span></div>
+                               <div className="flex justify-between"><span className="text-white/40">{t.dept}:</span><span className="font-bold text-white text-base">{guestInfo?.dept}</span></div>
+                               <div className="flex justify-between"><span className="text-white/40">{t.phone}:</span><span className="font-mono text-white text-base">{guestInfo?.phone}</span></div>
                            </div>
-                           
-                           {/* 🔥 V144: Removed Entry Pass Text */}
                       </div>
 
-                      {/* 🔥 V143: Screenshot Instruction instead of Download */}
-                      <div className="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-500 text-center animate-pulse">
-                          <p className="font-bold text-lg flex items-center justify-center gap-2">
-                              <Camera size={20}/> {t.screenshotHint}
+                      <div className="mt-8 p-5 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl text-yellow-500 text-center animate-pulse">
+                          <p className="font-bold text-lg flex items-center justify-center gap-3">
+                              <Camera size={24}/> {t.screenshotHint}
                           </p>
                       </div>
 
-                      <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm mt-4">{t.next}</button>
+                      <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-5 rounded-2xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-base mt-6">{t.next}</button>
                     </div>
                   )}
                 </>
@@ -1195,7 +1160,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                           <input placeholder="Email" value={adminForm.email} onChange={e=>setAdminForm({...adminForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-32 text-xs outline-none"/>
                           <input placeholder="Dept" value={adminForm.dept} onChange={e=>setAdminForm({...adminForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none"/>
                           <input placeholder="T" value={adminForm.table} onChange={e=>setAdminForm({...adminForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/>
-                          <input placeholder="S" value={adminForm.seat} onChange={e=>setAdminForm({...adminForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/>
+                          {/* 🔥 V147: Removed Seat Input */}
                           <button className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
                       </form>
                       
@@ -1217,7 +1182,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   <th className="p-3 text-left">Email</th>
                                   <th className="p-3 text-left">Dept</th>
                                   <th className="p-3 text-center">Table</th>
-                                  <th className="p-3 text-center">Seat</th>
+                                  {/* 🔥 V147: Removed Seat Column */}
                                   <th className="p-3 text-left text-yellow-500">{t.wonPrize}</th>
                                   <th className="p-3 text-center">Status</th>
                                   <th className="p-3 text-center">Del</th>
@@ -1247,7 +1212,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                           <td className="p-3 text-white/60 text-left">{p.dept}</td>
                                           
                                           <td className={`p-3 font-mono text-center text-lg ${!p.table ? 'text-blue-300 italic' : 'text-blue-400'}`}>{displayTable || '-'}</td>
-                                          <td className={`p-3 font-mono text-center text-lg ${!p.seat ? 'text-white/50 italic' : ''}`}>{displaySeat || '-'}</td>
+                                          {/* 🔥 V147: Removed Seat Cell */}
                                           <td className="p-3 text-yellow-400 font-bold text-left">{winnerRec ? winnerRec.prize : '-'}</td>
                                           <td className="p-3 text-center">
                                               {!p.checkedIn ? 
@@ -1288,7 +1253,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
                       <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
                       <input placeholder={t.table} value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
-                      <input placeholder={t.seat} value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
+                      {/* 🔥 V147: Removed Seat Input */}
                       <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
                   </div>
 
