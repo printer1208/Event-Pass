@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 單鍵極速版",
+    title: "Tesla Annual Dinner", sub: "2025 隨機音樂版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "請輸入電話或 Email",
@@ -75,7 +75,7 @@ const translations = {
     pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取", confirmSave: "確認儲存"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 One-Key Flow",
+    title: "Tesla Annual Dinner", sub: "2025 Random Music",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Enter Phone or Email",
@@ -170,24 +170,36 @@ const Confetti = () => {
 
 const SoundController = {
   ctx: null, oscList: [], bgm: null,
+  // 🔥 V157: Music Playlist
+  playlist: [
+      '/draw_music_1.m4a', '/draw_music_2.m4a', '/draw_music_3.m4a', '/draw_music_4.m4a', '/draw_music_5.m4a',
+      '/draw_music_6.m4a', '/draw_music_7.m4a', '/draw_music_8.m4a', '/draw_music_9.m4a', '/draw_music_10.m4a'
+  ],
   init: function() { 
       const AC = window.AudioContext || window.webkitAudioContext; 
       if (AC) this.ctx = new AC(); 
-      // Load BGM
-      this.bgm = new Audio('/draw_music.m4a');
-      this.bgm.loop = true;
   },
   startSuspense: function() {
       if (!this.ctx) this.init(); if (this.ctx.state === 'suspended') this.ctx.resume();
       this.stopAll();
-      if (!this.bgm) { this.bgm = new Audio('/draw_music.m4a'); this.bgm.loop = true; }
+      
+      // 🔥 V157: Pick random track
+      const randomIndex = Math.floor(Math.random() * this.playlist.length);
+      const track = this.playlist[randomIndex];
+      
+      this.bgm = new Audio(track);
+      this.bgm.loop = true;
       this.bgm.currentTime = 0;
       this.bgm.play().catch(e => console.log("Music play blocked:", e));
   },
   stopAll: function() { 
       this.oscList.forEach(o => o.stop()); 
       this.oscList = []; 
-      if (this.bgm) { this.bgm.pause(); this.bgm.currentTime = 0; }
+      if (this.bgm) { 
+          this.bgm.pause(); 
+          this.bgm.currentTime = 0; 
+          this.bgm = null; // Clear to allow new random selection next time
+      }
   },
   playWin: function() {
       this.stopAll(); 
@@ -248,6 +260,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             const h = canvas.height;
             if (w === 0 || h === 0) return; 
 
+            // Dynamic density for max size
             const minParticles = 40; 
             const targetCount = list.length > 0 ? list.length : 100;
             const totalParticles = Math.max(targetCount, minParticles);
@@ -654,39 +667,25 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     
     const triggerDraw = () => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' , code: 'Enter'})); };
 
-    // 🔥 V156: Auto-Save logic
-    const handleDrawEnd = async (w) => { 
-        setWinner(w);
-        if (db) {
-            await addDoc(collection(db, "winners"), { 
-                attendeeId: w.id, 
-                name: w.name || "", 
-                phone: w.phone || "", 
-                photo: w.photo || "", 
-                table: w.table || "", 
-                seat: w.seat || "", 
-                dept: w.dept || "", 
-                prize: currentPrize || "Grand Prize", 
-                wonAt: new Date().toISOString() 
-            });
+    const saveWinner = async () => {
+        if (!winner || isSaving) return;
+        setIsSaving(true);
+        if (db) await addDoc(collection(db, "winners"), { attendeeId: winner.id, name: winner.name || "", phone: winner.phone || "", photo: winner.photo || "", table: winner.table || "", seat: winner.seat || "", dept: winner.dept || "", prize: currentPrize || "Grand Prize", wonAt: new Date().toISOString() });
+        if (currentPrize && prizes.length > 0) {
+            const currentIdx = prizes.findIndex(p => p.name === currentPrize);
+            let nextPrize = prizes.find((p, idx) => idx > currentIdx && !drawHistory.some(h => h.prize === p.name));
+            if (!nextPrize) nextPrize = prizes.find(p => !drawHistory.some(h => h.prize === p.name));
+            if (nextPrize && db) { await setDoc(doc(db, "config", "settings"), { currentPrize: nextPrize.name }, { merge: true }); }
         }
+        setWinner(null); setIsSaving(false);
     };
 
-    // 🔥 V156: Enter key only does Next Round (no saving)
     useEffect(() => {
-        const handleKey = async (e) => { 
-            if (winner && e.key === 'Enter') {
-                if (currentPrize && prizes.length > 0) {
-                    const currentIdx = prizes.findIndex(p => p.name === currentPrize);
-                    let nextPrize = prizes.find((p, idx) => idx > currentIdx && !drawHistory.some(h => h.prize === p.name));
-                    if (!nextPrize) nextPrize = prizes.find(p => !drawHistory.some(h => h.prize === p.name));
-                    if (nextPrize && db) { await setDoc(doc(db, "config", "settings"), { currentPrize: nextPrize.name }, { merge: true }); }
-                }
-                setWinner(null);
-            }
-        };
+        const handleKey = async (e) => { if (winner && e.key === 'Enter') { saveWinner(); } };
         window.addEventListener('keydown', handleKey); return () => window.removeEventListener('keydown', handleKey);
-    }, [winner, prizes, drawHistory, currentPrize]);
+    }, [winner, prizes, drawHistory, currentPrize, isSaving]);
+
+    const handleDrawEnd = async (w) => { setWinner(w); };
 
     return (
         <div className="min-h-screen bg-black text-white relative flex flex-col overflow-hidden">
@@ -717,7 +716,6 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                             </div>
                             <div className="text-white/40 font-mono text-sm tracking-[0.2em] bg-black/40 px-5 py-0.5 rounded-full border border-white/5">{winner.phone}</div>
                         </div>
-                        {/* 🔥 V156: No Button, just text hint */}
                         <div className="mt-4 flex gap-4 items-center animate-in fade-in zoom-in duration-300">
                              <p className="text-white/50 text-lg font-mono animate-pulse uppercase tracking-[0.2em]">{t.nextRound}</p>
                         </div>
