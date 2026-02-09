@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 本地生成版",
+    title: "Tesla Annual Dinner", sub: "",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "請輸入電話或 Email",
@@ -71,11 +71,11 @@ const translations = {
     checkSeat: "查詢座位", inputHint: "輸入電話或 Email 查詢", backToReg: "返回登記",
     seatResult: "查詢結果", status: "狀態", notCheckedIn: "未簽到", registered: "已登記", notRegistered: "未登記",
     youWon: "恭喜獲得", nextRound: "按 ENTER 進入下一輪",
-    winnerLabel: "得主", saveTicket: "下載入場憑證", screenshotHint: "或截圖保存此畫面",
+    winnerLabel: "得主", saveTicket: "下載入場憑證", screenshotHint: "請截圖保存此畫面作為入場憑證",
     pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Local QR",
+    title: "Tesla Annual Dinner", sub: "",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Enter Phone or Email",
@@ -101,7 +101,7 @@ const translations = {
     checkSeat: "Check Seat", inputHint: "Enter Phone or Email", backToReg: "Back to Register",
     seatResult: "Result", status: "Status", notCheckedIn: "Not In", registered: "Registered", notRegistered: "Not Reg",
     youWon: "Congratulations!", nextRound: "Press ENTER for Next Round",
-    winnerLabel: "WINNER", saveTicket: "Download Ticket", screenshotHint: "or Screenshot to Save",
+    winnerLabel: "WINNER", saveTicket: "Download Ticket", screenshotHint: "Please screenshot this screen as your entry pass",
     pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "Delete Selected"
   }
 };
@@ -168,6 +168,7 @@ const Confetti = () => {
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-[60]"/>;
 };
 
+// ... (SoundController & GalaxyCanvas remain same as V142, no changes needed there)
 const SoundController = {
   ctx: null, oscList: [],
   init: function() { const AC = window.AudioContext || window.webkitAudioContext; if (AC) this.ctx = new AC(); },
@@ -204,7 +205,6 @@ const SoundController = {
   }
 };
 
-// --- Galaxy Canvas (Visuals: Tesla Big Text & All-Photo Particles) ---
 const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
     const canvasRef = useRef(null);
     const [isRunning, setIsRunning] = useState(false);
@@ -215,12 +215,11 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
     useEffect(() => {
         const canvas = canvasRef.current;
         const container = canvas?.parentElement;
-        if (!canvas || !container) return; // Allow empty list for init
+        if (!canvas || !container) return; 
         
         const ctx = canvas.getContext('2d');
         
         const resize = () => { 
-            // 🔥 V98: 使用容器的寬高，確保填滿中間區域
             if (container.clientWidth === 0 || container.clientHeight === 0) return;
             canvas.width = container.clientWidth; 
             canvas.height = container.clientHeight; 
@@ -232,12 +231,10 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             const h = canvas.height;
             if (w === 0 || h === 0) return; 
 
-            // 🔥 V135: Dynamic density - use actual guest count if low to maximize size
             const minParticles = 40; 
             const targetCount = list.length > 0 ? list.length : 100;
             const totalParticles = Math.max(targetCount, minParticles);
             
-            // 1. Generate TESLA Text Mask
             const offCanvas = document.createElement('canvas');
             offCanvas.width = w;
             offCanvas.height = h;
@@ -247,13 +244,11 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.fillRect(0, 0, w, h);
             offCtx.fillStyle = '#fff';
             
-            // 🔥 V135: Extreme Full Scale Font Calculation
             const testFontSize = 100;
             offCtx.font = `900 ${testFontSize}px sans-serif`;
             const textMetrics = offCtx.measureText("TESLA");
             const textWidth = textMetrics.width;
             
-            // 🔥 V135: Push width to 1.3 for MAX fill
             const widthRatio = (w * 1.3) / textWidth; 
             const targetFontSizeFromWidth = testFontSize * widthRatio;
             const targetFontSizeFromHeight = h * 1.0;
@@ -267,7 +262,6 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             
             const imgData = offCtx.getImageData(0,0,w,h).data;
             
-            // 2. Smart Size Calculation
             let whitePixels = 0;
             const sampleStep = 4;
             for(let y=0; y<h; y+=sampleStep) {
@@ -280,7 +274,6 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             let particleSize = Math.floor(Math.sqrt(areaPerPerson));
             
             if(particleSize < 4) particleSize = 4; 
-            // V135: Allow MASSIVE particles
             if(particleSize > 500) particleSize = 500; 
 
             const step = particleSize;
@@ -293,13 +286,11 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                 }
             }
 
-            // Shuffle valid points
             for (let i = validPoints.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [validPoints[i], validPoints[j]] = [validPoints[j], validPoints[i]];
             }
 
-            // 3. Assign Particles (Clone real guests to fill gaps)
             const particleArray = [];
             const countToGenerate = Math.max(validPoints.length, totalParticles);
             
@@ -511,35 +502,8 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
     }
   }, [isQrLibReady, newId]);
 
-  // Inject html2canvas for Download
-  useEffect(() => {
-    if (!document.querySelector('#html2canvas-script')) {
-      const script = document.createElement('script');
-      script.id = 'html2canvas-script';
-      script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
-      document.body.appendChild(script);
-    }
-  }, []);
-
   const handleDownloadTicket = async () => {
-    if (!window.html2canvas || !ticketRef.current) {
-        alert(t.screenshotHint);
-        return;
-    }
-    try {
-        const canvas = await window.html2canvas(ticketRef.current, {
-            useCORS: true,
-            backgroundColor: '#000000',
-            scale: 2
-        });
-        const link = document.createElement('a');
-        link.download = 'Tesla_Dinner_Ticket.png';
-        link.href = canvas.toDataURL();
-        link.click();
-    } catch (e) {
-        console.error("Download failed:", e);
-        alert(t.screenshotHint);
-    }
+    // 🔥 V143: Removed Download Logic - Just screenshot
   };
 
   const startCamera = async () => { setErr(''); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } }); setIsCameraOpen(true); setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100); } catch (e) { fileInputRef.current.click(); } };
@@ -633,7 +597,8 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
         <div className="bg-gradient-to-r from-red-700 to-red-900 p-8 text-white text-center relative">
           {!isCameraOpen && <button onClick={onBack} className="absolute left-6 top-6 text-white/70 hover:text-white z-10"><ChevronLeft/></button>}
           <h2 className="text-2xl font-bold tracking-wide relative z-10">{t.regTitle}</h2>
-          <p className="text-white/80 text-xs mt-2 uppercase tracking-widest relative z-10">{t.regSub}</p>
+          {/* 🔥 V145: Hide subtitle in Step 2 */}
+          {step === 1 && <p className="text-white/80 text-xs mt-2 uppercase tracking-widest relative z-10">{t.regSub}</p>}
         </div>
         <div className="p-8">
             {isSearchMode ? (
@@ -701,11 +666,10 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                                <div ref={qrContainerRef} className="w-48 h-48 flex items-center justify-center bg-white"></div>
                            </div>
                            
-                           <div className="text-red-400 text-xl font-black mb-4 flex justify-center items-center gap-2 bg-white/5 p-3 rounded-lg border border-red-500/30">
+                           {/* 🔥 V147: Only Table Info */}
+                           <div className="text-yellow-400 text-2xl font-black mb-4 flex justify-center items-center gap-2">
                                <Armchair size={24}/> 
-                               <span>Table {matchedSeat?.table || '-'}</span> 
-                               <span className="text-white/20">/</span> 
-                               <span>Seat {matchedSeat?.seat || '-'}</span>
+                               <span>Table {matchedSeat?.table || '-'}</span>
                            </div>
 
                            {/* 🔥 V122: Added Detailed Info for Reception */}
@@ -723,15 +687,16 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                                    <span className="font-mono text-white">{guestInfo?.phone}</span>
                                </div>
                            </div>
-
-                           <p className="text-white/30 text-[10px] uppercase tracking-widest text-center mt-4 pt-2 border-t border-white/5">Entry Pass 2025</p>
+                           
+                           {/* 🔥 V144: Removed Entry Pass Text */}
                       </div>
 
-                      {/* 🔥 V121: Download Button */}
-                      <button onClick={handleDownloadTicket} className="mt-6 w-full bg-yellow-600 hover:bg-yellow-500 text-white p-3 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-transform active:scale-95">
-                          <Download size={18}/> {t.saveTicket}
-                      </button>
-                      <p className="text-white/40 text-xs mt-2">{t.screenshotHint}</p>
+                      {/* 🔥 V143: Screenshot Instruction instead of Download */}
+                      <div className="mt-6 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-500 text-center animate-pulse">
+                          <p className="font-bold text-lg flex items-center justify-center gap-2">
+                              <Camera size={20}/> {t.screenshotHint}
+                          </p>
+                      </div>
 
                       <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-4 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm mt-4">{t.next}</button>
                     </div>
@@ -867,9 +832,8 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                                 {/* Seat Info: text-xl (Smaller) */}
                                 <div className="flex items-center gap-2 text-xl font-bold text-yellow-400">
                                     <Armchair size={24} className="text-white/60"/> 
+                                    {/* 🔥 V147: Only Table */}
                                     <span>Table {winner.table || '-'}</span>
-                                    <span className="text-white/20">/</span>
-                                    <span>Seat {winner.seat || '-'}</span>
                                 </div>
                             </div>
 
@@ -1237,7 +1201,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                           <input placeholder="Email" value={adminForm.email} onChange={e=>setAdminForm({...adminForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-32 text-xs outline-none"/>
                           <input placeholder="Dept" value={adminForm.dept} onChange={e=>setAdminForm({...adminForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none"/>
                           <input placeholder="T" value={adminForm.table} onChange={e=>setAdminForm({...adminForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/>
-                          <input placeholder="S" value={adminForm.seat} onChange={e=>setAdminForm({...adminForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/>
+                          {/* 🔥 V147: Removed Seat Input */}
                           <button className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
                       </form>
                       
@@ -1259,7 +1223,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   <th className="p-3 text-left">Email</th>
                                   <th className="p-3 text-left">Dept</th>
                                   <th className="p-3 text-center">Table</th>
-                                  <th className="p-3 text-center">Seat</th>
+                                  {/* 🔥 V147: Removed Seat Column */}
                                   <th className="p-3 text-left text-yellow-500">{t.wonPrize}</th>
                                   <th className="p-3 text-center">Status</th>
                                   <th className="p-3 text-center">Del</th>
@@ -1289,7 +1253,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                           <td className="p-3 text-white/60 text-left">{p.dept}</td>
                                           
                                           <td className={`p-3 font-mono text-center text-lg ${!p.table ? 'text-blue-300 italic' : 'text-blue-400'}`}>{displayTable || '-'}</td>
-                                          <td className={`p-3 font-mono text-center text-lg ${!p.seat ? 'text-white/50 italic' : ''}`}>{displaySeat || '-'}</td>
+                                          {/* 🔥 V147: Removed Seat Cell */}
                                           <td className="p-3 text-yellow-400 font-bold text-left">{winnerRec ? winnerRec.prize : '-'}</td>
                                           <td className="p-3 text-center">
                                               {!p.checkedIn ? 
@@ -1330,7 +1294,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
                       <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
                       <input placeholder={t.table} value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
-                      <input placeholder={t.seat} value={seatForm.seat} onChange={e=>setSeatForm({...seatForm,seat:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
+                      {/* 🔥 V147: Removed Seat Input */}
                       <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
                   </div>
 
@@ -1345,7 +1309,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   <th className="p-3 text-left">Email</th>
                                   <th className="p-3 text-left">Dept</th>
                                   <th className="p-3 text-center">Table</th>
-                                  <th className="p-3 text-center">Seat</th>
+                                  {/* 🔥 V147: Removed Seat Column */}
                                   <th className="p-3 text-center">Status</th>
                                   <th className="p-3 text-center">Del</th>
                               </tr>
@@ -1365,7 +1329,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                           <td className="p-3 text-xs text-white/60 text-left">{s.dept}</td>
                                           
                                           <td className="p-3 font-mono text-blue-400 text-center text-lg">{s.table}</td>
-                                          <td className="p-3 font-mono text-center text-lg">{s.seat}</td>
+                                          {/* 🔥 V147: Removed Seat Cell */}
                                           <td className="p-3 text-center">{isCheckedIn ? <span className="text-green-400 bg-green-400/20 px-2 py-1 rounded text-xs border border-green-400/50">已到場</span> : <span className="text-white/30 text-xs border border-white/10 px-2 py-1 rounded">未簽到</span>}</td>
                                           <td className="p-3 text-center"><button onClick={()=>handleDeleteSeating(s.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10"><Trash2 size={16}/></button></td>
                                       </tr>
