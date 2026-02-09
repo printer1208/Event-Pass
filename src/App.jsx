@@ -5,7 +5,7 @@ import {
   ArrowRight, UserPlus, LogOut, Globe, Mail,
   Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
   Cloud, Zap, Image as ImageIcon, MonitorPlay, Aperture, Gift,
-  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid, Briefcase, Database, CheckSquare, Square
+  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid, Briefcase, Database, CheckSquare, Square, Save
 } from 'lucide-react';
 
 // --- Firebase ---
@@ -45,7 +45,7 @@ const ADMIN_PASSWORD = "admin";
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 手機優化版",
+    title: "Tesla Annual Dinner", sub: "2025 單鍵極速版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "請輸入電話或 Email",
@@ -72,10 +72,10 @@ const translations = {
     seatResult: "查詢結果", status: "狀態", notCheckedIn: "未簽到", registered: "已登記", notRegistered: "未登記",
     youWon: "恭喜獲得", nextRound: "按 ENTER 進入下一輪",
     winnerLabel: "得主", saveTicket: "下載入場憑證", screenshotHint: "請截圖保存此畫面作為入場憑證",
-    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取"
+    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取", confirmSave: "確認儲存"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Mobile First",
+    title: "Tesla Annual Dinner", sub: "2025 One-Key Flow",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Enter Phone or Email",
@@ -100,9 +100,9 @@ const translations = {
     genDummySeat: "Gen 100 Dummy Seats", clearSeats: "Clear Seats", confirmClearSeats: "Delete ALL seating plan?",
     checkSeat: "Check Seat", inputHint: "Enter Phone or Email", backToReg: "Back to Register",
     seatResult: "Result", status: "Status", notCheckedIn: "Not In", registered: "Registered", notRegistered: "Not Reg",
-    youWon: "Congratulations!", nextRound: "Press ENTER for Next Round",
+    youWon: "Congratulations!", nextRound: "PRESS ENTER >>> NEXT",
     winnerLabel: "WINNER", saveTicket: "Download Ticket", screenshotHint: "Please screenshot this screen as your entry pass",
-    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "Delete Selected"
+    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "Delete Selected", confirmSave: "Confirm Save"
   }
 };
 
@@ -169,42 +169,59 @@ const Confetti = () => {
 };
 
 const SoundController = {
-  ctx: null, oscList: [],
-  init: function() { const AC = window.AudioContext || window.webkitAudioContext; if (AC) this.ctx = new AC(); },
+  ctx: null, oscList: [], bgm: null,
+  init: function() { 
+      const AC = window.AudioContext || window.webkitAudioContext; 
+      if (AC) this.ctx = new AC(); 
+      // Load BGM
+      this.bgm = new Audio('/draw_music.m4a');
+      this.bgm.loop = true;
+  },
   startSuspense: function() {
       if (!this.ctx) this.init(); if (this.ctx.state === 'suspended') this.ctx.resume();
-      const now = this.ctx.currentTime;
-      const drone = this.ctx.createOscillator(); const droneGain = this.ctx.createGain();
-      drone.type = 'sawtooth'; drone.frequency.value = 40; 
-      drone.connect(droneGain); droneGain.connect(this.ctx.destination);
-      droneGain.gain.setValueAtTime(0.2, now); droneGain.gain.linearRampToValueAtTime(0.5, now + 5);
-      drone.start(now);
-      this.oscList.push({stop: () => { droneGain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.5); setTimeout(() => drone.stop(), 500); }});
-      let beatTime = 0.5;
-      const playBeat = () => {
-          const osc = this.ctx.createOscillator(); const g = this.ctx.createGain();
-          osc.type = 'square'; osc.frequency.value = 60;
-          osc.connect(g); g.connect(this.ctx.destination);
-          g.gain.setValueAtTime(0.3, this.ctx.currentTime); g.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
-          osc.start(); osc.stop(this.ctx.currentTime + 0.1);
-          beatTime *= 0.95; 
-          if(beatTime > 0.05) setTimeout(playBeat, beatTime * 1000);
-      };
-      playBeat();
+      this.stopAll();
+      if (!this.bgm) { this.bgm = new Audio('/draw_music.m4a'); this.bgm.loop = true; }
+      this.bgm.currentTime = 0;
+      this.bgm.play().catch(e => console.log("Music play blocked:", e));
   },
-  stopAll: function() { this.oscList.forEach(o => o.stop()); this.oscList = []; },
+  stopAll: function() { 
+      this.oscList.forEach(o => o.stop()); 
+      this.oscList = []; 
+      if (this.bgm) { this.bgm.pause(); this.bgm.currentTime = 0; }
+  },
   playWin: function() {
-      this.stopAll(); if (!this.ctx) return; const t = this.ctx.currentTime;
+      this.stopAll(); 
+      if (!this.ctx) return; const t = this.ctx.currentTime;
       [523.25, 659.25, 783.99, 1046.50, 1318.51].forEach((freq, i) => {
           const osc = this.ctx.createOscillator(); const g = this.ctx.createGain();
           osc.type = 'triangle'; osc.frequency.value = freq; osc.connect(g); g.connect(this.ctx.destination);
           g.gain.setValueAtTime(0.5, t + i*0.08); g.gain.exponentialRampToValueAtTime(0.01, t + i*0.08 + 2.5);
           osc.start(t + i*0.08); osc.stop(t + i*0.08 + 2.5);
       });
+  },
+  playSuccess: function() {
+      if (!this.ctx) this.init(); if (this.ctx.state === 'suspended') this.ctx.resume();
+      const osc = this.ctx.createOscillator(); const g = this.ctx.createGain();
+      osc.type = 'sine'; osc.frequency.setValueAtTime(1000, this.ctx.currentTime); 
+      osc.connect(g); g.connect(this.ctx.destination);
+      osc.start(); g.gain.exponentialRampToValueAtTime(0.00001, this.ctx.currentTime + 0.1);
+      osc.stop(this.ctx.currentTime + 0.1);
+  },
+  playError: function() {
+      if (!this.ctx) this.init(); if (this.ctx.state === 'suspended') this.ctx.resume();
+      const now = this.ctx.currentTime;
+      const beep = (t) => {
+          const osc = this.ctx.createOscillator(); const g = this.ctx.createGain();
+          osc.type = 'sawtooth'; osc.frequency.setValueAtTime(400, t); 
+          osc.connect(g); g.connect(this.ctx.destination);
+          osc.start(t); g.gain.exponentialRampToValueAtTime(0.00001, t + 0.1);
+          osc.stop(t + 0.1);
+      };
+      beep(now); beep(now + 0.15);
   }
 };
 
-// --- Galaxy Canvas ---
+// --- Galaxy Canvas (Visuals) ---
 const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
     const canvasRef = useRef(null);
     const [isRunning, setIsRunning] = useState(false);
@@ -463,12 +480,10 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
   const fileInputRef = useRef(null);
   const ticketRef = useRef(null); 
   
-  // 🔥 V142: Local QR Lib Ready State
   const [isQrLibReady, setIsQrLibReady] = useState(false);
   const qrContainerRef = useRef(null);
-  const qrCheckRef = useRef(null); // Ref for Check Seat QR
+  const qrCheckRef = useRef(null);
 
-  // 🔥 V142: Inject qrcodejs
   useEffect(() => {
     if (!document.querySelector('#qrcode-lib')) {
       const script = document.createElement('script');
@@ -481,62 +496,50 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
     }
   }, []);
 
-  // 🔥 V142: Generate Ticket QR Locally
   useEffect(() => {
     if (isQrLibReady && newId && qrContainerRef.current) {
-        qrContainerRef.current.innerHTML = ""; // Clear previous
+        qrContainerRef.current.innerHTML = "";
         try {
-            new window.QRCode(qrContainerRef.current, {
-                text: JSON.stringify({id: newId}),
-                width: 192,
-                height: 192,
-                colorDark : "#000000",
-                colorLight : "#ffffff",
-                correctLevel : window.QRCode.CorrectLevel.H
-            });
-        } catch (e) {
-            console.error("QR Gen Error", e);
-        }
+            new window.QRCode(qrContainerRef.current, { text: JSON.stringify({id: newId}), width: 192, height: 192, colorDark : "#000000", colorLight : "#ffffff", correctLevel : window.QRCode.CorrectLevel.H });
+        } catch (e) { console.error("QR Gen Error", e); }
     }
   }, [isQrLibReady, newId]);
 
-    // 🔥 V149: Generate Check Seat QR Locally
     useEffect(() => {
         if (isQrLibReady && searchResult && searchResult.isAttendee && qrCheckRef.current) {
-            qrCheckRef.current.innerHTML = ""; // Clear previous
+            qrCheckRef.current.innerHTML = "";
             try {
-                new window.QRCode(qrCheckRef.current, {
-                    text: JSON.stringify({id: searchResult.id}),
-                    width: 128,
-                    height: 128,
-                    colorDark : "#000000",
-                    colorLight : "#ffffff",
-                    correctLevel : window.QRCode.CorrectLevel.H
-                });
-            } catch (e) {
-                console.error("QR Gen Error", e);
-            }
+                new window.QRCode(qrCheckRef.current, { text: JSON.stringify({id: searchResult.id}), width: 128, height: 128, colorDark : "#000000", colorLight : "#ffffff", correctLevel : window.QRCode.CorrectLevel.H });
+            } catch (e) { console.error("QR Gen Error", e); }
         }
     }, [isQrLibReady, searchResult]);
+
+  const handleDownloadTicket = async () => {
+    // 🔥 V143: Removed Download Logic - Just screenshot
+  };
 
   const startCamera = async () => { setErr(''); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } }); setIsCameraOpen(true); setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100); } catch (e) { fileInputRef.current.click(); } };
   const takePhoto = async () => { if(!videoRef.current) return; const canvas = document.createElement('canvas'); const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const xOffset = (videoRef.current.videoWidth - size) / 2; const yOffset = (videoRef.current.videoHeight - size) / 2; ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size); const rawBase64 = canvas.toDataURL('image/jpeg'); const stream = videoRef.current.srcObject; if(stream) stream.getTracks().forEach(track => track.stop()); setIsCameraOpen(false); const compressed = await compressImage(rawBase64, false); setPhoto(compressed); };
   const handleFileChange = async (e) => { const file = e.target.files[0]; if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); } };
   
   const handleSubmit = async (e) => { 
-      e.preventDefault(); 
-      setErr(''); 
-      if(!photo) { setErr(t.errPhoto); return; } 
-      setLoading(true); 
-      const cleanPhone = normalizePhone(form.phone); 
-      const cleanEmail = normalizeEmail(form.email); 
+      e.preventDefault(); setErr(''); if(!photo) { setErr(t.errPhoto); return; } 
+      setLoading(true); const cleanPhone = normalizePhone(form.phone); const cleanEmail = normalizeEmail(form.email); 
       const dup = checkDuplicate(cleanPhone, cleanEmail); 
       if(dup === 'phone') { setErr(t.errPhone); setLoading(false); return; } if(dup === 'email') { setErr(t.errEmail); setLoading(false); return; } 
       let assignedTable = ""; let assignedSeat = ""; let autoName = "VIP Guest"; let autoDept = "-"; 
+      
       const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail); 
       const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone); 
-      if(emailMatch) { assignedTable = emailMatch.table; assignedSeat = emailMatch.seat; autoName = emailMatch.name || autoName; autoDept = emailMatch.dept || autoDept; } 
-      else if(phoneMatch) { assignedTable = phoneMatch.table; assignedSeat = phoneMatch.seat; autoName = phoneMatch.name || autoName; autoDept = phoneMatch.dept || autoDept; } 
+      const match = emailMatch || phoneMatch;
+
+      if (match) { 
+          assignedTable = match.table; 
+          assignedSeat = match.seat; 
+          autoName = match.name; 
+          autoDept = match.dept; 
+      } 
+      
       setMatchSeat({ table: assignedTable, seat: assignedSeat }); 
       const finalGuestData = { name: autoName, phone: cleanPhone, email: cleanEmail, company: form.company || "", dept: autoDept, table: assignedTable, seat: assignedSeat, photo: photo, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() };
       setGuestInfo(finalGuestData); 
@@ -544,25 +547,27 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
   };
   
   const handleSeatSearch = (e) => {
-    e.preventDefault();
-    const q = searchQuery.trim();
-    if (!q) return;
-    const isEmail = q.includes('@');
-    const target = isEmail ? normalizeEmail(q) : normalizePhone(q);
+    e.preventDefault(); const q = searchQuery.trim(); if (!q) return; const isEmail = q.includes('@'); const target = isEmail ? normalizeEmail(q) : normalizePhone(q); 
+    
     let found = attendees.find(a => isEmail ? normalizeEmail(String(a.email)) === target : normalizePhone(String(a.phone)) === target);
-    let isAttendee = true;
-    let status = t.registered;
+    let isAttendee = true; let status = t.registered;
+    
+    const seatingMatch = seatingPlan.find(s => isEmail ? normalizeEmail(String(s.email)) === target : normalizePhone(String(s.phone)) === target);
+    
     if (!found) {
-        found = seatingPlan.find(s => isEmail ? normalizeEmail(String(s.email)) === target : normalizePhone(String(s.phone)) === target);
+        found = seatingMatch;
         status = t.notRegistered;
         isAttendee = false;
+    } else if (seatingMatch) {
+        found = { ...found, table: seatingMatch.table, seat: seatingMatch.seat, dept: seatingMatch.dept, name: seatingMatch.name };
     }
+
     if (found) { setSearchResult({ ...found, status, isAttendee }); setErr(""); } else { setSearchResult(null); setErr(t.notFound); }
   };
 
   return (
     <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
-      <div className="relative bg-neutral-900/80 border border-white/10 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl"> {/* 🔥 V150: max-w-lg */}
+      <div className="relative bg-neutral-900/80 border border-white/10 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl">
         <div className="bg-gradient-to-r from-red-700 to-red-900 p-6 md:p-8 text-white text-center relative">
           {!isCameraOpen && <button onClick={onBack} className="absolute left-6 top-6 text-white/70 hover:text-white z-10 p-2"><ChevronLeft size={24}/></button>}
           <h2 className="text-3xl font-bold tracking-wide relative z-10">{t.regTitle}</h2>
@@ -573,32 +578,17 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                 <div className="space-y-6 animate-in fade-in zoom-in duration-300">
                     <h3 className="text-2xl font-bold text-center mb-4 text-yellow-500">{t.checkSeat}</h3>
                     <div className="space-y-4">
-                        <div className="relative">
-                            <Search className="absolute top-4 left-4 text-white/30" size={20}/>
-                            <input autoFocus value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="w-full bg-white/5 border border-white/10 text-white p-4 pl-12 rounded-xl outline-none focus:border-yellow-500 transition-all placeholder:text-white/20 text-base" placeholder={t.inputHint} />
-                        </div>
+                        <div className="relative"><Search className="absolute top-4 left-4 text-white/30" size={20}/><input autoFocus value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="w-full bg-white/5 border border-white/10 text-white p-4 pl-12 rounded-xl outline-none focus:border-yellow-500 transition-all placeholder:text-white/20 text-base" placeholder={t.inputHint} /></div>
                         <button onClick={handleSeatSearch} className="w-full bg-yellow-600 hover:bg-yellow-500 text-white p-4 rounded-xl font-bold shadow-lg transition-all text-lg">{t.searchList}</button>
                     </div>
                     {err && <div className="text-red-400 text-center text-sm bg-red-500/10 p-3 rounded-lg border border-red-500/20">{err}</div>}
                     {searchResult && (
                         <div className="mt-6 p-6 bg-white/10 rounded-2xl border border-yellow-500/50 text-center shadow-xl">
-                            <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
-                                <span className="text-sm text-yellow-500 font-bold uppercase tracking-wider">{t.seatResult}</span>
-                                <span className={`text-xs px-3 py-1 rounded-full font-bold ${searchResult.status === t.registered ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/50'}`}>{searchResult.status}</span>
-                            </div>
-                            
-                            {/* 🔥 V149: Show QR if Registered (Local Gen) */}
-                            {searchResult.isAttendee && (
-                                <div className="bg-white p-2 rounded-xl inline-block mb-6 shadow-lg">
-                                    <div ref={qrCheckRef} className="w-32 h-32 flex items-center justify-center bg-white"></div>
-                                </div>
-                            )}
-
+                            <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2"><span className="text-sm text-yellow-500 font-bold uppercase tracking-wider">{t.seatResult}</span><span className={`text-xs px-3 py-1 rounded-full font-bold ${searchResult.status === t.registered ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/50'}`}>{searchResult.status}</span></div>
+                            {searchResult.isAttendee && (<div className="bg-white p-2 rounded-xl inline-block mb-6 shadow-lg"><div ref={qrCheckRef} className="w-32 h-32 flex items-center justify-center bg-white"></div></div>)}
                             <div className="text-3xl font-bold mb-2 text-white">{searchResult.name}</div>
                             <div className="text-base text-white/60 mb-6">{searchResult.dept}</div>
-                            <div className="text-4xl font-black text-white bg-white/10 p-4 rounded-xl inline-block border border-white/20 shadow-inner">
-                                Table {searchResult.table || '-'}
-                            </div>
+                            <div className="text-4xl font-black text-white bg-white/10 p-4 rounded-xl inline-block border border-white/20 shadow-inner">Table {searchResult.table || '-'}</div>
                         </div>
                     )}
                     <button onClick={()=>{setIsSearchMode(false);setSearchResult(null);setSearchQuery("");setErr("")}} className="w-full text-white/50 hover:text-white text-base mt-6 underline">{t.backToReg}</button>
@@ -619,11 +609,8 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                       {!isCameraOpen && (
                           <div className="space-y-4">
                             {['phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-4 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'phone' ? <Phone size={20}/> : <Mail size={20}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-4 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20 text-base" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
-                            
                             <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-5 rounded-xl font-bold shadow-xl transition-all active:scale-95 mt-4 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-lg">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
-                            <div className="pt-6 mt-6 border-t border-white/10 text-center">
-                                <button type="button" onClick={()=>setIsSearchMode(true)} className="text-yellow-500 text-base hover:text-yellow-400 flex items-center justify-center gap-2 mx-auto transition-colors font-bold"><Search size={18}/> {t.checkSeat}</button>
-                            </div>
+                            <div className="pt-6 mt-6 border-t border-white/10 text-center"><button type="button" onClick={()=>setIsSearchMode(true)} className="text-yellow-500 text-base hover:text-yellow-400 flex items-center justify-center gap-2 mx-auto transition-colors font-bold"><Search size={18}/> {t.checkSeat}</button></div>
                           </div>
                       )}
                     </form>
@@ -632,31 +619,15 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                       <div ref={ticketRef} className="bg-neutral-900 p-8 rounded-3xl border-2 border-yellow-500/50 shadow-2xl relative overflow-hidden max-w-sm mx-auto">
                            <div className="absolute -top-20 -right-20 w-40 h-40 bg-yellow-500/20 rounded-full blur-3xl"></div>
                            <h3 className="text-xl font-bold text-yellow-500 text-center mb-6 tracking-widest uppercase border-b border-white/10 pb-4">Tesla Annual Dinner</h3>
-                           
-                           {/* 🔥 V142: Local QR Code Container */}
-                           <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_40px_rgba(255,255,255,0.1)]">
-                               <div ref={qrContainerRef} className="w-48 h-48 flex items-center justify-center bg-white"></div>
-                           </div>
-                           
-                           {/* 🔥 V147: Table Only */}
-                           <div className="text-yellow-400 text-3xl font-black mb-6 flex justify-center items-center gap-3">
-                               <Armchair size={32}/> 
-                               <span>Table {matchedSeat?.table || '-'}</span>
-                           </div>
-
+                           <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_40px_rgba(255,255,255,0.1)]"><div ref={qrContainerRef} className="w-48 h-48 flex items-center justify-center bg-white"></div></div>
+                           <div className="text-yellow-400 text-3xl font-black mb-6 flex justify-center items-center gap-3"><Armchair size={32}/> <span>Table {matchedSeat?.table || '-'}</span></div>
                            <div className="text-left text-sm text-white/70 space-y-3 border-t border-white/10 pt-6">
                                <div className="flex justify-between"><span className="text-white/40">{t.name}:</span><span className="font-bold text-white text-base">{guestInfo?.name}</span></div>
                                <div className="flex justify-between"><span className="text-white/40">{t.dept}:</span><span className="font-bold text-white text-base">{guestInfo?.dept}</span></div>
                                <div className="flex justify-between"><span className="text-white/40">{t.phone}:</span><span className="font-mono text-white text-base">{guestInfo?.phone}</span></div>
                            </div>
                       </div>
-
-                      <div className="mt-8 p-5 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl text-yellow-500 text-center animate-pulse">
-                          <p className="font-bold text-lg flex items-center justify-center gap-3">
-                              <Camera size={24}/> {t.screenshotHint}
-                          </p>
-                      </div>
-
+                      <div className="mt-8 p-5 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl text-yellow-500 text-center animate-pulse"><p className="font-bold text-lg flex items-center justify-center gap-3"><Camera size={24}/> {t.screenshotHint}</p></div>
                       <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-5 rounded-2xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-base mt-6">{t.next}</button>
                     </div>
                   )}
@@ -668,149 +639,94 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
   );
 };
 
-// 🔥 Projector View: Fixed Layout with Bottom Button (V127: Responsive Header)
-const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes, seatingPlan }) => { // 🔥 V131 Added seatingPlan prop
+const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes, seatingPlan }) => { 
     const [winner, setWinner] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     
-    // 🔥 V131: Enhanced Attendee Data (Merge seat info if missing)
     const enrichedAttendees = attendees.map(a => {
-        // If attendee already has seat, use it
-        if (a.table && a.seat) return a;
-        
-        // Otherwise try to find match in seatingPlan
-        const match = seatingPlan.find(s => 
-            (s.email && normalizeEmail(s.email) === normalizeEmail(a.email)) || 
-            (s.phone && normalizePhone(s.phone) === normalizePhone(a.phone))
-        );
-        
-        if (match) {
-            return { ...a, table: match.table, seat: match.seat, dept: match.dept || a.dept }; // 🔥 V135: Sync Dept too
-        }
+        const match = seatingPlan.find(s => (s.email && normalizeEmail(s.email) === normalizeEmail(a.email)) || (s.phone && normalizePhone(s.phone) === normalizePhone(a.phone)));
+        if (match) { return { ...a, table: match.table, seat: match.seat, dept: match.dept || a.dept, name: match.name || a.name }; }
         return a;
     });
 
     const eligible = enrichedAttendees.filter(p => p.checkedIn && !drawHistory.some(h => h.attendeeId === p.id));
-    
-    // Also enrich currentPrizeWinner if needed (though drawHistory usually has snapshot data)
     let currentPrizeWinner = drawHistory.find(h => h.prize === currentPrize);
     
-    // 🔥 V96: Trigger Draw (Supports Enter Key)
-    const triggerDraw = () => {
-        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' , code: 'Enter'}));
+    const triggerDraw = () => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' , code: 'Enter'})); };
+
+    // 🔥 V156: Auto-Save logic
+    const handleDrawEnd = async (w) => { 
+        setWinner(w);
+        if (db) {
+            await addDoc(collection(db, "winners"), { 
+                attendeeId: w.id, 
+                name: w.name || "", 
+                phone: w.phone || "", 
+                photo: w.photo || "", 
+                table: w.table || "", 
+                seat: w.seat || "", 
+                dept: w.dept || "", 
+                prize: currentPrize || "Grand Prize", 
+                wonAt: new Date().toISOString() 
+            });
+        }
     };
 
+    // 🔥 V156: Enter key only does Next Round (no saving)
     useEffect(() => {
         const handleKey = async (e) => { 
-            if (winner && e.key === 'Enter' && !isSaving) {
-                setIsSaving(true);
-                // 1. Write Winner
-                if (db) await addDoc(collection(db, "winners"), { 
-                    attendeeId: winner.id, 
-                    name: winner.name || "", 
-                    phone: winner.phone || "", 
-                    photo: winner.photo || "", 
-                    table: winner.table || "", 
-                    seat: winner.seat || "", 
-                    dept: winner.dept || "", // 🔥 Save Dept
-                    prize: currentPrize || "Grand Prize", 
-                    wonAt: new Date().toISOString() 
-                });
-                
-                // 2. Auto Next Prize
+            if (winner && e.key === 'Enter') {
                 if (currentPrize && prizes.length > 0) {
                     const currentIdx = prizes.findIndex(p => p.name === currentPrize);
                     let nextPrize = prizes.find((p, idx) => idx > currentIdx && !drawHistory.some(h => h.prize === p.name));
                     if (!nextPrize) nextPrize = prizes.find(p => !drawHistory.some(h => h.prize === p.name));
-                    if (nextPrize && db) {
-                        await setDoc(doc(db, "config", "settings"), { currentPrize: nextPrize.name }, { merge: true });
-                    }
+                    if (nextPrize && db) { await setDoc(doc(db, "config", "settings"), { currentPrize: nextPrize.name }, { merge: true }); }
                 }
-
-                // 3. Clear Winner (Back to Galaxy)
                 setWinner(null);
-                setIsSaving(false);
             }
         };
-        window.addEventListener('keydown', handleKey);
-        return () => window.removeEventListener('keydown', handleKey);
-    }, [winner, prizes, drawHistory, currentPrize, isSaving]);
-
-    const handleDrawEnd = async (w) => {
-        setWinner(w);
-    };
+        window.addEventListener('keydown', handleKey); return () => window.removeEventListener('keydown', handleKey);
+    }, [winner, prizes, drawHistory, currentPrize]);
 
     return (
         <div className="min-h-screen bg-black text-white relative flex flex-col overflow-hidden">
-            
-            {/* 1. Header (15%) - Fixed & Consistent Font Size */}
             <div className="flex-none h-[15vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-b border-white/10 flex items-center justify-between px-4 md:px-8 relative shadow-xl w-full">
                  <button onClick={onBack} className="text-white/30 hover:text-white transition-colors mr-4 md:mr-6 flex items-center justify-center"><ChevronLeft size={32}/></button>
-                 {/* 🔥 V126: Clean Header Structure */}
                  <div className="flex-1 flex flex-row items-center justify-center gap-2 md:gap-6 w-full overflow-hidden">
-                    <span className="text-yellow-500 font-bold tracking-widest uppercase text-xl md:text-3xl lg:text-5xl whitespace-nowrap flex-shrink-0">
-                        {winner ? t.winnerLabel : t.currentPrize}:
-                    </span>
-                    {/* 🔥 V128: Allow wrap, smaller max font, robust display */}
-                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] leading-tight text-left whitespace-normal break-words pb-1">
-                        {currentPrize || "WAITING..."}
-                    </h1>
+                    <span className="text-yellow-500 font-bold tracking-widest uppercase text-xl md:text-3xl lg:text-5xl whitespace-nowrap flex-shrink-0">{winner ? t.winnerLabel : t.currentPrize}:</span>
+                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] leading-tight text-left whitespace-normal break-words pb-1">{currentPrize || "WAITING..."}</h1>
                  </div>
                  <div className="w-14"></div>
             </div>
-
-            {/* 2. Canvas Area (Flex 1) - Maximize Space */}
             <div className="flex-1 w-full relative z-10 bg-black overflow-hidden flex items-center justify-center">
                 {winner ? (
-                     // 🔥 V115: Cleanest Winner Display
                     <div className="flex flex-col items-center justify-center h-full w-full relative z-50">
                         <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
-
-                        {/* Photo - Big but balanced */}
-                        <div className="relative mb-6">
+                        <div className="relative mb-2">
                             <div className="absolute inset-0 bg-yellow-500/30 blur-3xl rounded-full animate-pulse"></div>
-                            {/* 🔥 V137: RESTORED BIG PHOTO (55vh) */}
-                            {winner.photo ? <img src={winner.photo} className="relative w-[55vh] h-[55vh] rounded-full border-8 border-yellow-400 object-cover shadow-2xl"/> : <div className="w-[55vh] h-[55vh] rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={150}/></div>}
+                            {winner.photo ? <img src={winner.photo} className="relative w-[62vh] h-[62vh] rounded-full border-8 border-yellow-400 object-cover shadow-2xl"/> : <div className="w-[62vh] h-[62vh] rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={150}/></div>}
                         </div>
-                        
-                        {/* 🔥 V138: Extra Compact Info Container (-10% size) */}
-                        <div className="flex flex-col items-center gap-2 mb-4">
-                             {/* Main Info Row */}
+                        <div className="flex flex-col items-center gap-2 mb-2">
                             <div className="flex flex-row items-center justify-center gap-5 bg-white/10 backdrop-blur-md px-8 py-2 rounded-full border border-white/20 shadow-xl">
-                                {/* Name & Dept Group */}
                                 <div className="flex flex-col items-center md:items-end">
-                                    {/* 🔥 Name: text-3xl (Smaller) */}
                                     <h1 className="text-3xl font-black text-white tracking-wide leading-none">{winner.name}</h1>
-                                    {/* Dept */}
                                     {winner.dept && <span className="text-xs text-yellow-500/80 font-bold uppercase tracking-wider mt-1">{winner.dept}</span>}
                                 </div>
-                                
-                                {/* Vertical Divider */}
                                 <div className="w-0.5 h-10 bg-white/20 rounded-full"></div>
-
-                                {/* Seat Info: text-xl (Smaller) */}
-                                <div className="flex items-center gap-2 text-xl font-bold text-yellow-400">
-                                    <Armchair size={24} className="text-white/60"/> 
-                                    {/* 🔥 V147: Only Table */}
-                                    <span>Table {winner.table || '-'}</span>
-                                </div>
+                                <div className="flex items-center gap-2 text-xl font-bold text-yellow-400"><Armchair size={24} className="text-white/60"/> <span>Table {winner.table || '-'}</span></div>
                             </div>
-
-                            {/* Phone Number - Separate Pill below */}
-                            <div className="text-white/40 font-mono text-sm tracking-[0.2em] bg-black/40 px-5 py-0.5 rounded-full border border-white/5">
-                                {winner.phone}
-                            </div>
+                            <div className="text-white/40 font-mono text-sm tracking-[0.2em] bg-black/40 px-5 py-0.5 rounded-full border border-white/5">{winner.phone}</div>
                         </div>
-                        
-                        {/* 🔥 V115: Relative Margin Top to prevent overlap */}
-                        <p className="text-white/30 text-sm animate-pulse relative mt-4">{t.nextRound}</p>
+                        {/* 🔥 V156: No Button, just text hint */}
+                        <div className="mt-4 flex gap-4 items-center animate-in fade-in zoom-in duration-300">
+                             <p className="text-white/50 text-lg font-mono animate-pulse uppercase tracking-[0.2em]">{t.nextRound}</p>
+                        </div>
                     </div>
                 ) : currentPrizeWinner ? (
                      <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500 z-20">
                         <div className="text-2xl text-white/50 font-bold mb-4 uppercase tracking-[0.3em]">{t.drawn}</div>
                         <div className="relative mb-6">
-                            {/* 🔥 V134: Force big photo for existing winner too */}
-                            {currentPrizeWinner.photo ? <img src={currentPrizeWinner.photo} className="w-[50vh] h-[50vh] rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover"/> : <div className="w-[50vh] h-[50vh] rounded-full bg-neutral-800 flex items-center justify-center border-8 border-gray-700 mb-8"><User size={100}/></div>}
+                            {currentPrizeWinner.photo ? <img src={currentPrizeWinner.photo} className="w-[55vh] h-[55vh] rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover"/> : <div className="w-[55vh] h-[55vh] rounded-full bg-neutral-800 flex items-center justify-center border-8 border-gray-700 mb-8"><User size={100}/></div>}
                         </div>
                         <h1 className="text-7xl font-black text-gray-400 mt-2">{currentPrizeWinner.name}</h1>
                         <div className="text-white/30 mt-4 text-xl">{t.winnerIs}</div>
@@ -821,16 +737,10 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                     <div className="text-center text-white/30"><Trophy size={100} className="mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p></div>
                 )}
             </div>
-            
-            {/* 3. Footer (15%) - Clean (V105) */}
             <div className="flex-none h-[15vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-t border-white/10 flex flex-col items-center justify-center overflow-hidden w-full relative">
-                
-                {/* 🔥 V82: Button moved to Footer Center */}
                 {eligible.length > 0 && !winner && !currentPrizeWinner && (
                     <div className="">
-                        <button onClick={triggerDraw} className="bg-red-600 text-white px-10 py-3 rounded-full font-bold text-xl shadow-2xl border-4 border-black uppercase tracking-widest hover:scale-105 transition-transform animate-pulse flex items-center gap-2">
-                            <Play size={24} fill="currentColor"/> {t.drawBtn}
-                        </button>
+                        <button onClick={triggerDraw} className="bg-red-600 text-white px-10 py-3 rounded-full font-bold text-xl shadow-2xl border-4 border-black uppercase tracking-widest hover:scale-105 transition-transform animate-pulse flex items-center gap-2"><Play size={24} fill="currentColor"/> {t.drawBtn}</button>
                     </div>
                 )}
             </div>
@@ -838,7 +748,6 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     );
 };
 
-// --- Reception Dashboard, Prize Dashboard, App (Moved to bottom) ---
 const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan, drawHistory }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
@@ -846,286 +755,58 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   const [search, setSearch] = useState(""); 
   const [adminForm, setAdminForm] = useState({name:'',phone:'',email:'',dept:'',table:'',seat:''});
   const [seatForm, setSeatForm] = useState({name:'',phone:'',email:'',dept:'',table:'',seat:''});
+  const [selectedGuestIds, setSelectedGuestIds] = useState(new Set());
+  const [selectedSeatIds, setSelectedSeatIds] = useState(new Set());
   const lastTime = useRef(0);
 
   const filteredList = attendees.filter(p => {
       const s = search.toLowerCase();
       const prizeName = drawHistory.find(h=>h.attendeeId===p.id)?.prize || "";
       const dept = p.dept || "";
-      // 🔥 V118: Robust string filtering
-      return String(p.name||'').toLowerCase().includes(s) || 
-             String(p.phone||'').includes(s) || 
-             String(p.email||'').toLowerCase().includes(s) || 
-             String(dept||'').toLowerCase().includes(s) || 
-             String(prizeName||'').toLowerCase().includes(s);
+      return String(p.name||'').toLowerCase().includes(s) || String(p.phone||'').includes(s) || String(p.email||'').toLowerCase().includes(s) || String(dept||'').toLowerCase().includes(s) || String(prizeName||'').toLowerCase().includes(s);
   });
 
   const filteredSeat = seatingPlan.filter(s => {
       const q = search.toLowerCase();
-      // 🔥 V118: Robust string filtering
-      return String(s.name||'').toLowerCase().includes(q) || 
-             String(s.phone||'').includes(q) || 
-             String(s.email||'').toLowerCase().includes(q) || 
-             String(s.dept||'').toLowerCase().includes(q) || 
-             String(s.table||'').includes(q) || 
-             String(s.seat||'').toLowerCase().includes(q);
+      return String(s.name||'').toLowerCase().includes(q) || String(s.phone||'').includes(q) || String(s.email||'').toLowerCase().includes(q) || String(s.dept||'').toLowerCase().includes(q) || String(s.table||'').includes(q) || String(s.seat||'').toLowerCase().includes(q);
   });
 
-  // 🔥 V139: Multi-Select Logic
-  const [selectedGuestIds, setSelectedGuestIds] = useState(new Set());
-  const [selectedSeatIds, setSelectedSeatIds] = useState(new Set());
-
-  const toggleGuestSelection = (id) => {
-      const newSet = new Set(selectedGuestIds);
-      if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
-      setSelectedGuestIds(newSet);
-  };
-
-  const toggleAllGuests = () => {
-      if (filteredList.length === 0) return;
-      const allSelected = filteredList.every(p => selectedGuestIds.has(p.id));
-      const newSet = new Set(selectedGuestIds);
-      filteredList.forEach(p => { if (allSelected) newSet.delete(p.id); else newSet.add(p.id); });
-      setSelectedGuestIds(newSet);
-  };
-
-  const handleDeleteSelectedGuests = async () => {
-      if (!selectedGuestIds.size) return;
-      if (!confirm(`Are you sure you want to delete ${selectedGuestIds.size} guests?`)) return;
-      const batch = writeBatch(db);
-      selectedGuestIds.forEach(id => { batch.delete(doc(db, "attendees", id)); });
-      await batch.commit();
-      setSelectedGuestIds(new Set());
-  };
-
-  const toggleSeatSelection = (id) => {
-      const newSet = new Set(selectedSeatIds);
-      if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
-      setSelectedSeatIds(newSet);
-  };
-
-  const toggleAllSeats = () => {
-      if (filteredSeat.length === 0) return;
-      const allSelected = filteredSeat.every(s => selectedSeatIds.has(s.id));
-      const newSet = new Set(selectedSeatIds);
-      filteredSeat.forEach(s => { if (allSelected) newSet.delete(s.id); else newSet.add(s.id); });
-      setSelectedSeatIds(newSet);
-  };
-
-  const handleDeleteSelectedSeats = async () => {
-      if (!selectedSeatIds.size) return;
-      if (!confirm(`Are you sure you want to delete ${selectedSeatIds.size} seats?`)) return;
-      const batch = writeBatch(db);
-      selectedSeatIds.forEach(id => { batch.delete(doc(db, "seating_plan", id)); });
-      await batch.commit();
-      setSelectedSeatIds(new Set());
-  };
+  const toggleGuestSelection = (id) => { const newSet = new Set(selectedGuestIds); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setSelectedGuestIds(newSet); };
+  const toggleAllGuests = () => { if (filteredList.length === 0) return; const allSelected = filteredList.every(p => selectedGuestIds.has(p.id)); const newSet = new Set(selectedGuestIds); filteredList.forEach(p => { if (allSelected) newSet.delete(p.id); else newSet.add(p.id); }); setSelectedGuestIds(newSet); };
+  const handleDeleteSelectedGuests = async () => { if (!selectedGuestIds.size) return; if (!confirm(`Are you sure you want to delete ${selectedGuestIds.size} guests?`)) return; const batch = writeBatch(db); selectedGuestIds.forEach(id => { batch.delete(doc(db, "attendees", id)); }); await batch.commit(); setSelectedGuestIds(new Set()); };
+  const toggleSeatSelection = (id) => { const newSet = new Set(selectedSeatIds); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setSelectedSeatIds(newSet); };
+  const toggleAllSeats = () => { if (filteredSeat.length === 0) return; const allSelected = filteredSeat.every(s => selectedSeatIds.has(s.id)); const newSet = new Set(selectedSeatIds); filteredSeat.forEach(s => { if (allSelected) newSet.delete(s.id); else newSet.add(s.id); }); setSelectedSeatIds(newSet); };
+  const handleDeleteSelectedSeats = async () => { if (!selectedSeatIds.size) return; if (!confirm(`Are you sure you want to delete ${selectedSeatIds.size} seats?`)) return; const batch = writeBatch(db); selectedSeatIds.forEach(id => { batch.delete(doc(db, "seating_plan", id)); }); await batch.commit(); setSelectedSeatIds(new Set()); };
 
   const handleScan = useCallback(async (text) => {
     const now = Date.now();
-    if(now - lastTime.current < 2000) return;
+    if(now - lastTime.current < 1000) return;
     try {
         const data = JSON.parse(text);
         lastTime.current = now;
         let targetId = data.id || (data.type==='new_reg' && attendees.find(x=>x.phone===normalizePhone(data.phone))?.id);
         const p = attendees.find(x=>x.id===targetId);
-        
-        if(!p) setScanRes({type:'error', msg:t.notFound});
-        else if(p.checkedIn) setScanRes({type:'duplicate', msg:t.duplicate, p});
-        else {
-             if(db) updateDoc(doc(db, "attendees", p.id), { checkedIn: true, checkInTime: new Date().toISOString() });
-             setScanRes({type:'success', msg:t.success, p});
-        }
-        setTimeout(()=>setScanRes(null), 2000);
+        if(!p) { setScanRes({type:'error', msg:t.notFound}); SoundController.playError(); }
+        else if(p.checkedIn) { setScanRes({type:'duplicate', msg:t.duplicate, p}); SoundController.playError(); }
+        else { if(db) updateDoc(doc(db, "attendees", p.id), { checkedIn: true, checkInTime: new Date().toISOString() }); setScanRes({type:'success', msg:t.success, p}); SoundController.playSuccess(); }
+        setTimeout(()=>setScanRes(null), 1000);
     } catch(e){}
   }, [attendees]);
 
-  useEffect(() => {
-    if(!isScan) return;
-    let s; const init = () => { if(window.Html5QrcodeScanner) { s=new window.Html5QrcodeScanner("reader",{fps:10,qrbox:250},false); s.render(handleScan,()=>{}); }};
-    if(window.Html5QrcodeScanner) init(); else { const sc=document.createElement('script'); sc.src="https://unpkg.com/html5-qrcode"; sc.onload=init; document.body.appendChild(sc); }
-    return ()=>{if(s)try{s.clear()}catch(e){}};
-  }, [isScan, handleScan]);
-
-  const handleImportSeating = async (e) => {
-    const file = e.target.files[0]; if(!file)return;
-    const text = await file.text(); const lines = text.split(/\r\n|\n/).slice(1);
-    const batch = writeBatch(db);
-    lines.forEach(l => {
-        const c = l.split(',');
-        if(c.length>=5) {
-            const ref = doc(collection(db, "seating_plan"));
-            batch.set(ref, { name: c[0].trim(), phone: normalizePhone(c[1]), email: normalizeEmail(c[2]), dept: c[3]?.trim(), table: c[4]?.trim(), seat: c[5]?.trim()||'' });
-        }
-    });
-    await batch.commit(); alert(t.importSuccess);
-  };
-  
-  // 🔥 V83: Manual Add Guard
-  const handleAddGuest = async (e) => {
-      e.preventDefault();
-      if(!adminForm.name) return;
-      
-      const cleanPhone = normalizePhone(adminForm.phone);
-      const cleanEmail = normalizeEmail(adminForm.email);
-
-      // Check Duplicates
-      const phoneExists = attendees.some(a => normalizePhone(a.phone) === cleanPhone && cleanPhone !== '');
-      const emailExists = attendees.some(a => normalizeEmail(a.email) === cleanEmail && cleanEmail !== '');
-
-      if (phoneExists) { alert(t.errPhone); return; }
-      if (emailExists) { alert(t.errEmail); return; }
-
-      // 🔥 V131: Auto-assign table/seat AND Name from Seating Plan
-      let assignedTable = adminForm.table; 
-      let assignedSeat = adminForm.seat; 
-      let autoName = adminForm.name || "VIP Guest"; // Default name
-      let autoDept = adminForm.dept || "-";
-
-      // Try to find match in seating plan if seat info is missing OR name is missing
-      const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail && cleanEmail !== '');
-      const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone && cleanPhone !== '');
-      
-      const match = emailMatch || phoneMatch;
-
-      if (match) {
-          if (!assignedTable) assignedTable = match.table;
-          if (!assignedSeat) assignedSeat = match.seat;
-          if (!adminForm.name) autoName = match.name; // Auto-fill name if empty
-          if (!adminForm.dept) autoDept = match.dept;
-      }
-      
-      await addDoc(collection(db, "attendees"), { 
-          ...adminForm, 
-          name: autoName,
-          dept: autoDept,
-          phone: cleanPhone, 
-          email: cleanEmail, 
-          table: assignedTable, 
-          seat: assignedSeat, 
-          checkedIn: false, 
-          checkInTime: null, 
-          createdAt: new Date().toISOString() 
-      });
-      setAdminForm({name:'',phone:'',email:'',dept:'',table:'',seat:''});
-  };
-
-  const handleAddSeating = async (e) => {
-      e.preventDefault();
-      if(!seatForm.table) return;
-      if(db) await addDoc(collection(db, "seating_plan"), { 
-          name: seatForm.name, 
-          phone: normalizePhone(seatForm.phone), 
-          email: normalizeEmail(seatForm.email), 
-          dept: seatForm.dept, 
-          table: seatForm.table, 
-          seat: seatForm.seat 
-      });
-      setSeatForm({ name:'', phone:'', email: '', dept: '', table: '', seat: '' });
-  };
-
+  useEffect(() => { if(!isScan) return; let s; const init = () => { if(window.Html5QrcodeScanner) { s=new window.Html5QrcodeScanner("reader",{fps:10,qrbox:250,videoConstraints:{facingMode:"environment"}},false); s.render(handleScan,()=>{}); }}; if(window.Html5QrcodeScanner) init(); else { const sc=document.createElement('script'); sc.src="https://unpkg.com/html5-qrcode"; sc.onload=init; document.body.appendChild(sc); } return ()=>{if(s)try{s.clear()}catch(e){}}; }, [isScan, handleScan]);
+  const handleImportSeating = async (e) => { const file = e.target.files[0]; if(!file)return; const text = await file.text(); const lines = text.split(/\r\n|\n/).slice(1); const batch = writeBatch(db); lines.forEach(l => { const c = l.split(','); if(c.length>=5) { const ref = doc(collection(db, "seating_plan")); batch.set(ref, { name: c[0].trim(), phone: normalizePhone(c[1]), email: normalizeEmail(c[2]), dept: c[3]?.trim(), table: c[4]?.trim(), seat: c[5]?.trim()||'' }); } }); await batch.commit(); alert(t.importSuccess); };
+  const handleAddGuest = async (e) => { e.preventDefault(); if(!adminForm.name) return; const cleanPhone = normalizePhone(adminForm.phone); const cleanEmail = normalizeEmail(adminForm.email); const phoneExists = attendees.some(a => normalizePhone(a.phone) === cleanPhone && cleanPhone !== ''); const emailExists = attendees.some(a => normalizeEmail(a.email) === cleanEmail && cleanEmail !== ''); if (phoneExists) { alert(t.errPhone); return; } if (emailExists) { alert(t.errEmail); return; } let assignedTable = adminForm.table; let assignedSeat = adminForm.seat; let autoName = adminForm.name || "VIP Guest"; let autoDept = adminForm.dept || "-"; const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail && cleanEmail !== ''); const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone && cleanPhone !== ''); const match = emailMatch || phoneMatch; if (match) { if (!assignedTable) assignedTable = match.table; if (!assignedSeat) assignedSeat = match.seat; if (!adminForm.name) autoName = match.name; if (!adminForm.dept) autoDept = match.dept; } await addDoc(collection(db, "attendees"), { ...adminForm, name: autoName, dept: autoDept, phone: cleanPhone, email: cleanEmail, table: assignedTable, seat: assignedSeat, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() }); setAdminForm({name:'',phone:'',email:'',dept:'',table:'',seat:''}); };
+  const handleAddSeating = async (e) => { e.preventDefault(); if(!seatForm.table) return; if(db) await addDoc(collection(db, "seating_plan"), { name: seatForm.name, phone: normalizePhone(seatForm.phone), email: normalizeEmail(seatForm.email), dept: seatForm.dept, table: seatForm.table, seat: seatForm.seat }); setSeatForm({ name:'', phone:'', email: '', dept: '', table: '', seat: '' }); };
   const handleDeleteSeating = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "seating_plan", id)); };
   const toggleCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: !person.checkedIn, checkInTime: !person.checkedIn ? new Date().toISOString() : null }); };
   const toggleCancelCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: false, checkInTime: null }); };
   const deletePerson = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "attendees", id)); };
   const downloadTemplate = () => { const content = "\uFEFFName,Phone,Email,Dept,Table,Seat\nElon Musk,0912345678,elon@tesla.com,Engineering,1,A"; const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "seating_template.csv"; link.click(); };
+  const handleGenerateDummy = async () => { if (!confirm("確定要生成 100 筆測試資料嗎？")) return; const existingIds = attendees.map(a => { const match = a.name.match(/^Guest (\d+)$/); return match ? parseInt(match[1]) : 0; }); const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0; const start = maxId + 1; const end = maxId + 100; const batch = writeBatch(db); for (let i = start; i <= end; i++) { const ref = doc(db, "attendees", `guest_${i}`); batch.set(ref, { name: `Guest ${i}`, phone: `9000${String(i).padStart(4, '0')}`, email: `guest${i}@test.com`, dept: `Dept ${String.fromCharCode(65 + (i % 5))}`, table: `${Math.ceil(i / 10)}`, seat: String.fromCharCode(65 + ((i - 1) % 10)), photo: `https://i.pravatar.cc/300?u=guest_${i}`, checkedIn: true, checkInTime: new Date().toISOString(), createdAt: new Date().toISOString() }); } await batch.commit(); alert(`已生成 Guest ${start} - Guest ${end}`); };
+  const handleClearAllGuests = async () => { if (!confirm(t.confirmClearGuests)) return; const batch = writeBatch(db); attendees.forEach(p => { const ref = doc(db, "attendees", p.id); batch.delete(ref); }); await batch.commit(); alert("已清空所有賓客！"); };
+  const handleGenerateDummySeating = async () => { if (!confirm("確定要生成 100 筆新的座位資料嗎？")) return; const existingIds = seatingPlan.map(s => { const match = s.name.match(/^Guest (\d+)$/); return match ? parseInt(match[1]) : 0; }); const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0; const start = maxId + 1; const end = maxId + 100; const batch = writeBatch(db); for (let i = start; i <= end; i++) { const ref = doc(collection(db, "seating_plan")); batch.set(ref, { name: `Guest ${i}`, phone: `9000${String(i).padStart(4, '0')}`, email: `guest${i}@test.com`, dept: `Dept ${String.fromCharCode(65 + (i % 5))}`, table: `${Math.ceil(i / 10)}`, seat: String.fromCharCode(65 + ((i - 1) % 10)) }); } await batch.commit(); alert(`已生成座位資料 Guest ${start} - Guest ${end}`); };
+  const handleClearSeating = async () => { if(!confirm(t.confirmClearSeats)) return; const batch = writeBatch(db); seatingPlan.forEach(s => batch.delete(doc(db, "seating_plan", s.id))); await batch.commit(); alert("座位表已清空"); };
 
-  // 🔥 V93: Smart Dummy Generator (Skip Duplicates)
-  const handleGenerateDummy = async () => {
-    if (!confirm("確定要生成 100 筆測試資料嗎？\n(系統會自動從現有編號接續生成)")) return;
-    
-    // 1. 找出目前最大的 Guest ID
-    const existingIds = attendees
-        .map(a => {
-            const match = a.name.match(/^Guest (\d+)$/);
-            return match ? parseInt(match[1]) : 0;
-        });
-    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
-    
-    const start = maxId + 1;
-    const end = maxId + 100; // V98: 100
-
-    const batch = writeBatch(db);
-    for (let i = start; i <= end; i++) {
-        // 使用 guest_{i} 作為 ID 確保唯一性
-        const ref = doc(db, "attendees", `guest_${i}`);
-        // Tesla Brand Colors: Red, Black, White, Grey
-        const colors = ['e82127', '000000', 'ffffff', '808080'];
-        const color = colors[i % 4];
-        const bg = colors[(i+1) % 4];
-        
-        batch.set(ref, {
-            name: `Guest ${i}`,
-            phone: `9000${String(i).padStart(4, '0')}`,
-            email: `guest${i}@test.com`,
-            dept: `Dept ${String.fromCharCode(65 + (i % 5))}`, // A, B, C, D, E
-            table: `${Math.ceil(i / 10)}`,
-            seat: String.fromCharCode(65 + ((i - 1) % 10)), // A-J
-            // V91: Tesla Brand Colors (Pravatar for realism)
-            photo: `https://i.pravatar.cc/300?u=guest_${i}`,
-            checkedIn: true, // Default Checked In for testing
-            checkInTime: new Date().toISOString(),
-            createdAt: new Date().toISOString()
-        });
-    }
-    
-    await batch.commit();
-    alert(`已生成 Guest ${start} - Guest ${end}`);
-  };
-
-  // 🔥 V84: Bulk Clear Guests
-  const handleClearAllGuests = async () => {
-    if (!confirm(t.confirmClearGuests)) return;
-    const batch = writeBatch(db);
-    attendees.forEach(p => {
-        const ref = doc(db, "attendees", p.id);
-        batch.delete(ref);
-    });
-    await batch.commit();
-    alert("已清空所有賓客！");
-  };
-
-  // 🔥 V98: Smart Dummy Seat Generator (Continuous & Sync with Guests)
-  const handleGenerateDummySeating = async () => {
-    if (!confirm("確定要生成 100 筆新的座位資料嗎？\n(系統會自動從現有編號接續生成)")) return;
-    
-    // 找出目前最大的 Seat User ID
-    const existingIds = seatingPlan
-        .map(s => {
-            const match = s.name.match(/^Guest (\d+)$/);
-            return match ? parseInt(match[1]) : 0;
-        });
-    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
-    
-    const start = maxId + 1;
-    const end = maxId + 100;
-
-    const batch = writeBatch(db);
-    for (let i = start; i <= end; i++) {
-        const ref = doc(collection(db, "seating_plan"));
-        batch.set(ref, {
-            name: `Guest ${i}`,
-            phone: `9000${String(i).padStart(4, '0')}`,
-            email: `guest${i}@test.com`, 
-            dept: `Dept ${String.fromCharCode(65 + (i % 5))}`,
-            table: `${Math.ceil(i / 10)}`,
-            seat: String.fromCharCode(65 + ((i - 1) % 10))
-        });
-    }
-    await batch.commit();
-    alert(`已生成座位資料 Guest ${start} - Guest ${end}`);
-  };
-
-  // 🔥 V87: Bulk Clear Seating
-  const handleClearSeating = async () => {
-      if(!confirm(t.confirmClearSeats)) return;
-      const batch = writeBatch(db);
-      seatingPlan.forEach(s => batch.delete(doc(db, "seating_plan", s.id)));
-      await batch.commit();
-      alert("座位表已清空");
-  };
-
-  // 🔥 V124: Refined Table Alignment
   return (
     <div className="min-h-[100dvh] bg-neutral-950 text-white flex flex-col">
        <header className="p-4 border-b border-white/10 flex justify-between items-center bg-neutral-900"><div className="font-bold text-lg flex gap-2"><QrCode/> Reception</div><button onClick={onLogout}><LogOut size={18}/></button></header>
@@ -1133,26 +814,17 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
           <div className="flex gap-2 mb-6 bg-white/5 p-1 rounded-xl">
               {['scan','list','seating'].map(k=><button key={k} onClick={()=>{setTab(k);setIsScan(false)}} className={`px-4 py-2 rounded-lg text-sm ${tab===k?'bg-blue-600':'text-white/50'}`}>{t[k]}</button>)}
           </div>
-          
-          {tab==='scan' && (
-              <div className="w-full max-w-md">
-                  {isScan ? <div id="reader" className="bg-black rounded-xl overflow-hidden mb-4"></div> : <button onClick={()=>setIsScan(true)} className="w-full py-12 border-2 border-dashed border-white/20 rounded-xl text-white/50 flex flex-col items-center gap-2 hover:bg-white/5"><Camera size={32}/> {t.scanCam}</button>}
-                  {scanRes && <div className={`p-4 rounded-xl text-center font-bold ${scanRes.type==='success'?'bg-green-600':'bg-red-600'}`}>{scanRes.msg} {scanRes.p?.name}</div>}
-              </div>
-          )}
+          {tab==='scan' && ( <div className="w-full max-w-md"> {isScan ? <div id="reader" className="bg-black rounded-xl overflow-hidden mb-4"></div> : <button onClick={()=>setIsScan(true)} className="w-full py-12 border-2 border-dashed border-white/20 rounded-xl text-white/50 flex flex-col items-center gap-2 hover:bg-white/5"><Camera size={32}/> {t.scanCam}</button>} {scanRes && <div className={`p-4 rounded-xl text-center font-bold ${scanRes.type==='success'?'bg-green-600':'bg-red-600'}`}>{scanRes.msg} {scanRes.p?.name}</div>} </div> )}
 
           {tab==='list' && (
               <div className="w-full flex-1 flex flex-col h-[70vh]">
                   <div className="p-4 bg-white/5 rounded-t-xl border-b border-white/10">
                       <div className="mb-4 flex gap-2 items-center">
                           <div className="relative flex-1"><Search className="absolute top-2.5 left-3 text-white/30" size={16}/><input placeholder={t.searchList} value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-white/10 rounded-lg pl-9 pr-4 py-2 text-sm outline-none"/></div>
-                          {selectedGuestIds.size > 0 && (
-                             <button onClick={handleDeleteSelectedGuests} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><Trash2 size={14}/> {t.deleteSelected} ({selectedGuestIds.size})</button>
-                          )}
+                          {selectedGuestIds.size > 0 && <button onClick={handleDeleteSelectedGuests} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><Trash2 size={14}/> {t.deleteSelected} ({selectedGuestIds.size})</button>}
                           <button onClick={handleGenerateDummy} className="bg-yellow-600/20 text-yellow-400 border border-yellow-600/50 px-3 py-2 rounded-lg text-xs hover:bg-yellow-600 hover:text-white transition-colors flex items-center gap-1"><Database size={14}/> {t.genDummy}</button>
                           <button onClick={handleClearAllGuests} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1"><Trash2 size={14}/> {t.clearGuests}</button>
                       </div>
-                      
                       <form onSubmit={handleAddGuest} className="flex gap-2 flex-wrap mb-4 bg-white/5 p-2 rounded-lg">
                           <div className="w-full text-xs text-white/40 mb-1">{t.addGuest}</div>
                           <input placeholder="Name" value={adminForm.name} onChange={e=>setAdminForm({...adminForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]"/>
@@ -1160,67 +832,35 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                           <input placeholder="Email" value={adminForm.email} onChange={e=>setAdminForm({...adminForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-32 text-xs outline-none"/>
                           <input placeholder="Dept" value={adminForm.dept} onChange={e=>setAdminForm({...adminForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none"/>
                           <input placeholder="T" value={adminForm.table} onChange={e=>setAdminForm({...adminForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center"/>
-                          {/* 🔥 V147: Removed Seat Input */}
                           <button className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
                       </form>
-                      
-                      <div className="flex justify-between text-xs text-white/50">
-                          <span>Total: {attendees.length}</span>
-                          <span className="text-emerald-400">Arrived: {attendees.filter(x=>x.checkedIn).length}</span>
-                      </div>
+                      <div className="flex justify-between text-xs text-white/50"><span>Total: {attendees.length}</span><span className="text-emerald-400">Arrived: {attendees.filter(x=>x.checkedIn).length}</span></div>
                   </div>
-
-                  {/* 🔥 V140: Added overflow-x-auto for horizontal scrolling */}
                   <div className="flex-1 overflow-y-auto overflow-x-auto bg-white/5 rounded-b-xl p-2">
                       <table className="w-full text-left border-collapse min-w-[800px]">
                           <thead className="text-xs text-white/40 uppercase border-b border-white/10">
                               <tr>
                                   <th className="p-3 w-10 text-center"><button onClick={toggleAllGuests} className="hover:text-white transition-colors">{filteredList.length > 0 && filteredList.every(p => selectedGuestIds.has(p.id)) ? <CheckSquare size={16}/> : <Square size={16}/>}</button></th>
-                                  <th className="p-3 text-left">Name</th>
-                                  {/* 🔥 V140: Removed 'hidden' class to force show columns */}
-                                  <th className="p-3 text-left">Phone</th>
-                                  <th className="p-3 text-left">Email</th>
-                                  <th className="p-3 text-left">Dept</th>
-                                  <th className="p-3 text-center">Table</th>
-                                  {/* 🔥 V147: Removed Seat Column */}
-                                  <th className="p-3 text-left text-yellow-500">{t.wonPrize}</th>
-                                  <th className="p-3 text-center">Status</th>
-                                  <th className="p-3 text-center">Del</th>
+                                  <th className="p-3 text-left">Name</th><th className="p-3 text-left">Phone</th><th className="p-3 text-left">Email</th><th className="p-3 text-left">Dept</th><th className="p-3 text-center">Table</th><th className="p-3 text-left text-yellow-500">{t.wonPrize}</th><th className="p-3 text-center">Status</th><th className="p-3 text-center">Del</th>
                               </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
                               {filteredList.map(p=>{
                                   const winnerRec = drawHistory.find(h=>h.attendeeId===p.id);
-                                  let displayTable = p.table; let displaySeat = p.seat; let displayName = p.name;
-                                  if (!displayTable || !displaySeat) {
-                                      const match = seatingPlan.find(s => (s.email && normalizeEmail(s.email) === normalizeEmail(p.email)) || (s.phone && normalizePhone(s.phone) === normalizePhone(p.phone)));
-                                      if (match) { displayTable = match.table; displaySeat = match.seat; if (displayName === "VIP Guest") displayName = match.name; }
-                                  }
+                                  // 🔥 V155: FORCE SYNC DISPLAY
+                                  const match = seatingPlan.find(s => (s.email && normalizeEmail(s.email) === normalizeEmail(p.email)) || (s.phone && normalizePhone(s.phone) === normalizePhone(p.phone)));
+                                  const displayTable = match ? match.table : p.table;
+                                  const displaySeat = match ? match.seat : p.seat;
+                                  const displayName = (p.name === "VIP Guest" && match) ? match.name : p.name;
                                   const isSelected = selectedGuestIds.has(p.id);
                                   return (
                                       <tr key={p.id} className={`hover:bg-white/5 text-sm transition-colors ${isSelected ? 'bg-white/10' : ''}`}>
                                           <td className="p-3 text-center"><button onClick={() => toggleGuestSelection(p.id)} className={`transition-colors ${isSelected ? 'text-blue-400' : 'text-white/20 hover:text-white/50'}`}>{isSelected ? <CheckSquare size={16}/> : <Square size={16}/>}</button></td>
-                                          <td className="p-3">
-                                              <div className="flex items-center gap-3 font-bold">
-                                                  {p.photo ? <img src={p.photo} className="w-8 h-8 rounded-full object-cover"/> : <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><User size={14}/></div>}
-                                                  {displayName}
-                                              </div>
-                                          </td>
-                                          {/* 🔥 V140: Removed 'hidden' class */}
-                                          <td className="p-3 text-white/60 text-left">{p.phone}</td>
-                                          <td className="p-3 text-white/60 text-left max-w-[150px] truncate" title={p.email}>{p.email}</td>
-                                          <td className="p-3 text-white/60 text-left">{p.dept}</td>
-                                          
-                                          <td className={`p-3 font-mono text-center text-lg ${!p.table ? 'text-blue-300 italic' : 'text-blue-400'}`}>{displayTable || '-'}</td>
-                                          {/* 🔥 V147: Removed Seat Cell */}
+                                          <td className="p-3"><div className="flex items-center gap-3 font-bold">{p.photo ? <img src={p.photo} className="w-8 h-8 rounded-full object-cover"/> : <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><User size={14}/></div>}{displayName}</div></td>
+                                          <td className="p-3 text-white/60 text-left">{p.phone}</td><td className="p-3 text-white/60 text-left max-w-[150px] truncate" title={p.email}>{p.email}</td><td className="p-3 text-white/60 text-left">{p.dept}</td>
+                                          <td className={`p-3 font-mono text-center text-lg ${!displayTable ? 'text-blue-300 italic' : 'text-blue-400'}`}>{displayTable || '-'}</td>
                                           <td className="p-3 text-yellow-400 font-bold text-left">{winnerRec ? winnerRec.prize : '-'}</td>
-                                          <td className="p-3 text-center">
-                                              {!p.checkedIn ? 
-                                                  <button onClick={()=>toggleCheckIn(p)} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-1 rounded text-xs hover:bg-red-600 hover:text-white transition-colors">{t.pendingCheckin}</button> 
-                                                  : 
-                                                  <button onClick={()=>toggleCancelCheckIn(p)} className="bg-green-600/20 text-green-400 border border-green-600/50 px-3 py-1 rounded text-xs hover:bg-red-900/50 hover:text-red-300 transition-colors">{t.checkedInStatus}</button>
-                                              }
-                                          </td>
+                                          <td className="p-3 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-1 rounded text-xs hover:bg-red-600 hover:text-white transition-colors">{t.pendingCheckin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-green-600/20 text-green-400 border border-green-600/50 px-3 py-1 rounded text-xs hover:bg-red-900/50 hover:text-red-300 transition-colors">{t.checkedInStatus}</button>}</td>
                                           <td className="p-3 text-center"><button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10 transition-colors"><Trash2 size={16}/></button></td>
                                       </tr>
                                   );
@@ -1230,22 +870,16 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                   </div>
               </div>
           )}
-
           {tab==='seating' && (
               <div className="w-full flex-1 flex flex-col gap-4">
                   <div className="flex gap-2">
                       <input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none text-sm"/>
-                      {selectedSeatIds.size > 0 && (
-                          <button onClick={handleDeleteSelectedSeats} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><Trash2 size={14}/> {t.deleteSelected} ({selectedSeatIds.size})</button>
-                      )}
+                      {selectedSeatIds.size > 0 && <button onClick={handleDeleteSelectedSeats} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><Trash2 size={14}/> {t.deleteSelected} ({selectedSeatIds.size})</button>}
                       <label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label>
                       <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button>
-                      {/* 🔥 V85: Dummy Seating Button */}
                       <button onClick={handleGenerateDummySeating} className="bg-purple-600/20 text-purple-400 border border-purple-600/50 px-3 py-2 rounded-lg text-xs hover:bg-purple-600 hover:text-white transition-colors flex items-center gap-1"><Database size={14}/> {t.genDummySeat}</button>
-                      {/* 🔥 V125: Clear Seat with Text */}
                       <button onClick={handleClearSeating} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><Trash2 size={14}/> {t.clearSeats}</button>
                   </div>
-                  
                   <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2">
                       <div className="w-full text-xs text-white/40 mb-1">{t.addSeat}</div>
                       <input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" />
@@ -1253,24 +887,14 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
                       <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
                       <input placeholder={t.table} value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
-                      {/* 🔥 V147: Removed Seat Input */}
                       <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
                   </div>
-
-                  <div className="flex-1 overflow-y-auto bg-white/5 rounded-xl p-2">
+                  <div className="flex-1 overflow-y-auto overflow-x-auto bg-white/5 rounded-xl p-2">
                       <table className="w-full text-left border-collapse min-w-[800px]">
                           <thead className="text-xs text-white/40 uppercase border-b border-white/10">
                               <tr>
                                   <th className="p-3 w-10 text-center"><button onClick={toggleAllSeats} className="hover:text-white transition-colors">{filteredSeat.length > 0 && filteredSeat.every(s => selectedSeatIds.has(s.id)) ? <CheckSquare size={16}/> : <Square size={16}/>}</button></th>
-                                  <th className="p-3 text-left">Name</th>
-                                  {/* 🔥 V140: Removed 'hidden' class to force show columns */}
-                                  <th className="p-3 text-left">Phone</th>
-                                  <th className="p-3 text-left">Email</th>
-                                  <th className="p-3 text-left">Dept</th>
-                                  <th className="p-3 text-center">Table</th>
-                                  {/* 🔥 V147: Removed Seat Column */}
-                                  <th className="p-3 text-center">Status</th>
-                                  <th className="p-3 text-center">Del</th>
+                                  <th className="p-3 text-left">Name</th><th className="p-3 text-left">Phone</th><th className="p-3 text-left">Email</th><th className="p-3 text-left">Dept</th><th className="p-3 text-center">Table</th><th className="p-3 text-center">Status</th><th className="p-3 text-center">Del</th>
                               </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
@@ -1281,14 +905,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   return (
                                       <tr key={s.id} className={`hover:bg-white/5 text-sm transition-colors ${isSelected ? 'bg-white/10' : ''}`}>
                                           <td className="p-3 text-center"><button onClick={() => toggleSeatSelection(s.id)} className={`transition-colors ${isSelected ? 'text-blue-400' : 'text-white/20 hover:text-white/50'}`}>{isSelected ? <CheckSquare size={16}/> : <Square size={16}/>}</button></td>
-                                          <td className="p-3 font-bold text-left">{s.name}</td>
-                                          {/* 🔥 V140: Removed 'hidden' class */}
-                                          <td className="p-3 text-xs text-white/60 text-left">{s.phone}</td>
-                                          <td className="p-3 text-xs text-white/60 text-left">{s.email}</td>
-                                          <td className="p-3 text-xs text-white/60 text-left">{s.dept}</td>
-                                          
-                                          <td className="p-3 font-mono text-blue-400 text-center text-lg">{s.table}</td>
-                                          {/* 🔥 V147: Removed Seat Cell */}
+                                          <td className="p-3 font-bold text-left">{s.name}</td><td className="p-3 text-xs text-white/60 text-left">{s.phone}</td><td className="p-3 text-xs text-white/60 text-left">{s.email}</td><td className="p-3 text-xs text-white/60 text-left">{s.dept}</td><td className="p-3 font-mono text-blue-400 text-center text-lg">{s.table}</td>
                                           <td className="p-3 text-center">{isCheckedIn ? <span className="text-green-400 bg-green-400/20 px-2 py-1 rounded text-xs border border-green-400/50">已到場</span> : <span className="text-white/30 text-xs border border-white/10 px-2 py-1 rounded">未簽到</span>}</td>
                                           <td className="p-3 text-center"><button onClick={()=>handleDeleteSeating(s.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10"><Trash2 size={16}/></button></td>
                                       </tr>
