@@ -39,13 +39,17 @@ try {
 
 const ADMIN_PASSWORD = "admin"; 
 
+// --- Default Avatar (Base64 for stability) ---
+const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23555555' stroke='%23333333' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
+
+
 // ==========================================
 // 2. 翻譯與資料
 // ==========================================
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 隨機音樂版",
+    title: "Tesla Annual Dinner", sub: "2025 音效修復版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "請輸入電話或 Email",
@@ -75,7 +79,7 @@ const translations = {
     pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取", confirmSave: "確認儲存"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Random Music",
+    title: "Tesla Annual Dinner", sub: "2025 Sound Fixed",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Enter Phone or Email",
@@ -100,7 +104,7 @@ const translations = {
     genDummySeat: "Gen 100 Dummy Seats", clearSeats: "Clear Seats", confirmClearSeats: "Delete ALL seating plan?",
     checkSeat: "Check Seat", inputHint: "Enter Phone or Email", backToReg: "Back to Register",
     seatResult: "Result", status: "Status", notCheckedIn: "Not In", registered: "Registered", notRegistered: "Not Reg",
-    youWon: "Congratulations!", nextRound: "PRESS ENTER >>> NEXT",
+    youWon: "Congratulations!", nextRound: "Press ENTER or Click Save",
     winnerLabel: "WINNER", saveTicket: "Download Ticket", screenshotHint: "Please screenshot this screen as your entry pass",
     pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "Delete Selected", confirmSave: "Confirm Save"
   }
@@ -170,11 +174,7 @@ const Confetti = () => {
 
 const SoundController = {
   ctx: null, oscList: [], bgm: null,
-  // 🔥 V157: Music Playlist
-  playlist: [
-      '/draw_music_1.m4a', '/draw_music_2.m4a', '/draw_music_3.m4a', '/draw_music_4.m4a', '/draw_music_5.m4a',
-      '/draw_music_6.m4a', '/draw_music_7.m4a', '/draw_music_8.m4a', '/draw_music_9.m4a', '/draw_music_10.m4a'
-  ],
+  playlist: ['/draw_music.m4a'], 
   init: function() { 
       const AC = window.AudioContext || window.webkitAudioContext; 
       if (AC) this.ctx = new AC(); 
@@ -183,22 +183,69 @@ const SoundController = {
       if (!this.ctx) this.init(); if (this.ctx.state === 'suspended') this.ctx.resume();
       this.stopAll();
       
-      // 🔥 V157: Pick random track
-      const randomIndex = Math.floor(Math.random() * this.playlist.length);
-      const track = this.playlist[randomIndex];
-      
+      const track = this.playlist[Math.floor(Math.random() * this.playlist.length)];
       this.bgm = new Audio(track);
       this.bgm.loop = true;
-      this.bgm.currentTime = 0;
-      this.bgm.play().catch(e => console.log("Music play blocked:", e));
+      this.bgm.volume = 1.0;
+
+      const playFallback = () => {
+          console.warn("Music failed/blocked, playing tense synth fallback.");
+          this.playTenseSynth();
+      };
+
+      this.bgm.onerror = playFallback;
+      
+      this.bgm.play().catch((e) => {
+          console.log("Audio play blocked/failed:", e);
+          playFallback();
+      });
+  },
+  playTenseSynth: function() {
+      if (!this.ctx) return;
+      
+      this.oscList.forEach(o => o.stop());
+      this.oscList = [];
+
+      let beatDuration = 0.15; 
+      let nextTime = this.ctx.currentTime;
+      
+      const scheduleBeats = () => {
+          // 🔥 V162 Fix: Correctly check for stop condition
+          // If oscList is empty (cleared by stopAll), stop immediately.
+          if (this.oscList.length === 0 || this.oscList[0].stopped) return; 
+          
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          
+          osc.type = 'sine'; 
+          osc.frequency.setValueAtTime(800 + Math.random() * 200, nextTime);
+          
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          
+          g.gain.setValueAtTime(0.3, nextTime);
+          g.gain.exponentialRampToValueAtTime(0.001, nextTime + 0.1);
+          
+          osc.start(nextTime);
+          osc.stop(nextTime + 0.1);
+          
+          nextTime += beatDuration;
+          beatDuration = Math.max(0.05, beatDuration * 0.95);
+          
+          setTimeout(scheduleBeats, beatDuration * 1000);
+      };
+      
+      this.oscList.push({ stopped: false, stop: function(){ this.stopped = true; } });
+      scheduleBeats();
   },
   stopAll: function() { 
       this.oscList.forEach(o => o.stop()); 
       this.oscList = []; 
+      
       if (this.bgm) { 
           this.bgm.pause(); 
           this.bgm.currentTime = 0; 
-          this.bgm = null; // Clear to allow new random selection next time
+          this.bgm = null; 
       }
   },
   playWin: function() {
@@ -335,8 +382,14 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                     const guestIndex = i % list.length;
                     p = list[guestIndex];
                     isReal = true;
+                    // 🔥 V160 FIX: Allow 'data:' images (Base64) OR 'http' URLs. 
+                    const photoSrc = p.photo;
                     img = new Image();
-                    img.src = p.photo && p.photo.startsWith('http') ? p.photo : `https://i.pravatar.cc/300?u=${p.id}`;
+                    if (photoSrc && photoSrc.length > 50) { // Basic length check for valid image data
+                        img.src = photoSrc;
+                    } else {
+                        img.src = DEFAULT_AVATAR;
+                    }
                 } else {
                     p = { id: `dummy_${i}`, name: '?' };
                     isReal = false;
@@ -703,7 +756,11 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                         <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
                         <div className="relative mb-2">
                             <div className="absolute inset-0 bg-yellow-500/30 blur-3xl rounded-full animate-pulse"></div>
-                            {winner.photo ? <img src={winner.photo} className="relative w-[62vh] h-[62vh] rounded-full border-8 border-yellow-400 object-cover shadow-2xl"/> : <div className="w-[62vh] h-[62vh] rounded-full bg-neutral-800 flex items-center justify-center border-8 border-yellow-400 mb-8"><User size={150}/></div>}
+                            {/* 🔥 V160: Use DEFAULT_AVATAR if photo missing or invalid */}
+                            <img 
+                                src={winner.photo && winner.photo.length > 50 ? winner.photo : DEFAULT_AVATAR} 
+                                className="relative w-[62vh] h-[62vh] rounded-full border-8 border-yellow-400 object-cover shadow-2xl bg-neutral-800"
+                            />
                         </div>
                         <div className="flex flex-col items-center gap-2 mb-2">
                             <div className="flex flex-row items-center justify-center gap-5 bg-white/10 backdrop-blur-md px-8 py-2 rounded-full border border-white/20 shadow-xl">
@@ -724,7 +781,11 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                      <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500 z-20">
                         <div className="text-2xl text-white/50 font-bold mb-4 uppercase tracking-[0.3em]">{t.drawn}</div>
                         <div className="relative mb-6">
-                            {currentPrizeWinner.photo ? <img src={currentPrizeWinner.photo} className="w-[55vh] h-[55vh] rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover"/> : <div className="w-[55vh] h-[55vh] rounded-full bg-neutral-800 flex items-center justify-center border-8 border-gray-700 mb-8"><User size={100}/></div>}
+                            {/* 🔥 V160: Use DEFAULT_AVATAR */}
+                            <img 
+                                src={currentPrizeWinner.photo && currentPrizeWinner.photo.length > 50 ? currentPrizeWinner.photo : DEFAULT_AVATAR} 
+                                className="w-[55vh] h-[55vh] rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover bg-neutral-800"
+                            />
                         </div>
                         <h1 className="text-7xl font-black text-gray-400 mt-2">{currentPrizeWinner.name}</h1>
                         <div className="text-white/30 mt-4 text-xl">{t.winnerIs}</div>
@@ -793,7 +854,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
 
   useEffect(() => { if(!isScan) return; let s; const init = () => { if(window.Html5QrcodeScanner) { s=new window.Html5QrcodeScanner("reader",{fps:10,qrbox:250,videoConstraints:{facingMode:"environment"}},false); s.render(handleScan,()=>{}); }}; if(window.Html5QrcodeScanner) init(); else { const sc=document.createElement('script'); sc.src="https://unpkg.com/html5-qrcode"; sc.onload=init; document.body.appendChild(sc); } return ()=>{if(s)try{s.clear()}catch(e){}}; }, [isScan, handleScan]);
   const handleImportSeating = async (e) => { const file = e.target.files[0]; if(!file)return; const text = await file.text(); const lines = text.split(/\r\n|\n/).slice(1); const batch = writeBatch(db); lines.forEach(l => { const c = l.split(','); if(c.length>=5) { const ref = doc(collection(db, "seating_plan")); batch.set(ref, { name: c[0].trim(), phone: normalizePhone(c[1]), email: normalizeEmail(c[2]), dept: c[3]?.trim(), table: c[4]?.trim(), seat: c[5]?.trim()||'' }); } }); await batch.commit(); alert(t.importSuccess); };
-  const handleAddGuest = async (e) => { e.preventDefault(); if(!adminForm.name) return; const cleanPhone = normalizePhone(adminForm.phone); const cleanEmail = normalizeEmail(adminForm.email); const phoneExists = attendees.some(a => normalizePhone(a.phone) === cleanPhone && cleanPhone !== ''); const emailExists = attendees.some(a => normalizeEmail(a.email) === cleanEmail && cleanEmail !== ''); if (phoneExists) { alert(t.errPhone); return; } if (emailExists) { alert(t.errEmail); return; } let assignedTable = adminForm.table; let assignedSeat = adminForm.seat; let autoName = adminForm.name || "VIP Guest"; let autoDept = adminForm.dept || "-"; const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail && cleanEmail !== ''); const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone && cleanPhone !== ''); const match = emailMatch || phoneMatch; if (match) { if (!assignedTable) assignedTable = match.table; if (!assignedSeat) assignedSeat = match.seat; if (!adminForm.name) autoName = match.name; if (!adminForm.dept) autoDept = match.dept; } await addDoc(collection(db, "attendees"), { ...adminForm, name: autoName, dept: autoDept, phone: cleanPhone, email: cleanEmail, table: assignedTable, seat: assignedSeat, checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() }); setAdminForm({name:'',phone:'',email:'',dept:'',table:'',seat:''}); };
+  const handleAddGuest = async (e) => { e.preventDefault(); if(!adminForm.name) return; const cleanPhone = normalizePhone(adminForm.phone); const cleanEmail = normalizeEmail(adminForm.email); const phoneExists = attendees.some(a => normalizePhone(a.phone) === cleanPhone && cleanPhone !== ''); const emailExists = attendees.some(a => normalizeEmail(a.email) === cleanEmail && cleanEmail !== ''); if (phoneExists) { alert(t.errPhone); return; } if (emailExists) { alert(t.errEmail); return; } let assignedTable = adminForm.table; let assignedSeat = adminForm.seat; let autoName = adminForm.name || "VIP Guest"; let autoDept = adminForm.dept || "-"; const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail && cleanEmail !== ''); const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone && cleanPhone !== ''); const match = emailMatch || phoneMatch; if (match) { if (!assignedTable) assignedTable = match.table; if (!assignedSeat) assignedSeat = match.seat; if (!adminForm.name) autoName = match.name; if (!adminForm.dept) autoDept = match.dept; } await addDoc(collection(db, "attendees"), { ...adminForm, name: autoName, dept: autoDept, phone: cleanPhone, email: cleanEmail, table: assignedTable, seat: assignedSeat, photo: "", checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() }); setAdminForm({name:'',phone:'',email:'',dept:'',table:'',seat:''}); };
   const handleAddSeating = async (e) => { e.preventDefault(); if(!seatForm.table) return; if(db) await addDoc(collection(db, "seating_plan"), { name: seatForm.name, phone: normalizePhone(seatForm.phone), email: normalizeEmail(seatForm.email), dept: seatForm.dept, table: seatForm.table, seat: seatForm.seat }); setSeatForm({ name:'', phone:'', email: '', dept: '', table: '', seat: '' }); };
   const handleDeleteSeating = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "seating_plan", id)); };
   const toggleCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: !person.checkedIn, checkInTime: !person.checkedIn ? new Date().toISOString() : null }); };
