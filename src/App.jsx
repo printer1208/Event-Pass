@@ -338,33 +338,33 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.fillRect(0, 0, w, h);
             offCtx.fillStyle = '#fff';
             
-            // 🔥 V212: FORCE STRETCH LOGIC
-            // 1. Force Height: Font size will ALWAYS be 75% of canvas height.
-            const forcedFontSize = h * 0.75; 
+            // 🔥 V213: EXTREME FILL LOGIC
+            // 1. Force Height: Set font size to 120% of canvas height.
+            //    Fonts usually have padding (ascent/descent), so 1.2h ensures the VISIBLE letters fill ~85% of screen.
+            const forcedFontSize = h * 1.2; 
             
-            // 2. Set Font: Try Condensed fonts first, then fallback to heavy standards
+            // 2. Set Font: Use the heaviest condensed font available
             offCtx.font = `900 ${forcedFontSize}px 'Impact', 'Arial Black', 'Arial', sans-serif`;
             
-            // 3. Measure Width to calculate horizontal compression (squeeze)
+            // 3. Measure Width
             const textMetrics = offCtx.measureText("TESLA");
             const textRealWidth = textMetrics.width;
             
-            // 4. Calculate Scale Factor
-            // If text is wider than screen (w), shrink X scale to fit it perfectly (0.95 padding)
-            // If text is narrower, keep it normal (scaleX = 1) or stretch it (optional, but usually keeping aspect is better if it fits)
-            // Here we limit max width to 100% of screen.
-            let scaleX = 1;
-            if (textRealWidth > w) {
-                scaleX = w / textRealWidth;
-            }
+            // 4. Force Width Stretch: Calculate scaleX to make text fill exactly 95% of screen width.
+            //    This STRETCHES the text if it's too narrow, or shrinks it if too wide.
+            //    Result: The text ALWAYS spans the full width.
+            const targetWidth = w * 0.95;
+            const scaleX = targetWidth / textRealWidth;
             
             // 5. Draw Text with Transformation
             offCtx.save();
             offCtx.translate(w / 2, h / 2); // Move to center
-            offCtx.scale(scaleX, 1);        // Apply horizontal squeeze if needed
+            // Apply scaleX to force width, keep scaleY at 1 (since font size is already huge)
+            offCtx.scale(scaleX, 1);        
             offCtx.textAlign = 'center';
-            offCtx.textBaseline = 'middle';
-            offCtx.fillText("TESLA", 0, 0); // Draw at (0,0) relative to center
+            offCtx.textBaseline = 'middle'; // Crucial for vertical centering
+            // Offset y slightly if needed to center the visual weight of caps
+            offCtx.fillText("TESLA", 0, h * 0.05); 
             offCtx.restore();
             
             const imgData = offCtx.getImageData(0,0,w,h).data;
