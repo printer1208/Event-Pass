@@ -342,12 +342,14 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             // 🔥 V207: RESTORED textWidth DEFINITION HERE
             const textWidth = textMetrics.width;
             
-            // 🔥 V206: Aggressive scaling to fill black space (based on user feedback)
-            // Increased width ratio to 1.6 to push text to edges (overcoming internal font padding)
-            const widthRatio = (w * 1.6) / textWidth; 
+            // 🔥 V208: Fixed Display Issue - Reverted aggressive scaling
+            // Previous 1.6 widthRatio caused the text to overflow off-screen (clipping T and A).
+            // Using 0.95 ensures the text spans 95% of the screen width but stays visible.
+            const widthRatio = (w * 0.95) / textWidth; 
             const targetFontSizeFromWidth = testFontSize * widthRatio;
-            // Height: Increased to 2.5x to ensure height never limits the width expansion unless extreme
-            const targetFontSizeFromHeight = h * 2.5;
+            
+            // Limit height to 70% of screen to prevent vertical clipping and maintain aspect ratio
+            const targetFontSizeFromHeight = h * 0.7;
             
             const fontSize = Math.min(targetFontSizeFromWidth, targetFontSizeFromHeight);
             
