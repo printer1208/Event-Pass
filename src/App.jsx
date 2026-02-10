@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-// 🔥 V194: Fixed Unexpected Export Error (Ensured Component Closures)
+// 🔥 V207: Fixed ReferenceError (restored missing textWidth definition)
 import { 
   QrCode, Trophy, Plus, Search, Trash2, Camera, 
   ArrowRight, LogOut, Globe, Mail,
@@ -339,15 +339,15 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             // 🔥 V200: Added 'Verdana' and kept weight 900 for maximum blockiness
             offCtx.font = `900 ${testFontSize}px 'Arial Black', 'Verdana', sans-serif`;
             const textMetrics = offCtx.measureText("TESLA");
+            // 🔥 V207: RESTORED textWidth DEFINITION HERE
             const textWidth = textMetrics.width;
             
-            // 🔥 V204: More aggressive scaling logic
-            // Width: Use 1.0 (100%) instead of 0.9 to maximize width usage
-            const widthRatio = (w * 1.0) / textWidth; 
+            // 🔥 V206: Aggressive scaling to fill black space (based on user feedback)
+            // Increased width ratio to 1.6 to push text to edges (overcoming internal font padding)
+            const widthRatio = (w * 1.6) / textWidth; 
             const targetFontSizeFromWidth = testFontSize * widthRatio;
-            // Height: Allow font size to be 1.5x canvas height because fonts have vertical whitespace
-            // This pushes the letters to actually fill the screen vertically
-            const targetFontSizeFromHeight = h * 1.5;
+            // Height: Increased to 2.5x to ensure height never limits the width expansion unless extreme
+            const targetFontSizeFromHeight = h * 2.5;
             
             const fontSize = Math.min(targetFontSizeFromWidth, targetFontSizeFromHeight);
             
@@ -1025,6 +1025,52 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                           <td className="p-3 text-yellow-400 font-bold text-left">{winnerRec ? winnerRec.prize : '-'}</td>
                                           <td className="p-3 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-1 rounded text-xs hover:bg-red-600 hover:text-white transition-colors">{t.pendingCheckin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-green-600/20 text-green-400 border border-green-600/50 px-3 py-1 rounded text-xs hover:bg-red-900/50 hover:text-red-300 transition-colors">{t.checkedInStatus}</button>}</td>
                                           <td className="p-3 text-center"><button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10 transition-colors"><Trash2 size={16}/></button></td>
+                                      </tr>
+                                  );
+                              })}
+                          </tbody>
+                      </table>
+                  </div>
+              </div>
+          )}
+          {tab==='seating' && (
+              <div className="w-full flex-1 flex flex-col gap-4">
+                  <div className="flex gap-2">
+                      <input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none text-sm"/>
+                      {selectedSeatIds.size > 0 && <button onClick={handleDeleteSelectedSeats} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><Trash2 size={14}/> {t.deleteSelected} ({selectedSeatIds.size})</button>}
+                      <label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Upload size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label>
+                      <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><FileText size={16}/></button>
+                      <button onClick={handleGenerateDummySeating} className="bg-purple-600/20 text-purple-400 border border-purple-600/50 px-3 py-2 rounded-lg text-xs hover:bg-purple-600 hover:text-white transition-colors flex items-center gap-1"><Database size={14}/> {t.genDummySeat}</button>
+                      <button onClick={handleClearSeating} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><Trash2 size={14}/> {t.clearSeats}</button>
+                  </div>
+                  <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2">
+                      <div className="w-full text-xs text-white/40 mb-1">{t.addSeat}</div>
+                      <input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" />
+                      <input placeholder={t.phone} value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none" />
+                      <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
+                      <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
+                      <input placeholder={t.table} value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
+                      <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto overflow-x-auto bg-white/5 rounded-xl p-2">
+                      <table className="w-full text-left border-collapse min-w-[800px]">
+                          <thead className="text-xs text-white/40 uppercase border-b border-white/10">
+                              <tr>
+                                  <th className="p-3 w-10 text-center"><button onClick={toggleAllSeats} className="hover:text-white transition-colors">{filteredSeat.length > 0 && filteredSeat.every(s => selectedSeatIds.has(s.id)) ? <CheckCircle size={16}/> : <Circle size={16}/>}</button></th>
+                                  <th className="p-3 text-left">Name</th><th className="p-3 text-left">Phone</th><th className="p-3 text-left">Email</th><th className="p-3 text-left">Dept</th><th className="p-3 text-center">Table</th><th className="p-3 text-center">Status</th><th className="p-3 text-center">Del</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                              {filteredSeat.map(s=>{
+                                  const match = attendees.find(a => (s.phone && normalizePhone(a.phone) === normalizePhone(s.phone)) || (s.email && normalizeEmail(a.email) === normalizeEmail(s.email)));
+                                  const isCheckedIn = match?.checkedIn;
+                                  const isSelected = selectedSeatIds.has(s.id);
+                                  return (
+                                      <tr key={s.id} className={`hover:bg-white/5 text-sm transition-colors ${isSelected ? 'bg-white/10' : ''}`}>
+                                          <td className="p-3 text-center"><button onClick={() => toggleSeatSelection(s.id)} className={`transition-colors ${isSelected ? 'text-blue-400' : 'text-white/20 hover:text-white/50'}`}>{isSelected ? <CheckCircle size={16}/> : <Circle size={16}/>}</button></td>
+                                          <td className="p-3 font-bold text-left">{s.name}</td><td className="p-3 text-xs text-white/60 text-left">{s.phone}</td><td className="p-3 text-xs text-white/60 text-left">{s.email}</td><td className="p-3 text-xs text-white/60 text-left">{s.dept}</td><td className="p-3 font-mono text-blue-400 text-center text-lg">{s.table}</td>
+                                          <td className="p-3 text-center">{isCheckedIn ? <span className="text-green-400 bg-green-400/20 px-2 py-1 rounded text-xs border border-green-400/50">已到場</span> : <span className="text-white/30 text-xs border border-white/10 px-2 py-1 rounded">未簽到</span>}</td>
+                                          <td className="p-3 text-center"><button onClick={()=>handleDeleteSeating(s.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10"><Trash2 size={16}/></button></td>
                                       </tr>
                                   );
                               })}
