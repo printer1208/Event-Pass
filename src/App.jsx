@@ -319,9 +319,9 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             const h = canvas.height;
             if (w === 0 || h === 0) return; 
 
-            // 🔥 V200: Increased minParticles from 40 to 600 to ensure high resolution text
-            // Even if there are few guests, we need enough dots to make "E" and "A" legible.
-            const minParticles = 600; 
+            // 🔥 V204: Increased minParticles to 1500 to support larger text size
+            // Bigger text needs more dots to maintain definition and avoid gaps.
+            const minParticles = 1500; 
             const targetCount = list.length > 0 ? list.length : 100;
             // Use the larger of real count or min requirement to guarantee text legibility
             const totalParticles = Math.max(targetCount, minParticles);
@@ -341,9 +341,13 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             const textMetrics = offCtx.measureText("TESLA");
             const textWidth = textMetrics.width;
             
-            const widthRatio = (w * 0.9) / textWidth; 
+            // 🔥 V204: More aggressive scaling logic
+            // Width: Use 1.0 (100%) instead of 0.9 to maximize width usage
+            const widthRatio = (w * 1.0) / textWidth; 
             const targetFontSizeFromWidth = testFontSize * widthRatio;
-            const targetFontSizeFromHeight = h * 1.0;
+            // Height: Allow font size to be 1.5x canvas height because fonts have vertical whitespace
+            // This pushes the letters to actually fill the screen vertically
+            const targetFontSizeFromHeight = h * 1.5;
             
             const fontSize = Math.min(targetFontSizeFromWidth, targetFontSizeFromHeight);
             
@@ -400,7 +404,8 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                     // 🔥 V188: Use window.Image here too
                     const photoSrc = p.photo;
                     img = new window.Image();
-                    if (photoSrc && photoSrc.length > 50) { 
+                    // 🔥 V203: Relaxed length check to > 20 or startsWith http to support Dummy Data URLs
+                    if (photoSrc && (photoSrc.length > 20 || photoSrc.startsWith('http'))) { 
                         img.src = photoSrc;
                     } else {
                         img.src = DEFAULT_AVATAR;
@@ -847,8 +852,9 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                         <div className="relative mb-0">
                             <div className="absolute inset-0 bg-yellow-500/30 blur-3xl rounded-full animate-pulse"></div>
                             {/* 🔥 V197: Winner Photo Enlarged to 72vh with z-index for layering */}
+                            {/* 🔥 V203: Relaxed length check to > 20 or startsWith http to support Dummy Data URLs */}
                             <img 
-                                src={winner.photo && winner.photo.length > 50 ? winner.photo : DEFAULT_AVATAR} 
+                                src={winner.photo && (winner.photo.length > 20 || winner.photo.startsWith('http')) ? winner.photo : DEFAULT_AVATAR} 
                                 className="relative w-[72vh] h-[72vh] rounded-full border-8 border-yellow-400 object-cover shadow-2xl bg-neutral-800 z-10"
                             />
                         </div>
@@ -875,8 +881,9 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                         <div className="text-2xl text-white/50 font-bold mb-0 uppercase tracking-[0.3em] relative z-20 top-4 bg-black/30 px-4 rounded-full backdrop-blur-sm">{t.drawn}</div>
                         <div className="relative mb-0">
                             {/* 🔥 V197: Drawn Photo Enlarged to 68vh */}
+                            {/* 🔥 V203: Relaxed length check to > 20 or startsWith http to support Dummy Data URLs */}
                             <img 
-                                src={currentPrizeWinner.photo && currentPrizeWinner.photo.length > 50 ? currentPrizeWinner.photo : DEFAULT_AVATAR} 
+                                src={currentPrizeWinner.photo && (currentPrizeWinner.photo.length > 20 || currentPrizeWinner.photo.startsWith('http')) ? currentPrizeWinner.photo : DEFAULT_AVATAR} 
                                 className="w-[68vh] h-[68vh] rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover bg-neutral-800 z-10 relative"
                             />
                         </div>
