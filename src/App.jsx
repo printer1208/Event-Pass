@@ -339,20 +339,20 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.fillStyle = '#fff';
             
             const testFontSize = 100;
-            // 🔥 V211: Switched to 'Impact' (Condensed Font) to maximize height within screen width
-            // Impact is taller, so fitting it to width makes it look much bigger vertically.
+            // 🔥 V211: Switch to 'Impact' (Condensed/Tall font) to maximize screen coverage
+            // Impact is much narrower, so fitting it to the screen width results in a MUCH taller/larger font.
             offCtx.font = `900 ${testFontSize}px Impact, 'Arial Black', sans-serif`;
             const textMetrics = offCtx.measureText("TESLA");
             // 🔥 V207: RESTORED textWidth DEFINITION HERE
             const textWidth = textMetrics.width;
             
-            // 🔥 V211: Maximize Scaling
-            // Width: Use 1.0 (100%) to fill entire width. Impact font prevents horizontal clipping issues.
+            // 🔥 V211: Maximize Scaling Logic
+            // 1. Force Width to 100% (1.0). Since Impact is narrow, this pushes the font size up.
             const widthRatio = (w * 1.0) / textWidth; 
             const targetFontSizeFromWidth = testFontSize * widthRatio;
             
-            // Limit height to 90% of screen (increased from 80%) to use nearly all vertical space
-            const targetFontSizeFromHeight = h * 0.9;
+            // 2. Allow Height to take up 85% of the canvas.
+            const targetFontSizeFromHeight = h * 0.85;
             
             const fontSize = Math.min(targetFontSizeFromWidth, targetFontSizeFromHeight);
             
