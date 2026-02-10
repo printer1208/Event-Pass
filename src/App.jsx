@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-// 🔥 V207: Fixed ReferenceError (restored missing textWidth definition)
+// 🔥 V210: Full Rewrite to Fix EOF Error & Applied V209 Visual Fixes
 import { 
   QrCode, Trophy, Plus, Search, Trash2, Camera, 
   ArrowRight, LogOut, Globe, Mail,
@@ -311,7 +311,10 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             if (container.clientWidth === 0 || container.clientHeight === 0) return;
             canvas.width = container.clientWidth; 
             canvas.height = container.clientHeight; 
-            initParticles();
+            // 🔥 V209: Ensure fonts are ready before initializing to prevent wrong text measurements
+            document.fonts.ready.then(() => {
+                initParticles();
+            });
         };
         
         const initParticles = () => {
@@ -336,24 +339,24 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.fillStyle = '#fff';
             
             const testFontSize = 100;
-            // 🔥 V200: Added 'Verdana' and kept weight 900 for maximum blockiness
-            offCtx.font = `900 ${testFontSize}px 'Arial Black', 'Verdana', sans-serif`;
+            // 🔥 V209: Switched to 'Verdana' (wider font) and kept 900 weight for best visibility with low particle count
+            offCtx.font = `900 ${testFontSize}px Verdana, 'Arial Black', sans-serif`;
             const textMetrics = offCtx.measureText("TESLA");
             // 🔥 V207: RESTORED textWidth DEFINITION HERE
             const textWidth = textMetrics.width;
             
-            // 🔥 V208: Fixed Display Issue - Reverted aggressive scaling
-            // Previous 1.6 widthRatio caused the text to overflow off-screen (clipping T and A).
-            // Using 0.95 ensures the text spans 95% of the screen width but stays visible.
-            const widthRatio = (w * 0.95) / textWidth; 
+            // 🔥 V209: Optimized Scaling - Use 1.0 (100%) width and 0.8 (80%) height
+            // This maximizes size without clipping (unlike 1.6) and is bigger than 0.95/0.7
+            const widthRatio = (w * 1.0) / textWidth; 
             const targetFontSizeFromWidth = testFontSize * widthRatio;
             
-            // Limit height to 70% of screen to prevent vertical clipping and maintain aspect ratio
-            const targetFontSizeFromHeight = h * 0.7;
+            // Limit height to 80% of screen (increased from 70%)
+            const targetFontSizeFromHeight = h * 0.8;
             
             const fontSize = Math.min(targetFontSizeFromWidth, targetFontSizeFromHeight);
             
-            offCtx.font = `900 ${fontSize}px 'Arial Black', 'Verdana', sans-serif`; 
+            // Apply final font
+            offCtx.font = `900 ${fontSize}px Verdana, 'Arial Black', sans-serif`; 
             offCtx.textAlign = 'center';
             offCtx.textBaseline = 'middle';
             offCtx.fillText("TESLA", w / 2, h / 2);
@@ -371,8 +374,9 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             const areaPerPerson = totalWhiteArea / totalParticles;
             let particleSize = Math.floor(Math.sqrt(areaPerPerson));
             
+            // 🔥 V209: Clamp particle size to reasonable limits to ensure text shape is maintained
             if(particleSize < 4) particleSize = 4; 
-            if(particleSize > 500) particleSize = 500; 
+            if(particleSize > 100) particleSize = 100; // Cap max size to prevent overly blocky look
 
             const step = particleSize;
             let validPoints = [];
@@ -1189,7 +1193,6 @@ export default function App() {
          <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
             <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1538099130811-745e64318258?q=80&w=2648&auto=format&fit=crop')] bg-cover bg-center opacity-20"></div>
             <div className="z-10 bg-neutral-900/80 p-8 md:p-12 rounded-3xl border border-white/10 backdrop-blur-xl shadow-2xl max-w-4xl w-full text-center">
-               {/* 🔥 V198: Changed font-black (900) to font-bold (700) */}
                <h1 className="text-5xl md:text-7xl font-bold mb-4 tracking-tighter bg-gradient-to-r from-red-600 to-red-400 bg-clip-text text-transparent">{t.title}</h1>
                <p className="text-xl text-white/50 mb-12 tracking-[0.5em] uppercase">{t.sub}</p>
                
