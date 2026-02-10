@@ -339,24 +339,25 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.fillStyle = '#fff';
             
             const testFontSize = 100;
-            // 🔥 V209: Switched to 'Verdana' (wider font) and kept 900 weight for best visibility with low particle count
-            offCtx.font = `900 ${testFontSize}px Verdana, 'Arial Black', sans-serif`;
+            // 🔥 V211: Switched to 'Impact' (Condensed Font) to maximize height within screen width
+            // Impact is taller, so fitting it to width makes it look much bigger vertically.
+            offCtx.font = `900 ${testFontSize}px Impact, 'Arial Black', sans-serif`;
             const textMetrics = offCtx.measureText("TESLA");
             // 🔥 V207: RESTORED textWidth DEFINITION HERE
             const textWidth = textMetrics.width;
             
-            // 🔥 V209: Optimized Scaling - Use 1.0 (100%) width and 0.8 (80%) height
-            // This maximizes size without clipping (unlike 1.6) and is bigger than 0.95/0.7
+            // 🔥 V211: Maximize Scaling
+            // Width: Use 1.0 (100%) to fill entire width. Impact font prevents horizontal clipping issues.
             const widthRatio = (w * 1.0) / textWidth; 
             const targetFontSizeFromWidth = testFontSize * widthRatio;
             
-            // Limit height to 80% of screen (increased from 70%)
-            const targetFontSizeFromHeight = h * 0.8;
+            // Limit height to 90% of screen (increased from 80%) to use nearly all vertical space
+            const targetFontSizeFromHeight = h * 0.9;
             
             const fontSize = Math.min(targetFontSizeFromWidth, targetFontSizeFromHeight);
             
             // Apply final font
-            offCtx.font = `900 ${fontSize}px Verdana, 'Arial Black', sans-serif`; 
+            offCtx.font = `900 ${fontSize}px Impact, 'Arial Black', sans-serif`; 
             offCtx.textAlign = 'center';
             offCtx.textBaseline = 'middle';
             offCtx.fillText("TESLA", w / 2, h / 2);
