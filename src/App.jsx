@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+// 🔥 V194: Fixed Unexpected Export Error (Ensured Component Closures)
 import { 
-  Users, QrCode, Trophy, Download, Plus, CheckCircle, 
-  XCircle, Search, Trash2, ScanLine, Camera, 
-  ArrowRight, UserPlus, LogOut, Globe, Mail,
-  Lock, ChevronLeft, AlertTriangle, Loader2, Phone, User,
-  Cloud, Zap, Image as ImageIcon, MonitorPlay, Aperture, Gift,
-  UserCheck, UserX, Star, StarOff, Armchair, Edit3, Upload, FileText, Play, RotateCcw, Grid, Briefcase, Database, CheckSquare, Square, Save
+  QrCode, Trophy, Plus, Search, Trash2, Camera, 
+  ArrowRight, LogOut, Globe, Mail,
+  ChevronLeft, ChevronRight, AlertTriangle, Phone, User,
+  Monitor, Gift,
+  UserCheck, MapPin, Upload, FileText, Play, RefreshCw, Database, CheckCircle, Circle, Save
 } from 'lucide-react';
 
 // --- Firebase ---
@@ -42,14 +42,21 @@ const ADMIN_PASSWORD = "admin";
 // --- Default Avatar (Base64 for stability) ---
 const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23555555' stroke='%23333333' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
 
+// ==========================================
+// 2. Gemini AI Service (Disabled for Stability)
+// ==========================================
+const GeminiService = {
+  async generateText(prompt) { return ""; },
+  async generateSpeech(text) { return null; }
+};
 
 // ==========================================
-// 2. 翻譯與資料
+// 3. 翻譯與資料
 // ==========================================
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 音效修復版",
+    title: "Tesla Annual Dinner", sub: "2025 穩定版",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "請輸入電話或 Email",
@@ -74,12 +81,13 @@ const translations = {
     genDummySeat: "生成 100 筆測試座位", clearSeats: "清空座位表", confirmClearSeats: "確定要清空所有座位表嗎？",
     checkSeat: "查詢座位", inputHint: "輸入電話或 Email 查詢", backToReg: "返回登記",
     seatResult: "查詢結果", status: "狀態", notCheckedIn: "未簽到", registered: "已登記", notRegistered: "未登記",
-    youWon: "恭喜獲得", nextRound: "按 ENTER 進入下一輪",
+    youWon: "恭喜獲得", nextRound: "已自動存檔・按 ENTER 繼續",
     winnerLabel: "得主", saveTicket: "下載入場憑證", screenshotHint: "請截圖保存此畫面作為入場憑證",
-    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取", confirmSave: "確認儲存"
+    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取", confirmSave: "確認儲存",
+    uploadBtn: "上傳照片", photoBtn: "拍照"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Sound Fixed",
+    title: "Tesla Annual Dinner", sub: "2025 Stable",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Enter Phone or Email",
@@ -104,30 +112,34 @@ const translations = {
     genDummySeat: "Gen 100 Dummy Seats", clearSeats: "Clear Seats", confirmClearSeats: "Delete ALL seating plan?",
     checkSeat: "Check Seat", inputHint: "Enter Phone or Email", backToReg: "Back to Register",
     seatResult: "Result", status: "Status", notCheckedIn: "Not In", registered: "Registered", notRegistered: "Not Reg",
-    youWon: "Congratulations!", nextRound: "Press ENTER or Click Save",
+    youWon: "Congratulations!", nextRound: "AUTO SAVED • PRESS ENTER >>> NEXT",
     winnerLabel: "WINNER", saveTicket: "Download Ticket", screenshotHint: "Please screenshot this screen as your entry pass",
-    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "Delete Selected", confirmSave: "Confirm Save"
+    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "Delete Selected", confirmSave: "Confirm Save",
+    uploadBtn: "Upload", photoBtn: "Take Photo"
   }
 };
 
 // ==========================================
-// 3. 工具與基礎組件
+// 4. 工具與基礎組件
 // ==========================================
 
 const normalizePhone = (p) => String(p || '').replace(/[^0-9]/g, '');
 const normalizeEmail = (e) => String(e || '').trim().toLowerCase();
 const compressImage = (source, isFile = true) => {
     return new Promise((resolve) => {
-        const img = new Image();
+        // 🔥 V188: Use window.Image to avoid conflict with imports
+        const img = new window.Image();
         img.onload = () => {
             const canvas = document.createElement('canvas');
-            const MAX_WIDTH = 300;
+            // 🔥 V201: Increased MAX_WIDTH from 300 to 800 for clearer photos on large projector screens
+            const MAX_WIDTH = 800; 
             const scaleSize = MAX_WIDTH / img.width;
             canvas.width = MAX_WIDTH;
             canvas.height = img.height * scaleSize;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            resolve(canvas.toDataURL('image/jpeg', 0.6)); 
+            // 🔥 V201: Increased quality to 0.7
+            resolve(canvas.toDataURL('image/jpeg', 0.7)); 
         };
         if(isFile) {
             const reader = new FileReader();
@@ -142,6 +154,8 @@ const StyleInjector = () => {
     document.body.style.backgroundColor = "#000000";
     document.body.style.color = "#ffffff";
     document.body.style.margin = "0";
+    document.body.style.fontFamily = "'Universal Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
+    
     if (!document.querySelector('#tailwind-cdn')) {
       const script = document.createElement('script');
       script.id = 'tailwind-cdn';
@@ -210,8 +224,6 @@ const SoundController = {
       let nextTime = this.ctx.currentTime;
       
       const scheduleBeats = () => {
-          // 🔥 V162 Fix: Correctly check for stop condition
-          // If oscList is empty (cleared by stopAll), stop immediately.
           if (this.oscList.length === 0 || this.oscList[0].stopped) return; 
           
           const osc = this.ctx.createOscillator();
@@ -307,9 +319,11 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             const h = canvas.height;
             if (w === 0 || h === 0) return; 
 
-            // Dynamic density for max size
-            const minParticles = 40; 
+            // 🔥 V200: Increased minParticles from 40 to 600 to ensure high resolution text
+            // Even if there are few guests, we need enough dots to make "E" and "A" legible.
+            const minParticles = 600; 
             const targetCount = list.length > 0 ? list.length : 100;
+            // Use the larger of real count or min requirement to guarantee text legibility
             const totalParticles = Math.max(targetCount, minParticles);
             
             const offCanvas = document.createElement('canvas');
@@ -322,17 +336,18 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.fillStyle = '#fff';
             
             const testFontSize = 100;
-            offCtx.font = `900 ${testFontSize}px sans-serif`;
+            // 🔥 V200: Added 'Verdana' and kept weight 900 for maximum blockiness
+            offCtx.font = `900 ${testFontSize}px 'Arial Black', 'Verdana', sans-serif`;
             const textMetrics = offCtx.measureText("TESLA");
             const textWidth = textMetrics.width;
             
-            const widthRatio = (w * 1.3) / textWidth; 
+            const widthRatio = (w * 0.9) / textWidth; 
             const targetFontSizeFromWidth = testFontSize * widthRatio;
             const targetFontSizeFromHeight = h * 1.0;
             
             const fontSize = Math.min(targetFontSizeFromWidth, targetFontSizeFromHeight);
             
-            offCtx.font = `900 ${fontSize}px sans-serif`; 
+            offCtx.font = `900 ${fontSize}px 'Arial Black', 'Verdana', sans-serif`; 
             offCtx.textAlign = 'center';
             offCtx.textBaseline = 'middle';
             offCtx.fillText("TESLA", w / 2, h / 2);
@@ -382,10 +397,10 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                     const guestIndex = i % list.length;
                     p = list[guestIndex];
                     isReal = true;
-                    // 🔥 V160 FIX: Allow 'data:' images (Base64) OR 'http' URLs. 
+                    // 🔥 V188: Use window.Image here too
                     const photoSrc = p.photo;
-                    img = new Image();
-                    if (photoSrc && photoSrc.length > 50) { // Basic length check for valid image data
+                    img = new window.Image();
+                    if (photoSrc && photoSrc.length > 50) { 
                         img.src = photoSrc;
                     } else {
                         img.src = DEFAULT_AVATAR;
@@ -612,6 +627,22 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
       try { if (!db) throw new Error("Firebase not initialized"); const docRef = await addDoc(collection(db, "attendees"), finalGuestData); setNewId(docRef.id); setStep(2); } catch (error) { console.error(error); setErr("Network Error."); } setLoading(false); 
   };
   
+  // 🔥 V179: Improved Back Navigation Logic
+  const handleBack = () => {
+      if (isSearchMode) {
+          setIsSearchMode(false);
+          setSearchResult(null);
+          setSearchQuery("");
+          setErr("");
+      } else if (step === 2) {
+          setStep(1); 
+          setForm({name:'',phone:'',email:'',company:'',table:'',seat:''});
+          setPhoto(null);
+      } else {
+          onBack(); 
+      }
+  };
+
   const handleSeatSearch = (e) => {
     e.preventDefault(); const q = searchQuery.trim(); if (!q) return; const isEmail = q.includes('@'); const target = isEmail ? normalizeEmail(q) : normalizePhone(q); 
     
@@ -635,7 +666,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
     <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 relative overflow-hidden bg-black text-white">
       <div className="relative bg-neutral-900/80 border border-white/10 w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden backdrop-blur-xl">
         <div className="bg-gradient-to-r from-red-700 to-red-900 p-6 md:p-8 text-white text-center relative">
-          {!isCameraOpen && <button onClick={onBack} className="absolute left-6 top-6 text-white/70 hover:text-white z-10 p-2"><ChevronLeft size={24}/></button>}
+          {!isCameraOpen && <button onClick={handleBack} className="absolute left-6 top-6 text-white/70 hover:text-white z-50 p-2 rounded-full hover:bg-white/10 transition-colors"><ChevronLeft size={28}/></button>}
           <h2 className="text-3xl font-bold tracking-wide relative z-10">{t.regTitle}</h2>
           {step === 1 && <p className="text-white/80 text-sm mt-2 uppercase tracking-widest relative z-10">{t.regSub}</p>}
         </div>
@@ -650,7 +681,18 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                     {err && <div className="text-red-400 text-center text-sm bg-red-500/10 p-3 rounded-lg border border-red-500/20">{err}</div>}
                     {searchResult && (
                         <div className="mt-6 p-6 bg-white/10 rounded-2xl border border-yellow-500/50 text-center shadow-xl">
-                            <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-2"><span className="text-sm text-yellow-500 font-bold uppercase tracking-wider">{t.seatResult}</span><span className={`text-xs px-3 py-1 rounded-full font-bold ${searchResult.status === t.registered ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/50'}`}>{searchResult.status}</span></div>
+                            {/* 🔥 V192: Added Check-in Status to Search Result */}
+                            <div className="flex justify-between items-start mb-4 border-b border-white/10 pb-2">
+                                <span className="text-sm text-yellow-500 font-bold uppercase tracking-wider mt-1">{t.seatResult}</span>
+                                <div className="flex flex-col gap-1 items-end">
+                                    <span className={`text-xs px-3 py-1 rounded-full font-bold ${searchResult.status === t.registered ? 'bg-green-500/20 text-green-400' : 'bg-white/10 text-white/50'}`}>{searchResult.status}</span>
+                                    {searchResult.isAttendee && (
+                                        <span className={`text-xs px-3 py-1 rounded-full font-bold ${searchResult.checkedIn ? 'bg-blue-500/20 text-blue-400' : 'bg-red-500/20 text-red-400'}`}>
+                                            {searchResult.checkedIn ? t.arrived : t.notCheckedIn}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
                             {searchResult.isAttendee && (<div className="bg-white p-2 rounded-xl inline-block mb-6 shadow-lg"><div ref={qrCheckRef} className="w-32 h-32 flex items-center justify-center bg-white"></div></div>)}
                             <div className="text-3xl font-bold mb-2 text-white">{searchResult.name}</div>
                             <div className="text-base text-white/60 mb-6">{searchResult.dept}</div>
@@ -666,35 +708,43 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                       {err && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-xl text-sm flex items-center animate-pulse"><AlertTriangle size={20} className="mr-3"/>{err}</div>}
                       <div className="flex flex-col items-center mb-6">
                           {isCameraOpen ? (
-                              <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-black border-4 border-red-500 shadow-2xl"><video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" /><button type="button" onClick={takePhoto} className="absolute bottom-6 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full bg-white border-4 border-gray-300 hover:scale-110 transition-transform shadow-xl"><Aperture className="w-full h-full p-4 text-black"/></button></div>
+                              <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-black border-4 border-red-500 shadow-2xl"><video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" /><button type="button" onClick={takePhoto} className="absolute bottom-6 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full bg-white border-4 border-gray-300 hover:scale-110 transition-transform shadow-xl"><Camera className="w-full h-full p-4 text-black"/></button></div>
                           ) : (
-                              <div className="flex flex-col items-center gap-4 w-full"><div onClick={startCamera} className={`w-40 h-40 rounded-full border-4 border-dashed flex items-center justify-center overflow-hidden relative shadow-2xl cursor-pointer hover:bg-white/5 transition-colors ${photo ? 'border-red-500' : 'border-white/30'}`}>{photo ? <img src={photo} alt="Selfie" className="w-full h-full object-cover" /> : <Camera size={64} className="text-white/20"/>}</div><div className="flex gap-3"><button type="button" onClick={startCamera} className="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg"><Camera size={18}/> {t.photoBtn || "Take Photo"}</button><button type="button" onClick={()=>fileInputRef.current.click()} className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg"><ImageIcon size={18}/> {t.uploadBtn || "Upload"}</button></div></div>
+                              <div className="flex flex-col items-center gap-4 w-full"><div onClick={startCamera} className={`w-40 h-40 rounded-full border-4 border-dashed flex items-center justify-center overflow-hidden relative shadow-2xl cursor-pointer hover:bg-white/5 transition-colors ${photo ? 'border-red-500' : 'border-white/30'}`}>{photo ? <img src={photo} alt="Selfie" className="w-full h-full object-cover" /> : <Camera size={64} className="text-white/20"/>}</div><div className="flex gap-3"><button type="button" onClick={startCamera} className="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg"><Camera size={18}/> {t.photoBtn || "Take Photo"}</button><button type="button" onClick={()=>fileInputRef.current.click()} className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg"><Upload size={18}/> {t.uploadBtn || "Upload"}</button></div></div>
                           )}
                           <input type="file" accept="image/*" capture="user" ref={fileInputRef} className="hidden" onChange={handleFileChange}/>
                       </div>
                       {!isCameraOpen && (
                           <div className="space-y-4">
                             {['phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-4 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'phone' ? <Phone size={20}/> : <Mail size={20}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-4 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20 text-base" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
-                            <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-5 rounded-xl font-bold shadow-xl transition-all active:scale-95 mt-4 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-lg">{loading ? <Loader2 className="animate-spin mr-2"/> : null}{t.generateBtn}</button>
+                            <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-5 rounded-xl font-bold shadow-xl transition-all active:scale-95 mt-4 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-lg">{loading ? <span className="animate-pulse mr-2">...</span> : null}{t.generateBtn}</button>
                             <div className="pt-6 mt-6 border-t border-white/10 text-center"><button type="button" onClick={()=>setIsSearchMode(true)} className="text-yellow-500 text-base hover:text-yellow-400 flex items-center justify-center gap-2 mx-auto transition-colors font-bold"><Search size={18}/> {t.checkSeat}</button></div>
                           </div>
                       )}
                     </form>
                   ) : (
-                    <div className="text-center animate-in zoom-in duration-300">
-                      <div ref={ticketRef} className="bg-neutral-900 p-8 rounded-3xl border-2 border-yellow-500/50 shadow-2xl relative overflow-hidden max-w-sm mx-auto">
+                    <div className="text-center animate-in zoom-in duration-300 w-full max-w-sm mx-auto flex flex-col justify-center">
+                      <div className="mb-3 p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-500 text-center animate-pulse">
+                          <p className="font-bold text-xs md:text-sm flex items-center justify-center gap-2"><Camera size={16}/> {t.screenshotHint}</p>
+                      </div>
+
+                      <div ref={ticketRef} className="bg-neutral-900 p-5 rounded-3xl border-2 border-yellow-500/50 shadow-2xl relative overflow-hidden w-full">
                            <div className="absolute -top-20 -right-20 w-40 h-40 bg-yellow-500/20 rounded-full blur-3xl"></div>
-                           <h3 className="text-xl font-bold text-yellow-500 text-center mb-6 tracking-widest uppercase border-b border-white/10 pb-4">Tesla Annual Dinner</h3>
-                           <div className="bg-white p-4 rounded-2xl inline-block mb-6 shadow-[0_0_40px_rgba(255,255,255,0.1)]"><div ref={qrContainerRef} className="w-48 h-48 flex items-center justify-center bg-white"></div></div>
-                           <div className="text-yellow-400 text-3xl font-black mb-6 flex justify-center items-center gap-3"><Armchair size={32}/> <span>Table {matchedSeat?.table || '-'}</span></div>
-                           <div className="text-left text-sm text-white/70 space-y-3 border-t border-white/10 pt-6">
-                               <div className="flex justify-between"><span className="text-white/40">{t.name}:</span><span className="font-bold text-white text-base">{guestInfo?.name}</span></div>
-                               <div className="flex justify-between"><span className="text-white/40">{t.dept}:</span><span className="font-bold text-white text-base">{guestInfo?.dept}</span></div>
-                               <div className="flex justify-between"><span className="text-white/40">{t.phone}:</span><span className="font-mono text-white text-base">{guestInfo?.phone}</span></div>
+                           <h3 className="text-lg font-bold text-yellow-500 text-center mb-3 tracking-widest uppercase border-b border-white/10 pb-3">Tesla Annual Dinner</h3>
+                           <div className="bg-white p-2 rounded-xl inline-block mb-3 shadow-[0_0_40px_rgba(255,255,255,0.1)]">
+                                <div ref={qrContainerRef} className="w-40 h-40 flex items-center justify-center bg-white"></div>
+                           </div>
+                           <div className="text-yellow-400 text-2xl font-black mb-3 flex justify-center items-center gap-2">
+                                <MapPin size={24}/> <span>Table {matchedSeat?.table || '-'}</span>
+                           </div>
+                           <div className="text-left text-sm text-white/70 space-y-2 border-t border-white/10 pt-3">
+                               <div className="flex justify-between items-center"><span className="text-white/40 text-xs">{t.name}:</span><span className="font-bold text-white text-sm">{guestInfo?.name}</span></div>
+                               <div className="flex justify-between items-center"><span className="text-white/40 text-xs">{t.dept}:</span><span className="font-bold text-white text-sm">{guestInfo?.dept}</span></div>
+                               <div className="flex justify-between items-center"><span className="text-white/40 text-xs">{t.phone}:</span><span className="font-mono text-white text-sm">{guestInfo?.phone}</span></div>
                            </div>
                       </div>
-                      <div className="mt-8 p-5 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl text-yellow-500 text-center animate-pulse"><p className="font-bold text-lg flex items-center justify-center gap-3"><Camera size={24}/> {t.screenshotHint}</p></div>
-                      <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-5 rounded-2xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-base mt-6">{t.next}</button>
+                      
+                      <button onClick={()=>{setStep(1);setForm({name:'',phone:'',email:'',company:''});setPhoto(null)}} className="w-full bg-white/10 text-white border border-white/20 p-3 rounded-xl font-bold hover:bg-white/20 transition-colors uppercase tracking-widest text-sm mt-3">{t.next}</button>
                     </div>
                   )}
                 </>
@@ -705,48 +755,88 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
   );
 };
 
+// 🔥 ProjectorView: Fixed Layout with Bottom Button (V127: Responsive Header)
 const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes, seatingPlan }) => { 
     const [winner, setWinner] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     
+    // 🔥 V155: Enhanced Attendee Data (Force Sync from Seating Plan)
     const enrichedAttendees = attendees.map(a => {
-        const match = seatingPlan.find(s => (s.email && normalizeEmail(s.email) === normalizeEmail(a.email)) || (s.phone && normalizePhone(s.phone) === normalizePhone(a.phone)));
-        if (match) { return { ...a, table: match.table, seat: match.seat, dept: match.dept || a.dept, name: match.name || a.name }; }
+        // Always try to find match in seatingPlan to get latest data
+        const match = seatingPlan.find(s => 
+            (s.email && normalizeEmail(s.email) === normalizeEmail(a.email)) || 
+            (s.phone && normalizePhone(s.phone) === normalizePhone(a.phone))
+        );
+        
+        if (match) {
+            // Overwrite table/seat/dept with seating plan data
+            return { ...a, table: match.table, seat: match.seat, dept: match.dept || a.dept, name: match.name || a.name }; 
+        }
         return a;
     });
 
-    const eligible = enrichedAttendees.filter(p => p.checkedIn && !drawHistory.some(h => h.attendeeId === p.id));
+    // 🔥 V202: Strict Eligibility Check
+    // 1. Registration: Guaranteed as we are iterating over 'attendees' (Firestore collection)
+    // 2. Check-in: Must strictly be true (p.checkedIn === true) to show photo and draw
+    // 3. Not a Winner: Must not be in drawHistory
+    const eligible = enrichedAttendees.filter(p => p.checkedIn === true && !drawHistory.some(h => h.attendeeId === p.id));
+    
     let currentPrizeWinner = drawHistory.find(h => h.prize === currentPrize);
     
     const triggerDraw = () => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' , code: 'Enter'})); };
 
-    const saveWinner = async () => {
-        if (!winner || isSaving) return;
+    // 🔥 V170: Auto-Save logic
+    const saveWinnerToDb = async (w) => {
+        if (!w || isSaving) return;
         setIsSaving(true);
-        if (db) await addDoc(collection(db, "winners"), { attendeeId: winner.id, name: winner.name || "", phone: winner.phone || "", photo: winner.photo || "", table: winner.table || "", seat: winner.seat || "", dept: winner.dept || "", prize: currentPrize || "Grand Prize", wonAt: new Date().toISOString() });
+        if (db) await addDoc(collection(db, "winners"), { 
+            attendeeId: w.id, 
+            name: w.name || "", 
+            phone: w.phone || "", 
+            photo: w.photo || "", 
+            table: w.table || "", 
+            seat: w.seat || "", 
+            dept: w.dept || "", 
+            prize: currentPrize || "Grand Prize", 
+            wonAt: new Date().toISOString() 
+        });
+        
         if (currentPrize && prizes.length > 0) {
             const currentIdx = prizes.findIndex(p => p.name === currentPrize);
             let nextPrize = prizes.find((p, idx) => idx > currentIdx && !drawHistory.some(h => h.prize === p.name));
             if (!nextPrize) nextPrize = prizes.find(p => !drawHistory.some(h => h.prize === p.name));
-            if (nextPrize && db) { await setDoc(doc(db, "config", "settings"), { currentPrize: nextPrize.name }, { merge: true }); }
+            if (nextPrize && db) {
+                await setDoc(doc(db, "config", "settings"), { currentPrize: nextPrize.name }, { merge: true });
+            }
         }
-        setWinner(null); setIsSaving(false);
+        setIsSaving(false);
     };
 
     useEffect(() => {
-        const handleKey = async (e) => { if (winner && e.key === 'Enter') { saveWinner(); } };
-        window.addEventListener('keydown', handleKey); return () => window.removeEventListener('keydown', handleKey);
-    }, [winner, prizes, drawHistory, currentPrize, isSaving]);
+        const handleKey = async (e) => { 
+            if (winner && e.key === 'Enter') {
+                // 🔥 V170: ENTER just closes the winner view (next round)
+                setWinner(null);
+            }
+        };
+        window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+    }, [winner]);
 
-    const handleDrawEnd = async (w) => { setWinner(w); };
+    // 🔥 V170: Auto-save on draw end
+    const handleDrawEnd = async (w) => { 
+        setWinner(w);
+        saveWinnerToDb(w);
+    };
 
     return (
         <div className="min-h-screen bg-black text-white relative flex flex-col overflow-hidden">
+            {/* 🔥 V196: Header Height Restored to 15vh (Bigger) */}
             <div className="flex-none h-[15vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-b border-white/10 flex items-center justify-between px-4 md:px-8 relative shadow-xl w-full">
                  <button onClick={onBack} className="text-white/30 hover:text-white transition-colors mr-4 md:mr-6 flex items-center justify-center"><ChevronLeft size={32}/></button>
                  <div className="flex-1 flex flex-row items-center justify-center gap-2 md:gap-6 w-full overflow-hidden">
-                    <span className="text-yellow-500 font-bold tracking-widest uppercase text-xl md:text-3xl lg:text-5xl whitespace-nowrap flex-shrink-0">{winner ? t.winnerLabel : t.currentPrize}:</span>
-                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] leading-tight text-left whitespace-normal break-words pb-1">{currentPrize || "WAITING..."}</h1>
+                    <span className="text-yellow-500 font-bold tracking-widest uppercase text-xl md:text-3xl lg:text-4xl whitespace-nowrap flex-shrink-0">{winner ? t.winnerLabel : t.currentPrize}:</span>
+                    <h1 className="text-2xl md:text-3xl lg:text-5xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] leading-tight text-left whitespace-normal break-words pb-1">{currentPrize || "WAITING..."}</h1>
                  </div>
                  <div className="w-14"></div>
             </div>
@@ -754,41 +844,45 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                 {winner ? (
                     <div className="flex flex-col items-center justify-center h-full w-full relative z-50">
                         <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
-                        <div className="relative mb-2">
+                        <div className="relative mb-0">
                             <div className="absolute inset-0 bg-yellow-500/30 blur-3xl rounded-full animate-pulse"></div>
-                            {/* 🔥 V160: Use DEFAULT_AVATAR if photo missing or invalid */}
+                            {/* 🔥 V197: Winner Photo Enlarged to 72vh with z-index for layering */}
                             <img 
                                 src={winner.photo && winner.photo.length > 50 ? winner.photo : DEFAULT_AVATAR} 
-                                className="relative w-[62vh] h-[62vh] rounded-full border-8 border-yellow-400 object-cover shadow-2xl bg-neutral-800"
+                                className="relative w-[72vh] h-[72vh] rounded-full border-8 border-yellow-400 object-cover shadow-2xl bg-neutral-800 z-10"
                             />
                         </div>
-                        <div className="flex flex-col items-center gap-2 mb-2">
-                            <div className="flex flex-row items-center justify-center gap-5 bg-white/10 backdrop-blur-md px-8 py-2 rounded-full border border-white/20 shadow-xl">
+                        {/* 🔥 V197: Text container pulled up (-mt-12) to overlap image bottom */}
+                        <div className="flex flex-col items-center gap-2 mb-2 relative z-20 -mt-12">
+                            <div className="flex flex-row items-center justify-center gap-5 bg-black/60 backdrop-blur-md px-8 py-2 rounded-full border border-white/20 shadow-2xl">
                                 <div className="flex flex-col items-center md:items-end">
                                     <h1 className="text-3xl font-black text-white tracking-wide leading-none">{winner.name}</h1>
-                                    {winner.dept && <span className="text-xs text-yellow-500/80 font-bold uppercase tracking-wider mt-1">{winner.dept}</span>}
+                                    {winner.dept && <span className="text-xs text-yellow-500 font-bold uppercase tracking-wider mt-1">{winner.dept}</span>}
                                 </div>
                                 <div className="w-0.5 h-10 bg-white/20 rounded-full"></div>
-                                <div className="flex items-center gap-2 text-xl font-bold text-yellow-400"><Armchair size={24} className="text-white/60"/> <span>Table {winner.table || '-'}</span></div>
+                                {/* 🔥 V178: Fix undefined Armchair -> MapPin */}
+                                <div className="flex items-center gap-2 text-xl font-bold text-yellow-400"><MapPin size={24} className="text-white/60"/> <span>Table {winner.table || '-'}</span></div>
                             </div>
-                            <div className="text-white/40 font-mono text-sm tracking-[0.2em] bg-black/40 px-5 py-0.5 rounded-full border border-white/5">{winner.phone}</div>
+                            <div className="text-white/60 font-mono text-sm tracking-[0.2em] bg-black/80 px-5 py-0.5 rounded-full border border-white/10 shadow-lg">{winner.phone}</div>
                         </div>
-                        <div className="mt-4 flex gap-4 items-center animate-in fade-in zoom-in duration-300">
-                             <p className="text-white/50 text-lg font-mono animate-pulse uppercase tracking-[0.2em]">{t.nextRound}</p>
+                        {/* 🔥 V170: Auto-save indication text */}
+                        <div className="mt-2 flex gap-4 items-center animate-in fade-in zoom-in duration-300">
+                             <p className="text-white/30 text-sm font-mono animate-pulse uppercase tracking-[0.2em]">{t.nextRound}</p>
                         </div>
                     </div>
                 ) : currentPrizeWinner ? (
                      <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500 z-20">
-                        <div className="text-2xl text-white/50 font-bold mb-4 uppercase tracking-[0.3em]">{t.drawn}</div>
-                        <div className="relative mb-6">
-                            {/* 🔥 V160: Use DEFAULT_AVATAR */}
+                        <div className="text-2xl text-white/50 font-bold mb-0 uppercase tracking-[0.3em] relative z-20 top-4 bg-black/30 px-4 rounded-full backdrop-blur-sm">{t.drawn}</div>
+                        <div className="relative mb-0">
+                            {/* 🔥 V197: Drawn Photo Enlarged to 68vh */}
                             <img 
                                 src={currentPrizeWinner.photo && currentPrizeWinner.photo.length > 50 ? currentPrizeWinner.photo : DEFAULT_AVATAR} 
-                                className="w-[55vh] h-[55vh] rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover bg-neutral-800"
+                                className="w-[68vh] h-[68vh] rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover bg-neutral-800 z-10 relative"
                             />
                         </div>
-                        <h1 className="text-7xl font-black text-gray-400 mt-2">{currentPrizeWinner.name}</h1>
-                        <div className="text-white/30 mt-4 text-xl">{t.winnerIs}</div>
+                        {/* 🔥 V197: Name pulled up (-mt-10) */}
+                        <h1 className="text-7xl font-black text-white mt-0 relative z-20 -mt-10 drop-shadow-2xl">{currentPrizeWinner.name}</h1>
+                        <div className="text-white/30 mt-2 text-xl font-bold">{t.winnerIs}</div>
                     </div>
                 ) : eligible.length > 0 ? (
                     <GalaxyCanvas list={eligible} t={t} onDrawEnd={handleDrawEnd} disabled={!!winner} />
@@ -796,9 +890,11 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                     <div className="text-center text-white/30"><Trophy size={100} className="mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p></div>
                 )}
             </div>
-            <div className="flex-none h-[15vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-t border-white/10 flex flex-col items-center justify-center overflow-hidden w-full relative">
+            {/* 🔥 V195: Footer Height Reduced to 10vh (Kept as requested) */}
+            <div className="flex-none h-[10vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-t border-white/10 flex flex-col items-center justify-center overflow-hidden w-full relative">
                 {eligible.length > 0 && !winner && !currentPrizeWinner && (
                     <div className="">
+                        {/* 🔥 V178: Fix undefined MonitorPlay -> Tv -> Monitor (V188) */}
                         <button onClick={triggerDraw} className="bg-red-600 text-white px-10 py-3 rounded-full font-bold text-xl shadow-2xl border-4 border-black uppercase tracking-widest hover:scale-105 transition-transform animate-pulse flex items-center gap-2"><Play size={24} fill="currentColor"/> {t.drawBtn}</button>
                     </div>
                 )}
@@ -807,6 +903,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     );
 };
 
+// --- Reception Dashboard, Prize Dashboard, App (Moved to bottom) ---
 const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan, drawHistory }) => {
   const [tab, setTab] = useState('scan');
   const [isScan, setIsScan] = useState(false);
@@ -899,7 +996,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       <table className="w-full text-left border-collapse min-w-[800px]">
                           <thead className="text-xs text-white/40 uppercase border-b border-white/10">
                               <tr>
-                                  <th className="p-3 w-10 text-center"><button onClick={toggleAllGuests} className="hover:text-white transition-colors">{filteredList.length > 0 && filteredList.every(p => selectedGuestIds.has(p.id)) ? <CheckSquare size={16}/> : <Square size={16}/>}</button></th>
+                                  <th className="p-3 w-10 text-center"><button onClick={toggleAllSeats} className="hover:text-white transition-colors">{filteredList.length > 0 && filteredList.every(p => selectedGuestIds.has(p.id)) ? <CheckCircle size={16}/> : <Circle size={16}/>}</button></th>
                                   <th className="p-3 text-left">Name</th><th className="p-3 text-left">Phone</th><th className="p-3 text-left">Email</th><th className="p-3 text-left">Dept</th><th className="p-3 text-center">Table</th><th className="p-3 text-left text-yellow-500">{t.wonPrize}</th><th className="p-3 text-center">Status</th><th className="p-3 text-center">Del</th>
                               </tr>
                           </thead>
@@ -914,7 +1011,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   const isSelected = selectedGuestIds.has(p.id);
                                   return (
                                       <tr key={p.id} className={`hover:bg-white/5 text-sm transition-colors ${isSelected ? 'bg-white/10' : ''}`}>
-                                          <td className="p-3 text-center"><button onClick={() => toggleGuestSelection(p.id)} className={`transition-colors ${isSelected ? 'text-blue-400' : 'text-white/20 hover:text-white/50'}`}>{isSelected ? <CheckSquare size={16}/> : <Square size={16}/>}</button></td>
+                                          <td className="p-3 text-center"><button onClick={() => toggleGuestSelection(p.id)} className={`transition-colors ${isSelected ? 'text-blue-400' : 'text-white/20 hover:text-white/50'}`}>{isSelected ? <CheckCircle size={16}/> : <Circle size={16}/>}</button></td>
                                           <td className="p-3"><div className="flex items-center gap-3 font-bold">{p.photo ? <img src={p.photo} className="w-8 h-8 rounded-full object-cover"/> : <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><User size={14}/></div>}{displayName}</div></td>
                                           <td className="p-3 text-white/60 text-left">{p.phone}</td><td className="p-3 text-white/60 text-left max-w-[150px] truncate" title={p.email}>{p.email}</td><td className="p-3 text-white/60 text-left">{p.dept}</td>
                                           <td className={`p-3 font-mono text-center text-lg ${!displayTable ? 'text-blue-300 italic' : 'text-blue-400'}`}>{displayTable || '-'}</td>
@@ -952,7 +1049,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       <table className="w-full text-left border-collapse min-w-[800px]">
                           <thead className="text-xs text-white/40 uppercase border-b border-white/10">
                               <tr>
-                                  <th className="p-3 w-10 text-center"><button onClick={toggleAllSeats} className="hover:text-white transition-colors">{filteredSeat.length > 0 && filteredSeat.every(s => selectedSeatIds.has(s.id)) ? <CheckSquare size={16}/> : <Square size={16}/>}</button></th>
+                                  <th className="p-3 w-10 text-center"><button onClick={toggleAllSeats} className="hover:text-white transition-colors">{filteredSeat.length > 0 && filteredSeat.every(s => selectedSeatIds.has(s.id)) ? <CheckCircle size={16}/> : <Circle size={16}/>}</button></th>
                                   <th className="p-3 text-left">Name</th><th className="p-3 text-left">Phone</th><th className="p-3 text-left">Email</th><th className="p-3 text-left">Dept</th><th className="p-3 text-center">Table</th><th className="p-3 text-center">Status</th><th className="p-3 text-center">Del</th>
                               </tr>
                           </thead>
@@ -963,7 +1060,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   const isSelected = selectedSeatIds.has(s.id);
                                   return (
                                       <tr key={s.id} className={`hover:bg-white/5 text-sm transition-colors ${isSelected ? 'bg-white/10' : ''}`}>
-                                          <td className="p-3 text-center"><button onClick={() => toggleSeatSelection(s.id)} className={`transition-colors ${isSelected ? 'text-blue-400' : 'text-white/20 hover:text-white/50'}`}>{isSelected ? <CheckSquare size={16}/> : <Square size={16}/>}</button></td>
+                                          <td className="p-3 text-center"><button onClick={() => toggleSeatSelection(s.id)} className={`transition-colors ${isSelected ? 'text-blue-400' : 'text-white/20 hover:text-white/50'}`}>{isSelected ? <CheckCircle size={16}/> : <Circle size={16}/>}</button></td>
                                           <td className="p-3 font-bold text-left">{s.name}</td><td className="p-3 text-xs text-white/60 text-left">{s.phone}</td><td className="p-3 text-xs text-white/60 text-left">{s.email}</td><td className="p-3 text-xs text-white/60 text-left">{s.dept}</td><td className="p-3 font-mono text-blue-400 text-center text-lg">{s.table}</td>
                                           <td className="p-3 text-center">{isCheckedIn ? <span className="text-green-400 bg-green-400/20 px-2 py-1 rounded text-xs border border-green-400/50">已到場</span> : <span className="text-white/30 text-xs border border-white/10 px-2 py-1 rounded">未簽到</span>}</td>
                                           <td className="p-3 text-center"><button onClick={()=>handleDeleteSeating(s.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10"><Trash2 size={16}/></button></td>
@@ -981,112 +1078,148 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
 };
 
 const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, setCurrentPrize }) => {
-  const [prizes, setPrizes] = useState([]); 
-  const [newPrizeName, setNewPrizeName] = useState("");
-  const [qty, setQty] = useState("1");
-  const [prizeSearch, setPrizeSearch] = useState(""); 
-  const fileInputRef = useRef(null);
-  useEffect(() => { if (!db) return; const unsub = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => { setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); }); return () => unsub(); }, []);
-  const handleAddPrize = async (e) => { e.preventDefault(); if(newPrizeName && db) { const q = parseInt(qty) || 1; const batch = writeBatch(db); for(let i=1; i<=q; i++) { const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: q > 1 ? `${newPrizeName} #${i}` : newPrizeName, createdAt: new Date().toISOString() }); } await batch.commit(); setNewPrizeName(""); setQty("1"); } };
-  const handleSelectPrize = async (prizeName) => { if(db) await setDoc(doc(db, "config", "settings"), { currentPrize: prizeName }, { merge: true }); };
-  const handleDeletePrize = async (id) => { if(confirm('Delete prize?')) await deleteDoc(doc(db, "prizes", id)); };
-  const toggleWinnerStatus = async (winnerRecord) => { if(confirm('Reset this prize? Winner will be removed.')) { await deleteDoc(doc(db, "winners", winnerRecord.id)); await setDoc(doc(db, "config", "settings"), { currentPrize: winnerRecord.prize }, { merge: true }); } };
-  const handleResetAllWinners = async () => { if (confirm('確定要清空所有中獎紀錄嗎？此操作無法復原。\nAre you sure you want to clear ALL winners?')) { const batch = writeBatch(db); drawHistory.forEach(win => { batch.delete(doc(db, "winners", win.id)); }); batch.commit(); } };
-  const handleImportPrizes = async (e) => { const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split(/\r\n|\n/).filter(l=>l); const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l.trim(), createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!"); };
-  const filteredPrizes = prizes.filter(p => p.name.toLowerCase().includes(prizeSearch.toLowerCase()));
-  return (
-    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
-      <header className="bg-neutral-900/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-        <div className="flex items-center gap-3 font-bold text-xl"><div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center text-white"><Trophy size={18}/></div> {t.prizeMode}</div>
-        <button onClick={onLogout} className="text-white/50 hover:text-red-500 text-sm flex items-center gap-2 transition-colors"><LogOut size={16}/> {t.logout}</button>
-      </header>
-      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col items-center">
-        <div className="w-full grid md:grid-cols-2 gap-8 h-full">
-            <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex flex-col h-[700px]">
-                <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Gift size={20} className="text-red-500"/> {t.prizeList}</h3>
-                <form onSubmit={handleAddPrize} className="flex gap-2 mb-4"><input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-[2] bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:border-red-500 outline-none"/><input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} className="w-16 bg-black/50 border border-white/20 rounded-xl px-2 py-3 text-sm text-center text-white focus:border-red-500 outline-none"/><button className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-colors"><Plus size={20}/></button></form>
-                <div className="flex gap-2 mb-4 relative"><Search className="absolute top-3 left-3 text-white/30" size={16}/><input value={prizeSearch} onChange={e=>setPrizeSearch(e.target.value)} placeholder="Search Prize..." className="w-full bg-black/30 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none"/><label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Upload size={12}/> CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label></div>
-                <div className="flex-1 overflow-y-auto pr-2 custom-scroll flex flex-col gap-2">
-                    {filteredPrizes.map(p=>{ const winnerRecord = drawHistory.find(h => h.prize === p.name); return ( <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${currentPrize===p.name?'bg-red-600/20 border-red-600':'bg-white/5 border-white/10'} ${winnerRecord ? 'opacity-70 bg-black/40' : ''}`}> <div className="flex flex-col"><span className={`font-bold ${currentPrize===p.name?'text-white':'text-white/70'}`}>{p.name}</span>{winnerRecord && <span className="text-xs text-yellow-400 flex items-center gap-1 mt-1 font-bold">🏆 {winnerRecord.name}</span>}</div><div className="flex gap-2">{currentPrize!==p.name && !winnerRecord && <button onClick={()=>handleSelectPrize(p.name)} className="px-3 py-1.5 bg-white/10 hover:bg-green-600 rounded-lg text-xs transition-colors">{t.select}</button>}{currentPrize===p.name && <span className="px-3 py-1.5 bg-red-600 rounded-lg text-xs font-bold">{t.active}</span>}{winnerRecord ? <button onClick={()=>toggleWinnerStatus(winnerRecord)} className="p-2 bg-white/10 hover:bg-yellow-600 rounded-lg transition-colors" title={t.resetWinner}><RotateCcw size={14}/></button> : <button onClick={()=>handleDeletePrize(p.id)} className="p-2 bg-white/10 hover:bg-red-600 rounded-lg transition-colors"><Trash2 size={14}/></button>}</div></div> ); })}
-                </div>
-            </div>
-            <div className="flex flex-col gap-6">
-                <div className="bg-gradient-to-br from-neutral-800 to-black border border-white/20 p-8 rounded-3xl text-center shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-3 opacity-30"><MonitorPlay size={100} className="text-white"/></div>
-                    <p className="text-white/50 text-sm uppercase tracking-widest mb-2">{t.currentPrize}</p>
-                    <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter drop-shadow-lg mb-6">{currentPrize || "---"}</h1>
-                    <div className="flex justify-center gap-4">
-                        <div className="text-center"><div className="text-2xl font-bold text-white">{attendees.filter(p=>p.checkedIn).length}</div><div className="text-xs text-white/40">Present</div></div>
-                        <div className="w-[1px] h-10 bg-white/10"></div>
-                        <div className="text-center"><div className="text-2xl font-bold text-white">{attendees.filter(p=>p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id)).length}</div><div className="text-xs text-white/40">Eligible</div></div>
-                    </div>
-                </div>
-                <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex-1 h-[350px] overflow-hidden flex flex-col">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold flex items-center gap-2"><Trophy size={20} className="text-yellow-500"/> {t.winnersList}</h3>
-                        {drawHistory.length > 0 && (<button onClick={() => { if (confirm('確定要清空所有中獎紀錄嗎？此操作無法復原。\nAre you sure you want to clear ALL winners?')) { const batch = writeBatch(db); drawHistory.forEach(win => { batch.delete(doc(db, "winners", win.id)); }); batch.commit(); } }} className="text-xs bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1.5 rounded-lg hover:bg-red-600 hover:text-white transition-colors"><Trash2 size={12} className="inline mr-1"/> {t.clearAll}</button>)}
-                    </div>
-                    <div className="flex-1 overflow-y-auto custom-scroll flex flex-col gap-2">
-                        {drawHistory.map(h => (
-                            <div key={h.id} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
-                                <span className="text-yellow-500 text-sm font-bold">{h.prize}</span>
-                                <div className="flex items-center gap-2">
-                                    {h.photo && <img src={h.photo} className="w-6 h-6 rounded-full object-cover"/>}
-                                    <span className="font-bold">{h.name}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        </div>
-      </main>
-    </div>
-  );
+  const [prizes, setPrizes] = useState([]); 
+  const [newPrizeName, setNewPrizeName] = useState("");
+  const [qty, setQty] = useState("1");
+  const [prizeSearch, setPrizeSearch] = useState(""); 
+  const fileInputRef = useRef(null);
+  useEffect(() => { if (!db) return; const unsub = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => { setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); }); return () => unsub(); }, []);
+  const handleAddPrize = async (e) => { e.preventDefault(); if(newPrizeName && db) { const q = parseInt(qty) || 1; const batch = writeBatch(db); for(let i=1; i<=q; i++) { const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: q > 1 ? `${newPrizeName} #${i}` : newPrizeName, createdAt: new Date().toISOString() }); } await batch.commit(); setNewPrizeName(""); setQty("1"); } };
+  const handleSelectPrize = async (prizeName) => { if(db) await setDoc(doc(db, "config", "settings"), { currentPrize: prizeName }, { merge: true }); };
+  const handleDeletePrize = async (id) => { if(confirm('Delete prize?')) await deleteDoc(doc(db, "prizes", id)); };
+  const toggleWinnerStatus = async (winnerRecord) => { if(confirm('Reset this prize? Winner will be removed.')) { await deleteDoc(doc(db, "winners", winnerRecord.id)); await setDoc(doc(db, "config", "settings"), { currentPrize: winnerRecord.prize }, { merge: true }); } };
+  const handleResetAllWinners = async (e) => { if (e) e.preventDefault(); if (confirm('確定要清空所有中獎紀錄嗎？此操作無法復原。\nAre you sure you want to clear ALL winners?')) { const batch = writeBatch(db); drawHistory.forEach(win => { batch.delete(doc(db, "winners", win.id)); }); batch.commit(); } };
+  const handleImportPrizes = async (e) => { const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split(/\r\n|\n/).filter(l=>l); const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l.trim(), createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!"); };
+  const filteredPrizes = prizes.filter(p => p.name.toLowerCase().includes(prizeSearch.toLowerCase()));
+  return (
+    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
+      <header className="bg-neutral-900/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+        <div className="flex items-center gap-3 font-bold text-xl"><div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center text-white"><Trophy size={18}/></div> {t.prizeMode}</div>
+        <button onClick={onLogout} className="text-white/50 hover:text-red-500 text-sm flex items-center gap-2 transition-colors"><LogOut size={16}/> {t.logout}</button>
+      </header>
+      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col items-center">
+        <div className="w-full grid md:grid-cols-2 gap-8 h-full">
+            <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex flex-col h-[700px]">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Gift size={20} className="text-red-500"/> {t.prizeList}</h3>
+                <form onSubmit={handleAddPrize} className="flex gap-2 mb-4"><input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-[2] bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:border-red-500 outline-none"/><input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} className="w-16 bg-black/50 border border-white/20 rounded-xl px-2 py-3 text-sm text-center text-white focus:border-red-500 outline-none"/><button className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-colors"><Plus size={20}/></button></form>
+                <div className="flex gap-2 mb-4 relative"><Search className="absolute top-3 left-3 text-white/30" size={16}/><input value={prizeSearch} onChange={e=>setPrizeSearch(e.target.value)} placeholder="Search Prize..." className="w-full bg-black/30 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none"/><label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Upload size={12}/> CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label></div>
+                <div className="flex-1 overflow-y-auto pr-2 custom-scroll flex flex-col gap-2">
+                    {filteredPrizes.map(p=>{ const winnerRecord = drawHistory.find(h => h.prize === p.name); return ( <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${currentPrize===p.name?'bg-red-600/20 border-red-600':'bg-white/5 border-white/10'} ${winnerRecord ? 'opacity-70 bg-black/40' : ''}`}> <div className="flex flex-col"><span className={`font-bold ${currentPrize===p.name?'text-white':'text-white/70'}`}>{p.name}</span>{winnerRecord && <span className="text-xs text-yellow-400 flex items-center gap-1 mt-1 font-bold">🏆 {winnerRecord.name}</span>}</div><div className="flex gap-2">{currentPrize!==p.name && !winnerRecord && <button onClick={()=>handleSelectPrize(p.name)} className="px-3 py-1.5 bg-white/10 hover:bg-green-600 rounded-lg text-xs transition-colors">{t.select}</button>}{currentPrize===p.name && <span className="px-3 py-1.5 bg-red-600 rounded-lg text-xs font-bold">{t.active}</span>}{winnerRecord ? <button onClick={()=>toggleWinnerStatus(winnerRecord)} className="p-2 bg-white/10 hover:bg-yellow-600 rounded-lg transition-colors" title={t.resetWinner}><RefreshCw size={14}/></button> : <button onClick={()=>handleDeletePrize(p.id)} className="p-2 bg-white/10 hover:bg-red-600 rounded-lg transition-colors"><Trash2 size={14}/></button>}</div></div> ); })}
+                </div>
+            </div>
+            <div className="flex flex-col gap-6">
+                <div className="bg-gradient-to-br from-neutral-800 to-black border border-white/20 p-8 rounded-3xl text-center shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-3 opacity-30"><Monitor size={100} className="text-white"/></div>
+                    <p className="text-white/50 text-sm uppercase tracking-widest mb-2">{t.currentPrize}</p>
+                    <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter drop-shadow-lg mb-6">{currentPrize || "---"}</h1>
+                    <div className="flex justify-center gap-4">
+                        <div className="text-center"><div className="text-2xl font-bold text-white">{attendees.filter(p=>p.checkedIn).length}</div><div className="text-xs text-white/40">Present</div></div>
+                        <div className="w-[1px] h-10 bg-white/10"></div>
+                        <div className="text-center"><div className="text-2xl font-bold text-white">{attendees.filter(p=>p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id)).length}</div><div className="text-xs text-white/40">Eligible</div></div>
+                    </div>
+                </div>
+                <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex-1 h-[350px] overflow-hidden flex flex-col">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold flex items-center gap-2"><Trophy size={20} className="text-yellow-500"/> {t.winnersList}</h3>
+                        {drawHistory.length > 0 && (<button onClick={handleResetAllWinners} className="text-xs bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1.5 rounded-lg hover:bg-red-600 hover:text-white transition-colors"><Trash2 size={12} className="inline mr-1"/> {t.clearAll}</button>)}
+                    </div>
+                    <div className="flex-1 overflow-y-auto custom-scroll flex flex-col gap-2">
+                        {drawHistory.map(h => (
+                            <div key={h.id} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
+                                <span className="text-yellow-500 text-sm font-bold">{h.prize}</span>
+                                <div className="flex items-center gap-2">
+                                    {h.photo && <img src={h.photo} className="w-6 h-6 rounded-full object-cover"/>}
+                                    <span className="font-bold">{h.name}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+          </div>
+      </main>
+    </div>
+  );
 };
+
+// ==========================================
+// 6. Root App Component
+// ==========================================
 export default function App() {
-  const [lang, setLang] = useState('en'); const t = translations[lang];
-  const [view, setView] = useState('landing');
+  const [view, setView] = useState('landing'); // landing, login, guest, admin, projector, prize
+  const [lang, setLang] = useState('en');
   const [attendees, setAttendees] = useState([]);
-  const [drawHistory, setDrawHistory] = useState([]);
-  const [currentPrize, setCurrentPrize] = useState("");
   const [seatingPlan, setSeatingPlan] = useState([]);
+  const [drawHistory, setDrawHistory] = useState([]);
   const [prizes, setPrizes] = useState([]);
+  const [currentPrize, setCurrentPrize] = useState("");
+  const [targetAdminMode, setTargetAdminMode] = useState(''); // 'admin', 'prize', 'projector'
+
+  const t = translations[lang];
+
+  // Firebase Sync
   useEffect(() => {
     if (!db) return;
-    const unsubAttendees = onSnapshot(query(collection(db, "attendees"), orderBy("createdAt", "desc")), (snapshot) => { setAttendees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
-    const unsubWinners = onSnapshot(collection(db, "winners"), (snapshot) => { setDrawHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
-    const unsubConfig = onSnapshot(doc(db, "config", "settings"), (doc) => { if (doc.exists()) setCurrentPrize(doc.data().currentPrize); });
-    const unsubSeating = onSnapshot(collection(db, "seating_plan"), (snapshot) => { setSeatingPlan(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
-    const unsubPrizes = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => { setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
-    return () => { unsubAttendees(); unsubWinners(); unsubConfig(); unsubSeating(); unsubPrizes(); };
+    const u1 = onSnapshot(collection(db, "attendees"), (s) => setAttendees(s.docs.map(d => ({id:d.id, ...d.data()}))));
+    const u2 = onSnapshot(collection(db, "seating_plan"), (s) => setSeatingPlan(s.docs.map(d => ({id:d.id, ...d.data()}))));
+    const u3 = onSnapshot(collection(db, "winners"), (s) => setDrawHistory(s.docs.map(d => ({id:d.id, ...d.data()}))));
+    const u4 = onSnapshot(doc(db, "config", "settings"), (d) => { if(d.exists()) setCurrentPrize(d.data().currentPrize || ""); });
+    const u5 = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (s) => setPrizes(s.docs.map(d => ({ id: d.id, ...d.data() }))));
+
+    return () => { u1(); u2(); u3(); u4(); u5(); };
   }, []);
-  const checkDuplicate = (p, e) => { if(attendees.some(x => normalizePhone(x.phone) === normalizePhone(p))) return 'phone'; if(attendees.some(x => normalizeEmail(x.email) === normalizeEmail(e))) return 'email'; return null; };
-  const handleLoginSuccess = (targetView) => setView(targetView);
-  if(view === 'landing') return (
-    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col items-center justify-center p-6 relative overflow-hidden text-white">
-      <StyleInjector/>
-      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-800 via-neutral-950 to-neutral-950 pointer-events-none"></div>
-      <button onClick={()=>setLang(l=>l==='zh'?'en':'zh')} className="absolute top-6 right-6 text-white/50 hover:text-white flex items-center gap-2 border border-white/10 px-4 py-2 rounded-full transition-all z-10 text-xs font-mono"><Globe size={14}/> {lang.toUpperCase()}</button>
-      <div className="z-10 text-center mb-16 flex flex-col items-center">
-        <div className="w-24 h-24 bg-gradient-to-br from-red-600 to-red-800 rounded-3xl flex items-center justify-center shadow-[0_0_60px_rgba(220,38,38,0.4)] mb-8 animate-in zoom-in duration-700"><QrCode size={48} className="text-white"/></div>
-        <h1 className="text-5xl md:text-8xl font-black text-white mb-4 tracking-tighter drop-shadow-2xl">{t.title}</h1>
-        <p className="text-white/40 text-xl font-light tracking-[0.3em] uppercase">{t.sub}</p>
-      </div>
-      <div className="grid md:grid-cols-4 gap-4 w-full max-w-7xl z-10 px-4">
-        <button onClick={()=>setView('guest')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><ImageIcon size={60} className="text-white"/></div><h3 className="text-xl font-bold text-white mb-1">{t.guestMode}</h3><p className="text-white/50 text-xs">{t.guestDesc}</p><div className="mt-8 flex items-center text-black font-bold text-sm group-hover:translate-x-2 transition-transform bg-white w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div></button>
-        <button onClick={()=>setView('login_admin')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><UserCheck size={60} className="text-white"/></div><h3 className="text-xl font-bold text-white mb-1">{t.adminMode}</h3><p className="text-white/50 text-xs">{t.adminDesc}</p><div className="mt-8 flex items-center text-white font-bold text-sm group-hover:translate-x-2 transition-transform bg-red-600 w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div></button>
-        <button onClick={()=>setView('login_prize')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Gift size={60} className="text-white"/></div><h3 className="text-xl font-bold text-white mb-1">{t.prizeMode}</h3><p className="text-white/50 text-xs">{t.prizeDesc}</p><div className="mt-8 flex items-center text-white font-bold text-sm group-hover:translate-x-2 transition-transform bg-indigo-600 w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div></button>
-        <button onClick={()=>setView('login_projector')} className="group relative overflow-hidden bg-gradient-to-br from-neutral-800 to-black hover:from-neutral-700 border border-white/20 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-30 transition-opacity"><MonitorPlay size={60} className="text-yellow-500"/></div><h3 className="text-xl font-bold text-yellow-500 mb-1">{t.projectorMode}</h3><p className="text-white/50 text-xs">{t.projectorDesc}</p><div className="mt-8 flex items-center text-black font-bold text-sm group-hover:translate-x-2 transition-transform bg-yellow-500 w-fit px-4 py-2 rounded-full">{t.enter} <ArrowRight size={16} className="ml-2"/></div></button>
-      </div>
-    </div>
-  );
-  if(view === 'guest') return <><StyleInjector/><GuestView t={t} onBack={()=>setView('landing')} checkDuplicate={checkDuplicate} seatingPlan={seatingPlan} attendees={attendees} /></>;
-  if(view === 'login_admin') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('admin')} onBack={()=>setView('landing')} /></>;
-  if(view === 'login_prize') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('prize')} onBack={()=>setView('landing')} /></>;
-  if(view === 'login_projector') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('projector')} onBack={()=>setView('landing')} /></>;
+
+  // Navigation Handlers
+  const goLogin = (target) => { setTargetAdminMode(target); setView('login'); };
+  const handleLoginSuccess = () => { setView(targetAdminMode); };
   
-  if(view === 'admin') return <><StyleInjector/><ReceptionDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} setAttendees={setAttendees} seatingPlan={seatingPlan} drawHistory={drawHistory} /></>;
-  if(view === 'prize') return <><StyleInjector/><PrizeDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} setCurrentPrize={setCurrentPrize} prizes={prizes} /></>;
-  if(view === 'projector') return <><StyleInjector/><ProjectorView t={t} onBack={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} prizes={prizes} seatingPlan={seatingPlan} /></>;
+  return (
+    <>
+      <StyleInjector />
+      {view === 'landing' && (
+         <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1538099130811-745e64318258?q=80&w=2648&auto=format&fit=crop')] bg-cover bg-center opacity-20"></div>
+            <div className="z-10 bg-neutral-900/80 p-8 md:p-12 rounded-3xl border border-white/10 backdrop-blur-xl shadow-2xl max-w-4xl w-full text-center">
+               {/* 🔥 V198: Changed font-black (900) to font-bold (700) */}
+               <h1 className="text-5xl md:text-7xl font-bold mb-4 tracking-tighter bg-gradient-to-r from-red-600 to-red-400 bg-clip-text text-transparent">{t.title}</h1>
+               <p className="text-xl text-white/50 mb-12 tracking-[0.5em] uppercase">{t.sub}</p>
+               
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+                  <button onClick={()=>setView('guest')} className="group relative overflow-hidden bg-white text-black p-8 rounded-2xl hover:bg-gray-200 transition-all text-left">
+                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><User size={100}/></div>
+                      <h3 className="text-2xl font-bold mb-2">{t.guestMode}</h3>
+                      <p className="text-sm opacity-60">Register, Check Seat, Get Ticket</p>
+                      <ArrowRight className="mt-4 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-[-10px] group-hover:translate-x-0"/>
+                  </button>
+                  <div className="grid grid-cols-1 gap-3">
+                      <button onClick={()=>goLogin('admin')} className="bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-xl flex items-center justify-between group transition-all"><span className="font-bold flex items-center gap-3"><QrCode size={20}/> {t.adminMode}</span> <ChevronRight size={16} className="opacity-0 group-hover:opacity-100"/></button>
+                      <button onClick={()=>goLogin('prize')} className="bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-xl flex items-center justify-between group transition-all"><span className="font-bold flex items-center gap-3"><Trophy size={20}/> {t.prizeMode}</span> <ChevronRight size={16} className="opacity-0 group-hover:opacity-100"/></button>
+                      <button onClick={()=>goLogin('projector')} className="bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-xl flex items-center justify-between group transition-all"><span className="font-bold flex items-center gap-3"><Monitor size={20}/> {t.projectorMode}</span> <ChevronRight size={16} className="opacity-0 group-hover:opacity-100"/></button>
+                  </div>
+               </div>
+
+               <div className="flex justify-center gap-4">
+                  <button onClick={()=>setLang('zh')} className={`px-4 py-1 rounded-full text-xs font-bold transition-colors ${lang==='zh'?'bg-red-600 text-white':'bg-white/10 text-white/50 hover:bg-white/20'}`}>中文</button>
+                  <button onClick={()=>setLang('en')} className={`px-4 py-1 rounded-full text-xs font-bold transition-colors ${lang==='en'?'bg-red-600 text-white':'bg-white/10 text-white/50 hover:bg-white/20'}`}>EN</button>
+               </div>
+            </div>
+         </div>
+      )}
+
+      {view === 'login' && <LoginView t={t} onLogin={handleLoginSuccess} onBack={()=>setView('landing')} />}
+      
+      {view === 'guest' && <GuestView t={t} onBack={()=>setView('landing')} checkDuplicate={(p, e) => {
+          if (attendees.some(a => normalizePhone(a.phone) === p)) return 'phone';
+          if (attendees.some(a => normalizeEmail(a.email) === e)) return 'email';
+          return false;
+      }} seatingPlan={seatingPlan} attendees={attendees} />}
+
+      {view === 'admin' && <ReceptionDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} setAttendees={setAttendees} seatingPlan={seatingPlan} drawHistory={drawHistory} />}
+      
+      {view === 'prize' && <PrizeDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} setCurrentPrize={setCurrentPrize} />}
+      
+      {view === 'projector' && <ProjectorView t={t} onBack={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} prizes={prizes} seatingPlan={seatingPlan} />}
+
+    </>
+  );
 }
