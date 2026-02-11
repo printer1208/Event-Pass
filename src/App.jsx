@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-// 🔥 V212: Full Force Stretch Logic for "TESLA" text
-// This version ignores font aspect ratio limitations and forces the text to fill 75% of the height.
-// If the text is too wide, it squeezes it horizontally (scaleX) instead of shrinking the font size.
+// 🔥 V215: Fixed "Element type is invalid" by cleaning imports and ensuring valid components
+// Switched Monitor -> Tv for better compatibility. Preserved V214 visual upgrades.
 import { 
   QrCode, Trophy, Plus, Search, Trash2, Camera, 
-  ArrowRight, LogOut, Globe, Mail,
+  ArrowRight, LogOut, Mail,
   ChevronLeft, ChevronRight, AlertTriangle, Phone, User,
-  Monitor, Gift,
-  UserCheck, MapPin, Upload, FileText, Play, RefreshCw, Database, CheckCircle, Circle, Save
+  Tv, Gift,
+  MapPin, Upload, FileText, Play, RefreshCw, Database, CheckCircle, Circle
 } from 'lucide-react';
 
 // --- Firebase ---
@@ -129,7 +128,6 @@ const normalizePhone = (p) => String(p || '').replace(/[^0-9]/g, '');
 const normalizeEmail = (e) => String(e || '').trim().toLowerCase();
 const compressImage = (source, isFile = true) => {
     return new Promise((resolve) => {
-        // 🔥 V188: Use window.Image to avoid conflict with imports
         const img = new window.Image();
         img.onload = () => {
             const canvas = document.createElement('canvas');
@@ -313,7 +311,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             if (container.clientWidth === 0 || container.clientHeight === 0) return;
             canvas.width = container.clientWidth; 
             canvas.height = container.clientHeight; 
-            // 🔥 V209: Ensure fonts are ready before initializing to prevent wrong text measurements
+            // 🔥 V209: Ensure fonts are ready before initializing
             document.fonts.ready.then(() => {
                 initParticles();
             });
@@ -324,7 +322,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             const h = canvas.height;
             if (w === 0 || h === 0) return; 
 
-            // 🔥 V205: Reduced minParticles to 300 to match guest count (300-370) and avoid duplicates.
+            // 🔥 V205: Reduced minParticles to 300 to match guest count (300-370)
             const minParticles = 300; 
             const targetCount = list.length > 0 ? list.length : 100;
             const totalParticles = Math.max(targetCount, minParticles);
@@ -338,33 +336,27 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.fillRect(0, 0, w, h);
             offCtx.fillStyle = '#fff';
             
-            // 🔥 V213: EXTREME FILL LOGIC
-            // 1. Force Height: Set font size to 120% of canvas height.
-            //    Fonts usually have padding (ascent/descent), so 1.2h ensures the VISIBLE letters fill ~85% of screen.
-            const forcedFontSize = h * 1.2; 
+            // 🔥 V214: MAXIMUM HEIGHT ADJUSTMENT (1.5x)
+            const forcedFontSize = h * 1.5; 
             
-            // 2. Set Font: Use the heaviest condensed font available
+            // Set Font: Use the heaviest condensed font available
             offCtx.font = `900 ${forcedFontSize}px 'Impact', 'Arial Black', 'Arial', sans-serif`;
             
-            // 3. Measure Width
+            // Measure Width
             const textMetrics = offCtx.measureText("TESLA");
             const textRealWidth = textMetrics.width;
             
-            // 4. Force Width Stretch: Calculate scaleX to make text fill exactly 95% of screen width.
-            //    This STRETCHES the text if it's too narrow, or shrinks it if too wide.
-            //    Result: The text ALWAYS spans the full width.
+            // Force Width Stretch
             const targetWidth = w * 0.95;
             const scaleX = targetWidth / textRealWidth;
             
-            // 5. Draw Text with Transformation
+            // Draw Text with Transformation
             offCtx.save();
             offCtx.translate(w / 2, h / 2); // Move to center
-            // Apply scaleX to force width, keep scaleY at 1 (since font size is already huge)
             offCtx.scale(scaleX, 1);        
             offCtx.textAlign = 'center';
-            offCtx.textBaseline = 'middle'; // Crucial for vertical centering
-            // Offset y slightly if needed to center the visual weight of caps
-            offCtx.fillText("TESLA", 0, h * 0.05); 
+            offCtx.textBaseline = 'middle'; 
+            offCtx.fillText("TESLA", 0, h * 0.1); 
             offCtx.restore();
             
             const imgData = offCtx.getImageData(0,0,w,h).data;
@@ -412,10 +404,9 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                     const guestIndex = i % list.length;
                     p = list[guestIndex];
                     isReal = true;
-                    // 🔥 V188: Use window.Image here too
+                    // 🔥 V203: Relaxed length check to > 20 or startsWith http
                     const photoSrc = p.photo;
                     img = new window.Image();
-                    // 🔥 V203: Relaxed length check to > 20 or startsWith http to support Dummy Data URLs
                     if (photoSrc && (photoSrc.length > 20 || photoSrc.startsWith('http'))) { 
                         img.src = photoSrc;
                     } else {
@@ -611,10 +602,6 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
         }
     }, [isQrLibReady, searchResult]);
 
-  const handleDownloadTicket = async () => {
-    // 🔥 V143: Removed Download Logic - Just screenshot
-  };
-
   const startCamera = async () => { setErr(''); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } }); setIsCameraOpen(true); setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100); } catch (e) { fileInputRef.current.click(); } };
   const takePhoto = async () => { if(!videoRef.current) return; const canvas = document.createElement('canvas'); const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const xOffset = (videoRef.current.videoWidth - size) / 2; const yOffset = (videoRef.current.videoHeight - size) / 2; ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size); const rawBase64 = canvas.toDataURL('image/jpeg'); const stream = videoRef.current.srcObject; if(stream) stream.getTracks().forEach(track => track.stop()); setIsCameraOpen(false); const compressed = await compressImage(rawBase64, false); setPhoto(compressed); };
   const handleFileChange = async (e) => { const file = e.target.files[0]; if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); } };
@@ -643,7 +630,6 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
       try { if (!db) throw new Error("Firebase not initialized"); const docRef = await addDoc(collection(db, "attendees"), finalGuestData); setNewId(docRef.id); setStep(2); } catch (error) { console.error(error); setErr("Network Error."); } setLoading(false); 
   };
   
-  // 🔥 V179: Improved Back Navigation Logic
   const handleBack = () => {
       if (isSearchMode) {
           setIsSearchMode(false);
@@ -697,7 +683,6 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                     {err && <div className="text-red-400 text-center text-sm bg-red-500/10 p-3 rounded-lg border border-red-500/20">{err}</div>}
                     {searchResult && (
                         <div className="mt-6 p-6 bg-white/10 rounded-2xl border border-yellow-500/50 text-center shadow-xl">
-                            {/* 🔥 V192: Added Check-in Status to Search Result */}
                             <div className="flex justify-between items-start mb-4 border-b border-white/10 pb-2">
                                 <span className="text-sm text-yellow-500 font-bold uppercase tracking-wider mt-1">{t.seatResult}</span>
                                 <div className="flex flex-col gap-1 items-end">
@@ -791,10 +776,6 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
         return a;
     });
 
-    // 🔥 V202: Strict Eligibility Check
-    // 1. Registration: Guaranteed as we are iterating over 'attendees' (Firestore collection)
-    // 2. Check-in: Must strictly be true (p.checkedIn === true) to show photo and draw
-    // 3. Not a Winner: Must not be in drawHistory
     const eligible = enrichedAttendees.filter(p => p.checkedIn === true && !drawHistory.some(h => h.attendeeId === p.id));
     
     let currentPrizeWinner = drawHistory.find(h => h.prize === currentPrize);
@@ -863,7 +844,6 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                         <div className="relative mb-0">
                             <div className="absolute inset-0 bg-yellow-500/30 blur-3xl rounded-full animate-pulse"></div>
                             {/* 🔥 V197: Winner Photo Enlarged to 72vh with z-index for layering */}
-                            {/* 🔥 V203: Relaxed length check to > 20 or startsWith http to support Dummy Data URLs */}
                             <img 
                                 src={winner.photo && (winner.photo.length > 20 || winner.photo.startsWith('http')) ? winner.photo : DEFAULT_AVATAR} 
                                 className="relative w-[72vh] h-[72vh] rounded-full border-8 border-yellow-400 object-cover shadow-2xl bg-neutral-800 z-10"
@@ -892,7 +872,6 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                         <div className="text-2xl text-white/50 font-bold mb-0 uppercase tracking-[0.3em] relative z-20 top-4 bg-black/30 px-4 rounded-full backdrop-blur-sm">{t.drawn}</div>
                         <div className="relative mb-0">
                             {/* 🔥 V197: Drawn Photo Enlarged to 68vh */}
-                            {/* 🔥 V203: Relaxed length check to > 20 or startsWith http to support Dummy Data URLs */}
                             <img 
                                 src={currentPrizeWinner.photo && (currentPrizeWinner.photo.length > 20 || currentPrizeWinner.photo.startsWith('http')) ? currentPrizeWinner.photo : DEFAULT_AVATAR} 
                                 className="w-[68vh] h-[68vh] rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover bg-neutral-800 z-10 relative"
@@ -1081,7 +1060,7 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
             </div>
             <div className="flex flex-col gap-6">
                 <div className="bg-gradient-to-br from-neutral-800 to-black border border-white/20 p-8 rounded-3xl text-center shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-3 opacity-30"><Monitor size={100} className="text-white"/></div>
+                    <div className="absolute top-0 right-0 p-3 opacity-30"><Tv size={100} className="text-white"/></div>
                     <p className="text-white/50 text-sm uppercase tracking-widest mb-2">{t.currentPrize}</p>
                     <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter drop-shadow-lg mb-6">{currentPrize || "---"}</h1>
                     <div className="flex justify-center gap-4">
@@ -1165,7 +1144,7 @@ export default function App() {
                   <div className="grid grid-cols-1 gap-3">
                       <button onClick={()=>goLogin('admin')} className="bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-xl flex items-center justify-between group transition-all"><span className="font-bold flex items-center gap-3"><QrCode size={20}/> {t.adminMode}</span> <ChevronRight size={16} className="opacity-0 group-hover:opacity-100"/></button>
                       <button onClick={()=>goLogin('prize')} className="bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-xl flex items-center justify-between group transition-all"><span className="font-bold flex items-center gap-3"><Trophy size={20}/> {t.prizeMode}</span> <ChevronRight size={16} className="opacity-0 group-hover:opacity-100"/></button>
-                      <button onClick={()=>goLogin('projector')} className="bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-xl flex items-center justify-between group transition-all"><span className="font-bold flex items-center gap-3"><Monitor size={20}/> {t.projectorMode}</span> <ChevronRight size={16} className="opacity-0 group-hover:opacity-100"/></button>
+                      <button onClick={()=>goLogin('projector')} className="bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-xl flex items-center justify-between group transition-all"><span className="font-bold flex items-center gap-3"><Tv size={20}/> {t.projectorMode}</span> <ChevronRight size={16} className="opacity-0 group-hover:opacity-100"/></button>
                   </div>
                </div>
 
