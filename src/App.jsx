@@ -37,7 +37,7 @@ try {
   console.error("Firebase Init Error:", error);
 }
 
-const ADMIN_PASSWORD = "admin"; 
+const ADMIN_PASSWORD = "Tesla3500"; 
 
 // --- Default Avatar (Base64 for stability) ---
 const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23555555' stroke='%23333333' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E";
@@ -56,7 +56,7 @@ const GeminiService = {
 
 const translations = {
   zh: {
-    title: "Tesla Annual Dinner", sub: "2025 穩定版",
+    title: "Tesla Annual Dinner", sub: "",
     guestMode: "參加者登記", adminMode: "接待處 (簽到)", prizeMode: "舞台控台", projectorMode: "大螢幕投影",
     login: "系統驗證", pwdPlace: "請輸入密碼", enter: "登入", wrongPwd: "密碼錯誤",
     regTitle: "賓客登記", regSub: "請輸入電話或 Email",
@@ -87,7 +87,7 @@ const translations = {
     uploadBtn: "上傳照片", photoBtn: "拍照"
   },
   en: {
-    title: "Tesla Annual Dinner", sub: "2025 Stable",
+    title: "Tesla Annual Dinner", sub: "",
     guestMode: "Registration", adminMode: "Reception", prizeMode: "Stage Control", projectorMode: "Projector",
     login: "Security", pwdPlace: "Password", enter: "Login", wrongPwd: "Error",
     regTitle: "Register", regSub: "Enter Phone or Email",
