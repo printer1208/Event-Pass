@@ -81,7 +81,7 @@ const translations = {
     drawn: "已抽出", winnerIs: "得主", noPhoto: "無照片",
     genDummy: "生成 320 筆測試資料", clearGuests: "清空所有賓客", confirmClearGuests: "確定要刪除所有賓客資料嗎？這將無法復原。",
     genDummySeat: "生成 320 筆測試座位", clearSeats: "清空座位表", confirmClearSeats: "確定要清空所有座位表嗎？",
-    checkSeat: "查詢座位", inputHint: "輸入電話或 Email 查詢", backToReg: "返回登記",
+    checkSeat: "查詢座位", inputHint: "輸入姓名、電話或 Email 查詢", backToReg: "返回登記",
     seatResult: "查詢結果", status: "狀態", notCheckedIn: "未簽到", registered: "已登記", notRegistered: "未登記",
     youWon: "恭喜獲得", nextRound: "已自動存檔・按 ENTER 繼續",
     winnerLabel: "得主", saveTicket: "下載入場憑證", screenshotHint: "請截圖保存此畫面作為入場憑證",
@@ -114,7 +114,7 @@ const translations = {
     drawn: "Drawn", winnerIs: "Winner", noPhoto: "No Photo",
     genDummy: "Gen 320 Dummy", clearGuests: "Clear All Guests", confirmClearGuests: "Are you sure to delete ALL guests? This cannot be undone.",
     genDummySeat: "Gen 320 Dummy Seats", clearSeats: "Clear Seats", confirmClearSeats: "Delete ALL seating plan?",
-    checkSeat: "Check Seat", inputHint: "Enter Phone or Email", backToReg: "Back to Register",
+    checkSeat: "Check Seat", inputHint: "Enter Name, Phone or Email", backToReg: "Back to Register",
     seatResult: "Result", status: "Status", notCheckedIn: "Not In", registered: "Registered", notRegistered: "Not Reg",
     youWon: "Congratulations!", nextRound: "AUTO SAVED • PRESS ENTER >>> NEXT",
     winnerLabel: "WINNER", saveTicket: "Download Ticket", screenshotHint: "Please screenshot this screen as your entry pass",
@@ -372,7 +372,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             const sampleStep = 4;
             for(let y=0; y<h; y+=sampleStep) {
                 for(let x=0; x<w; x+=sampleStep) {
-                     if(imgData[(y * w + x) * 4] > 100) whitePixels++;
+                      if(imgData[(y * w + x) * 4] > 100) whitePixels++;
                 }
             }
             const totalWhiteArea = whitePixels * sampleStep * sampleStep;
@@ -462,33 +462,33 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                 const currentSize = mode.current === 'galaxy' ? p.size * 0.8 : p.size; 
                 
                 if (mode.current === 'galaxy') {
-                     ctx.translate(p.x + p.size/2, p.y + p.size/2);
-                     ctx.rotate(p.angle);
-                     ctx.beginPath(); 
-                     ctx.arc(0, 0, currentSize/2, 0, Math.PI * 2); 
-                     ctx.clip();
-                     
-                     if (p.img && p.img.complete && p.img.naturalWidth !== 0) {
-                         ctx.drawImage(p.img, -currentSize/2, -currentSize/2, currentSize, currentSize);
-                     } else {
-                         ctx.fillStyle = p.color; 
-                         ctx.fillRect(-currentSize/2, -currentSize/2, currentSize, currentSize); 
-                     }
+                      ctx.translate(p.x + p.size/2, p.y + p.size/2);
+                      ctx.rotate(p.angle);
+                      ctx.beginPath(); 
+                      ctx.arc(0, 0, currentSize/2, 0, Math.PI * 2); 
+                      ctx.clip();
+                      
+                      if (p.img && p.img.complete && p.img.naturalWidth !== 0) {
+                          ctx.drawImage(p.img, -currentSize/2, -currentSize/2, currentSize, currentSize);
+                      } else {
+                          ctx.fillStyle = p.color; 
+                          ctx.fillRect(-currentSize/2, -currentSize/2, currentSize, currentSize); 
+                      }
                 } else {
-                     const gap = 0;
-                     ctx.beginPath();
-                     ctx.rect(p.x, p.y, p.size - gap, p.size - gap);
-                     ctx.clip();
-                     
-                     if (p.img && p.img.complete && p.img.naturalWidth !== 0) {
-                         ctx.drawImage(p.img, p.x, p.y, p.size - gap, p.size - gap);
-                         ctx.strokeStyle = 'rgba(255,255,255,0.1)'; 
-                         ctx.lineWidth = 0.5;
-                         ctx.strokeRect(p.x, p.y, p.size - gap, p.size - gap);
-                     } else {
-                         ctx.fillStyle = p.color; 
-                         ctx.fillRect(p.x, p.y, p.size - gap, p.size - gap); 
-                     }
+                      const gap = 0;
+                      ctx.beginPath();
+                      ctx.rect(p.x, p.y, p.size - gap, p.size - gap);
+                      ctx.clip();
+                      
+                      if (p.img && p.img.complete && p.img.naturalWidth !== 0) {
+                          ctx.drawImage(p.img, p.x, p.y, p.size - gap, p.size - gap);
+                          ctx.strokeStyle = 'rgba(255,255,255,0.1)'; 
+                          ctx.lineWidth = 0.5;
+                          ctx.strokeRect(p.x, p.y, p.size - gap, p.size - gap);
+                      } else {
+                          ctx.fillStyle = p.color; 
+                          ctx.fillRect(p.x, p.y, p.size - gap, p.size - gap); 
+                      }
                 }
                 ctx.restore();
             });
@@ -657,19 +657,40 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
   };
 
   const handleSeatSearch = (e) => {
-    e.preventDefault(); const q = searchQuery.trim(); if (!q) return; const isEmail = q.includes('@'); const target = isEmail ? normalizeEmail(q) : normalizePhone(q); 
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
     
-    let found = attendees.find(a => isEmail ? normalizeEmail(String(a.email)) === target : normalizePhone(String(a.phone)) === target);
-    let isAttendee = true; let status = t.registered;
+    const lowerQ = q.toLowerCase();
+    const cleanPhone = normalizePhone(q);
+    const isEmailInput = q.includes('@');
+
+    // Logic: Matches if Name includes query OR Email matches OR Phone matches
+    const isMatch = (item) => {
+        if (!item) return false;
+        // 1. Name check (partial, case-insensitive)
+        const nameMatch = (item.name || '').toLowerCase().includes(lowerQ);
+        // 2. Email check (exact match)
+        const emailMatch = isEmailInput && normalizeEmail(item.email) === normalizeEmail(q);
+        // 3. Phone check (exact, only if input looks like a phone with sufficient digits)
+        const phoneMatch = cleanPhone.length > 3 && normalizePhone(item.phone) === cleanPhone;
+        
+        return nameMatch || emailMatch || phoneMatch;
+    };
+
+    let found = attendees.find(isMatch);
+    let isAttendee = true; 
+    let status = t.registered;
     
-    const seatingMatch = seatingPlan.find(s => isEmail ? normalizeEmail(String(s.email)) === target : normalizePhone(String(s.phone)) === target);
+    const seatingMatch = seatingPlan.find(isMatch);
     
     if (!found) {
         found = seatingMatch;
         status = t.notRegistered;
         isAttendee = false;
     } else if (seatingMatch) {
-        found = { ...found, table: seatingMatch.table, seat: seatingMatch.seat, dept: seatingMatch.dept, name: seatingMatch.name };
+         // Merge info if found in both
+         found = { ...found, table: seatingMatch.table, seat: seatingMatch.seat, dept: seatingMatch.dept, name: seatingMatch.name };
     }
 
     if (found) { setSearchResult({ ...found, status, isAttendee }); setErr(""); } else { setSearchResult(null); setErr(t.notFound); }
@@ -814,27 +835,36 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
             wonAt: new Date().toISOString() 
         });
         
-        if (currentPrize && prizes.length > 0) {
+        // 🔥 V261: Removed auto-advance logic from here. 
+        // Prize now only updates when user explicitly moves to next round (ENTER).
+        setIsSaving(false);
+    };
+
+    // 🔥 V261: New function to handle prize advancement
+    const advancePrize = async () => {
+         if (currentPrize && prizes.length > 0) {
             const currentIdx = prizes.findIndex(p => p.name === currentPrize);
-            let nextPrize = prizes.find((p, idx) => idx > currentIdx && !drawHistory.some(h => h.prize === p.name));
-            if (!nextPrize) nextPrize = prizes.find(p => !drawHistory.some(h => h.prize === p.name));
+            // Find next prize that is NOT in drawHistory and NOT the current prize (just in case history is stale)
+            let nextPrize = prizes.find((p, idx) => idx > currentIdx && !drawHistory.some(h => h.prize === p.name) && p.name !== currentPrize);
+            if (!nextPrize) nextPrize = prizes.find(p => !drawHistory.some(h => h.prize === p.name) && p.name !== currentPrize);
+            
             if (nextPrize && db) {
                 await setDoc(doc(db, "config", "settings"), { currentPrize: nextPrize.name }, { merge: true });
             }
         }
-        setIsSaving(false);
     };
 
     useEffect(() => {
         const handleKey = async (e) => { 
             if (winner && e.key === 'Enter') {
-                // 🔥 V170: ENTER just closes the winner view (next round)
+                // 🔥 V261: Advance prize BEFORE closing the view
+                await advancePrize();
                 setWinner(null);
             }
         };
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
-    }, [winner]);
+    }, [winner, currentPrize, prizes, drawHistory]); // 🔥 V261: Added dependencies for stable closure
 
     // 🔥 V170: Auto-save on draw end
     const handleDrawEnd = async (w) => { 
@@ -1140,112 +1170,112 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
 };
 
 const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, setCurrentPrize }) => {
-  const [prizes, setPrizes] = useState([]); 
-  const [newPrizeName, setNewPrizeName] = useState("");
-  const [qty, setQty] = useState("1");
-  const [prizeSearch, setPrizeSearch] = useState(""); 
-  const fileInputRef = useRef(null);
-  useEffect(() => { if (!db) return; const unsub = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => { setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); }); return () => unsub(); }, []);
-  const handleAddPrize = async (e) => { e.preventDefault(); if(newPrizeName && db) { const q = parseInt(qty) || 1; const batch = writeBatch(db); for(let i=1; i<=q; i++) { const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: q > 1 ? `${newPrizeName} #${i}` : newPrizeName, createdAt: new Date().toISOString() }); } await batch.commit(); setNewPrizeName(""); setQty("1"); } };
-  const handleSelectPrize = async (prizeName) => { if(db) await setDoc(doc(db, "config", "settings"), { currentPrize: prizeName }, { merge: true }); };
-  const handleDeletePrize = async (id) => { if(confirm('Delete prize?')) await deleteDoc(doc(db, "prizes", id)); };
-  const toggleWinnerStatus = async (winnerRecord) => { if(confirm('Reset this prize? Winner will be removed.')) { await deleteDoc(doc(db, "winners", winnerRecord.id)); await setDoc(doc(db, "config", "settings"), { currentPrize: winnerRecord.prize }, { merge: true }); } };
-  const handleResetAllWinners = async (e) => { if (e) e.preventDefault(); if (confirm('確定要清空所有中獎紀錄嗎？此操作無法復原。\nAre you sure you want to clear ALL winners?')) { const batch = writeBatch(db); drawHistory.forEach(win => { batch.delete(doc(db, "winners", win.id)); }); batch.commit(); } };
-  const handleImportPrizes = async (e) => { const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split(/\r\n|\n/).filter(l=>l); const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l.trim(), createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!"); };
-  const filteredPrizes = prizes.filter(p => p.name.toLowerCase().includes(prizeSearch.toLowerCase()));
-  return (
-    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
-      <header className="bg-neutral-900/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-        <div className="flex items-center gap-3 font-bold text-xl"><div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center text-white"><User size={18}/></div> {t.prizeMode}</div>
-        <button onClick={onLogout} className="text-white/50 hover:text-red-500 text-sm flex items-center gap-2 transition-colors"><X size={16}/> {t.logout}</button>
-      </header>
-      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col items-center">
-        <div className="w-full grid md:grid-cols-2 gap-8 h-full">
-            <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex flex-col h-[700px]">
-                <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><User size={20} className="text-red-500"/> {t.prizeList}</h3>
-                <form onSubmit={handleAddPrize} className="flex gap-2 mb-4"><input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-[2] bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:border-red-500 outline-none"/><input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} className="w-16 bg-black/50 border border-white/20 rounded-xl px-2 py-3 text-sm text-center text-white focus:border-red-500 outline-none"/><button className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-colors"><Plus size={20}/></button></form>
-                <div className="flex gap-2 mb-4 relative"><Search className="absolute top-3 left-3 text-white/30" size={16}/><input value={prizeSearch} onChange={e=>setPrizeSearch(e.target.value)} placeholder="Search Prize..." className="w-full bg-black/30 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none"/><label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Plus size={12}/> CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label></div>
-                <div className="flex-1 overflow-y-auto pr-2 custom-scroll flex flex-col gap-2">
-                    {filteredPrizes.map(p=>{ const winnerRecord = drawHistory.find(h => h.prize === p.name); return ( <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${currentPrize===p.name?'bg-red-600/20 border-red-600':'bg-white/5 border-white/10'} ${winnerRecord ? 'opacity-70 bg-black/40' : ''}`}> <div className="flex flex-col"><span className={`font-bold ${currentPrize===p.name?'text-white':'text-white/70'}`}>{p.name}</span>{winnerRecord && <span className="text-xs text-yellow-400 flex items-center gap-1 mt-1 font-bold">🏆 {winnerRecord.name}</span>}</div><div className="flex gap-2">{currentPrize!==p.name && !winnerRecord && <button onClick={()=>handleSelectPrize(p.name)} className="px-3 py-1.5 bg-white/10 hover:bg-green-600 rounded-lg text-xs transition-colors">{t.select}</button>}{currentPrize===p.name && <span className="px-3 py-1.5 bg-red-600 rounded-lg text-xs font-bold">{t.active}</span>}{winnerRecord ? <button onClick={()=>toggleWinnerStatus(winnerRecord)} className="p-2 bg-white/10 hover:bg-yellow-600 rounded-lg transition-colors" title={t.resetWinner}><X size={14}/></button> : <button onClick={()=>handleDeletePrize(p.id)} className="p-2 bg-white/10 hover:bg-red-600 rounded-lg transition-colors"><X size={14}/></button>}</div></div> ); })}
-                </div>
-            </div>
-            <div className="flex flex-col gap-6">
-                <div className="bg-gradient-to-br from-neutral-800 to-black border border-white/20 p-8 rounded-3xl text-center shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-3 opacity-30"><Camera size={100} className="text-white"/></div>
-                    <p className="text-white/50 text-sm uppercase tracking-widest mb-2">{t.currentPrize}</p>
-                    <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter drop-shadow-lg mb-6">{currentPrize || "---"}</h1>
-                    <div className="flex justify-center gap-4">
-                        <div className="text-center"><div className="text-2xl font-bold text-white">{attendees.filter(p=>p.checkedIn).length}</div><div className="text-xs text-white/40">Present</div></div>
-                        <div className="w-[1px] h-10 bg-white/10"></div>
-                        <div className="text-center"><div className="text-2xl font-bold text-white">{attendees.filter(p=>p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id)).length}</div><div className="text-xs text-white/40">Eligible</div></div>
-                    </div>
-                </div>
-                <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex-1 h-[350px] overflow-hidden flex flex-col">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold flex items-center gap-2"><User size={20} className="text-yellow-500"/> {t.winnersList}</h3>
-                        {drawHistory.length > 0 && (<button onClick={handleResetAllWinners} className="text-xs bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1.5 rounded-lg hover:bg-red-600 hover:text-white transition-colors"><X size={12} className="inline mr-1"/> {t.clearAll}</button>)}
-                    </div>
-                    <div className="flex-1 overflow-y-auto custom-scroll flex flex-col gap-2">
-                        {drawHistory.map(h => (
-                            <div key={h.id} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
-                                <span className="text-yellow-500 text-sm font-bold">{h.prize}</span>
-                                <div className="flex items-center gap-2">
-                                    {h.photo && <img src={h.photo} className="w-6 h-6 rounded-full object-cover"/>}
-                                    <span className="font-bold">{h.name}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-          </div>
-      </main>
-    </div>
-  );
+  const [prizes, setPrizes] = useState([]); 
+  const [newPrizeName, setNewPrizeName] = useState("");
+  const [qty, setQty] = useState("1");
+  const [prizeSearch, setPrizeSearch] = useState(""); 
+  const fileInputRef = useRef(null);
+  useEffect(() => { if (!db) return; const unsub = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => { setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); }); return () => unsub(); }, []);
+  const handleAddPrize = async (e) => { e.preventDefault(); if(newPrizeName && db) { const q = parseInt(qty) || 1; const batch = writeBatch(db); for(let i=1; i<=q; i++) { const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: q > 1 ? `${newPrizeName} #${i}` : newPrizeName, createdAt: new Date().toISOString() }); } await batch.commit(); setNewPrizeName(""); setQty("1"); } };
+  const handleSelectPrize = async (prizeName) => { if(db) await setDoc(doc(db, "config", "settings"), { currentPrize: prizeName }, { merge: true }); };
+  const handleDeletePrize = async (id) => { if(confirm('Delete prize?')) await deleteDoc(doc(db, "prizes", id)); };
+  const toggleWinnerStatus = async (winnerRecord) => { if(confirm('Reset this prize? Winner will be removed.')) { await deleteDoc(doc(db, "winners", winnerRecord.id)); await setDoc(doc(db, "config", "settings"), { currentPrize: winnerRecord.prize }, { merge: true }); } };
+  const handleResetAllWinners = async (e) => { if (e) e.preventDefault(); if (confirm('確定要清空所有中獎紀錄嗎？此操作無法復原。\nAre you sure you want to clear ALL winners?')) { const batch = writeBatch(db); drawHistory.forEach(win => { batch.delete(doc(db, "winners", win.id)); }); batch.commit(); } };
+  const handleImportPrizes = async (e) => { const file = e.target.files[0]; if(!file) return; const text = await file.text(); const lines = text.split(/\r\n|\n/).filter(l=>l); const batch = writeBatch(db); lines.forEach(l=>{ const newRef = doc(collection(db, "prizes")); batch.set(newRef, { name: l.trim(), createdAt: new Date().toISOString() }); }); await batch.commit(); alert("Imported!"); };
+  const filteredPrizes = prizes.filter(p => p.name.toLowerCase().includes(prizeSearch.toLowerCase()));
+  return (
+    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
+      <header className="bg-neutral-900/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
+        <div className="flex items-center gap-3 font-bold text-xl"><div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center text-white"><User size={18}/></div> {t.prizeMode}</div>
+        <button onClick={onLogout} className="text-white/50 hover:text-red-500 text-sm flex items-center gap-2 transition-colors"><X size={16}/> {t.logout}</button>
+      </header>
+      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col items-center">
+        <div className="w-full grid md:grid-cols-2 gap-8 h-full">
+            <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex flex-col h-[700px]">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><User size={20} className="text-red-500"/> {t.prizeList}</h3>
+                <form onSubmit={handleAddPrize} className="flex gap-2 mb-4"><input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-[2] bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:border-red-500 outline-none"/><input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} className="w-16 bg-black/50 border border-white/20 rounded-xl px-2 py-3 text-sm text-center text-white focus:border-red-500 outline-none"/><button className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-colors"><Plus size={20}/></button></form>
+                <div className="flex gap-2 mb-4 relative"><Search className="absolute top-3 left-3 text-white/30" size={16}/><input value={prizeSearch} onChange={e=>setPrizeSearch(e.target.value)} placeholder="Search Prize..." className="w-full bg-black/30 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none"/><label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Plus size={12}/> CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label></div>
+                <div className="flex-1 overflow-y-auto pr-2 custom-scroll flex flex-col gap-2">
+                    {filteredPrizes.map(p=>{ const winnerRecord = drawHistory.find(h => h.prize === p.name); return ( <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${currentPrize===p.name?'bg-red-600/20 border-red-600':'bg-white/5 border-white/10'} ${winnerRecord ? 'opacity-70 bg-black/40' : ''}`}> <div className="flex flex-col"><span className={`font-bold ${currentPrize===p.name?'text-white':'text-white/70'}`}>{p.name}</span>{winnerRecord && <span className="text-xs text-yellow-400 flex items-center gap-1 mt-1 font-bold">🏆 {winnerRecord.name}</span>}</div><div className="flex gap-2">{currentPrize!==p.name && !winnerRecord && <button onClick={()=>handleSelectPrize(p.name)} className="px-3 py-1.5 bg-white/10 hover:bg-green-600 rounded-lg text-xs transition-colors">{t.select}</button>}{currentPrize===p.name && <span className="px-3 py-1.5 bg-red-600 rounded-lg text-xs font-bold">{t.active}</span>}{winnerRecord ? <button onClick={()=>toggleWinnerStatus(winnerRecord)} className="p-2 bg-white/10 hover:bg-yellow-600 rounded-lg transition-colors" title={t.resetWinner}><X size={14}/></button> : <button onClick={()=>handleDeletePrize(p.id)} className="p-2 bg-white/10 hover:bg-red-600 rounded-lg transition-colors"><X size={14}/></button>}</div></div> ); })}
+                </div>
+            </div>
+            <div className="flex flex-col gap-6">
+                <div className="bg-gradient-to-br from-neutral-800 to-black border border-white/20 p-8 rounded-3xl text-center shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-3 opacity-30"><Camera size={100} className="text-white"/></div>
+                    <p className="text-white/50 text-sm uppercase tracking-widest mb-2">{t.currentPrize}</p>
+                    <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter drop-shadow-lg mb-6">{currentPrize || "---"}</h1>
+                    <div className="flex justify-center gap-4">
+                        <div className="text-center"><div className="text-2xl font-bold text-white">{attendees.filter(p=>p.checkedIn).length}</div><div className="text-xs text-white/40">Present</div></div>
+                        <div className="w-[1px] h-10 bg-white/10"></div>
+                        <div className="text-center"><div className="text-2xl font-bold text-white">{attendees.filter(p=>p.checkedIn && !drawHistory.some(h=>h.attendeeId===p.id)).length}</div><div className="text-xs text-white/40">Eligible</div></div>
+                    </div>
+                </div>
+                <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex-1 h-[350px] overflow-hidden flex flex-col">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold flex items-center gap-2"><User size={20} className="text-yellow-500"/> {t.winnersList}</h3>
+                        {drawHistory.length > 0 && (<button onClick={handleResetAllWinners} className="text-xs bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1.5 rounded-lg hover:bg-red-600 hover:text-white transition-colors"><X size={12} className="inline mr-1"/> {t.clearAll}</button>)}
+                    </div>
+                    <div className="flex-1 overflow-y-auto custom-scroll flex flex-col gap-2">
+                        {drawHistory.map(h => (
+                            <div key={h.id} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5">
+                                <span className="text-yellow-500 text-sm font-bold">{h.prize}</span>
+                                <div className="flex items-center gap-2">
+                                    {h.photo && <img src={h.photo} className="w-6 h-6 rounded-full object-cover"/>}
+                                    <span className="font-bold">{h.name}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+      </main>
+    </div>
+  );
 }
 export default function App() {
-  const [lang, setLang] = useState('en'); const t = translations[lang];
-  const [view, setView] = useState('landing');
-  const [attendees, setAttendees] = useState([]);
-  const [drawHistory, setDrawHistory] = useState([]);
-  const [currentPrize, setCurrentPrize] = useState("");
-  const [seatingPlan, setSeatingPlan] = useState([]);
-  const [prizes, setPrizes] = useState([]);
-  useEffect(() => {
-    if (!db) return;
-    const unsubAttendees = onSnapshot(query(collection(db, "attendees"), orderBy("createdAt", "desc")), (snapshot) => { setAttendees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
-    const unsubWinners = onSnapshot(collection(db, "winners"), (snapshot) => { setDrawHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
-    const unsubConfig = onSnapshot(doc(db, "config", "settings"), (doc) => { if (doc.exists()) setCurrentPrize(doc.data().currentPrize); });
-    const unsubSeating = onSnapshot(collection(db, "seating_plan"), (snapshot) => { setSeatingPlan(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
-    const unsubPrizes = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => { setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
-    return () => { unsubAttendees(); unsubWinners(); unsubConfig(); unsubSeating(); unsubPrizes(); };
-  }, []);
-  const checkDuplicate = (p, e) => { if(attendees.some(x => normalizePhone(x.phone) === normalizePhone(p))) return 'phone'; if(attendees.some(x => normalizeEmail(x.email) === normalizeEmail(e))) return 'email'; return null; };
-  const handleLoginSuccess = (targetView) => setView(targetView);
-  if(view === 'landing') return (
-    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col items-center justify-center p-6 relative overflow-hidden text-white">
-      <StyleInjector/>
-      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-800 via-neutral-950 to-neutral-950 pointer-events-none"></div>
-      <button onClick={()=>setLang(l=>l==='zh'?'en':'zh')} className="absolute top-6 right-6 text-white/50 hover:text-white flex items-center gap-2 border border-white/10 px-4 py-2 rounded-full transition-all z-10 text-xs font-mono"><Search size={14}/> {lang.toUpperCase()}</button>
-      <div className="z-10 text-center mb-16 flex flex-col items-center">
-        <div className="w-24 h-24 bg-gradient-to-br from-red-600 to-red-800 rounded-3xl flex items-center justify-center shadow-[0_0_60px_rgba(220,38,38,0.4)] mb-8 animate-in zoom-in duration-700"><Camera size={48} className="text-white"/></div>
-        <h1 className="text-5xl md:text-8xl font-black text-white mb-4 tracking-tighter drop-shadow-2xl">{t.title}</h1>
-        <p className="text-white/40 text-xl font-light tracking-[0.3em] uppercase">{t.sub}</p>
-      </div>
-      <div className="grid md:grid-cols-4 gap-4 w-full max-w-7xl z-10 px-4">
-        <button onClick={()=>setView('guest')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><User size={60} className="text-white"/></div><h3 className="text-xl font-bold text-white mb-1">{t.guestMode}</h3><p className="text-white/50 text-xs">Register, Check Seat, Get Ticket</p><div className="mt-8 flex items-center text-black font-bold text-sm group-hover:translate-x-2 transition-transform bg-white w-fit px-4 py-2 rounded-full">{t.enter} <ChevronRight size={16} className="ml-2"/></div></button>
-        <button onClick={()=>setView('login_admin')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Search size={60} className="text-white"/></div><h3 className="text-xl font-bold text-white mb-1">{t.adminMode}</h3><p className="text-white/50 text-xs">Check-in, Manage Guests</p><div className="mt-8 flex items-center text-white font-bold text-sm group-hover:translate-x-2 transition-transform bg-red-600 w-fit px-4 py-2 rounded-full">{t.enter} <ChevronRight size={16} className="ml-2"/></div></button>
-        <button onClick={()=>setView('login_prize')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><User size={60} className="text-white"/></div><h3 className="text-xl font-bold text-white mb-1">{t.prizeMode}</h3><p className="text-white/50 text-xs">Manage Prizes, Reset Winners</p><div className="mt-8 flex items-center text-white font-bold text-sm group-hover:translate-x-2 transition-transform bg-indigo-600 w-fit px-4 py-2 rounded-full">{t.enter} <ChevronRight size={16} className="ml-2"/></div></button>
-        <button onClick={()=>setView('login_projector')} className="group relative overflow-hidden bg-gradient-to-br from-neutral-800 to-black hover:from-neutral-700 border border-white/20 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-30 transition-opacity"><Camera size={60} className="text-yellow-500"/></div><h3 className="text-xl font-bold text-yellow-500 mb-1">{t.projectorMode}</h3><p className="text-white/50 text-xs">Big Screen, Lottery Animation</p><div className="mt-8 flex items-center text-black font-bold text-sm group-hover:translate-x-2 transition-transform bg-yellow-500 w-fit px-4 py-2 rounded-full">{t.enter} <ChevronRight size={16} className="ml-2"/></div></button>
-      </div>
-    </div>
-  );
-  if(view === 'guest') return <><StyleInjector/><GuestView t={t} onBack={()=>setView('landing')} checkDuplicate={checkDuplicate} seatingPlan={seatingPlan} attendees={attendees} /></>;
-  if(view === 'login_admin') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('admin')} onBack={()=>setView('landing')} /></>;
-  if(view === 'login_prize') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('prize')} onBack={()=>setView('landing')} /></>;
-  if(view === 'login_projector') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('projector')} onBack={()=>setView('landing')} /></>;
-  
-  if(view === 'admin') return <><StyleInjector/><ReceptionDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} setAttendees={setAttendees} seatingPlan={seatingPlan} drawHistory={drawHistory} /></>;
-  if(view === 'prize') return <><StyleInjector/><PrizeDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} setCurrentPrize={setCurrentPrize} prizes={prizes} /></>;
-  if(view === 'projector') return <><StyleInjector/><ProjectorView t={t} onBack={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} prizes={prizes} seatingPlan={seatingPlan} /></>;
+  const [lang, setLang] = useState('en'); const t = translations[lang];
+  const [view, setView] = useState('landing');
+  const [attendees, setAttendees] = useState([]);
+  const [drawHistory, setDrawHistory] = useState([]);
+  const [currentPrize, setCurrentPrize] = useState("");
+  const [seatingPlan, setSeatingPlan] = useState([]);
+  const [prizes, setPrizes] = useState([]);
+  useEffect(() => {
+    if (!db) return;
+    const unsubAttendees = onSnapshot(query(collection(db, "attendees"), orderBy("createdAt", "desc")), (snapshot) => { setAttendees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
+    const unsubWinners = onSnapshot(collection(db, "winners"), (snapshot) => { setDrawHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
+    const unsubConfig = onSnapshot(doc(db, "config", "settings"), (doc) => { if (doc.exists()) setCurrentPrize(doc.data().currentPrize); });
+    const unsubSeating = onSnapshot(collection(db, "seating_plan"), (snapshot) => { setSeatingPlan(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
+    const unsubPrizes = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => { setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
+    return () => { unsubAttendees(); unsubWinners(); unsubConfig(); unsubSeating(); unsubPrizes(); };
+  }, []);
+  const checkDuplicate = (p, e) => { if(attendees.some(x => normalizePhone(x.phone) === normalizePhone(p))) return 'phone'; if(attendees.some(x => normalizeEmail(x.email) === normalizeEmail(e))) return 'email'; return null; };
+  const handleLoginSuccess = (targetView) => setView(targetView);
+  if(view === 'landing') return (
+    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col items-center justify-center p-6 relative overflow-hidden text-white">
+      <StyleInjector/>
+      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-800 via-neutral-950 to-neutral-950 pointer-events-none"></div>
+      <button onClick={()=>setLang(l=>l==='zh'?'en':'zh')} className="absolute top-6 right-6 text-white/50 hover:text-white flex items-center gap-2 border border-white/10 px-4 py-2 rounded-full transition-all z-10 text-xs font-mono"><Search size={14}/> {lang.toUpperCase()}</button>
+      <div className="z-10 text-center mb-16 flex flex-col items-center">
+        <div className="w-24 h-24 bg-gradient-to-br from-red-600 to-red-800 rounded-3xl flex items-center justify-center shadow-[0_0_60px_rgba(220,38,38,0.4)] mb-8 animate-in zoom-in duration-700"><Camera size={48} className="text-white"/></div>
+        <h1 className="text-5xl md:text-8xl font-black text-white mb-4 tracking-tighter drop-shadow-2xl">{t.title}</h1>
+        <p className="text-white/40 text-xl font-light tracking-[0.3em] uppercase">{t.sub}</p>
+      </div>
+      <div className="grid md:grid-cols-4 gap-4 w-full max-w-7xl z-10 px-4">
+        <button onClick={()=>setView('guest')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><User size={60} className="text-white"/></div><h3 className="text-xl font-bold text-white mb-1">{t.guestMode}</h3><p className="text-white/50 text-xs">Register, Check Seat, Get Ticket</p><div className="mt-8 flex items-center text-black font-bold text-sm group-hover:translate-x-2 transition-transform bg-white w-fit px-4 py-2 rounded-full">{t.enter} <ChevronRight size={16} className="ml-2"/></div></button>
+        <button onClick={()=>setView('login_admin')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Search size={60} className="text-white"/></div><h3 className="text-xl font-bold text-white mb-1">{t.adminMode}</h3><p className="text-white/50 text-xs">Check-in, Manage Guests</p><div className="mt-8 flex items-center text-white font-bold text-sm group-hover:translate-x-2 transition-transform bg-red-600 w-fit px-4 py-2 rounded-full">{t.enter} <ChevronRight size={16} className="ml-2"/></div></button>
+        <button onClick={()=>setView('login_prize')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><User size={60} className="text-white"/></div><h3 className="text-xl font-bold text-white mb-1">{t.prizeMode}</h3><p className="text-white/50 text-xs">Manage Prizes, Reset Winners</p><div className="mt-8 flex items-center text-white font-bold text-sm group-hover:translate-x-2 transition-transform bg-indigo-600 w-fit px-4 py-2 rounded-full">{t.enter} <ChevronRight size={16} className="ml-2"/></div></button>
+        <button onClick={()=>setView('login_projector')} className="group relative overflow-hidden bg-gradient-to-br from-neutral-800 to-black hover:from-neutral-700 border border-white/20 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-30 transition-opacity"><Camera size={60} className="text-yellow-500"/></div><h3 className="text-xl font-bold text-yellow-500 mb-1">{t.projectorMode}</h3><p className="text-white/50 text-xs">Big Screen, Lottery Animation</p><div className="mt-8 flex items-center text-black font-bold text-sm group-hover:translate-x-2 transition-transform bg-yellow-500 w-fit px-4 py-2 rounded-full">{t.enter} <ChevronRight size={16} className="ml-2"/></div></button>
+      </div>
+    </div>
+  );
+  if(view === 'guest') return <><StyleInjector/><GuestView t={t} onBack={()=>setView('landing')} checkDuplicate={checkDuplicate} seatingPlan={seatingPlan} attendees={attendees} /></>;
+  if(view === 'login_admin') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('admin')} onBack={()=>setView('landing')} /></>;
+  if(view === 'login_prize') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('prize')} onBack={()=>setView('landing')} /></>;
+  if(view === 'login_projector') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('projector')} onBack={()=>setView('landing')} /></>;
+  
+  if(view === 'admin') return <><StyleInjector/><ReceptionDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} setAttendees={setAttendees} seatingPlan={seatingPlan} drawHistory={drawHistory} /></>;
+  if(view === 'prize') return <><StyleInjector/><PrizeDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} setCurrentPrize={setCurrentPrize} prizes={prizes} /></>;
+  if(view === 'projector') return <><StyleInjector/><ProjectorView t={t} onBack={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} prizes={prizes} seatingPlan={seatingPlan} /></>;
 }
