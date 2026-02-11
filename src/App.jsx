@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-// 🔥 V215: Fixed "Element type is invalid" by cleaning imports and ensuring valid components
-// Switched Monitor -> Tv for better compatibility. Preserved V214 visual upgrades.
+// 🔥 V255: THE "SAFE 8" ABSOLUTE FIX - Restricted imports to only 8 ultra-stable icons.
+// - Icons: User, Search, Plus, Camera, ChevronLeft, ChevronRight, X, Check.
+// - Replaced ALL other icons in JSX to guarantee compatibility.
+// - Visuals: "TESLA" (no 2026) text and 320-guest logic preserved.
 import { 
-  QrCode, Trophy, Plus, Search, Trash2, Camera, 
-  ArrowRight, LogOut, Mail,
-  ChevronLeft, ChevronRight, AlertTriangle, Phone, User,
-  Tv, Gift,
-  MapPin, Upload, FileText, Play, RefreshCw, Database, CheckCircle, Circle
+  User, Search, Plus, Camera, 
+  ChevronLeft, ChevronRight, X, Check
 } from 'lucide-react';
 
 // --- Firebase ---
@@ -78,8 +77,8 @@ const translations = {
     searchList: "搜尋姓名/電話/Email...", seatTBD: "待定 (請洽櫃台)", wonPrize: "獲獎紀錄",
     addGuest: "新增賓客", clearAll: "清空所有得獎者",
     drawn: "已抽出", winnerIs: "得主", noPhoto: "無照片",
-    genDummy: "生成 100 筆測試資料", clearGuests: "清空所有賓客", confirmClearGuests: "確定要刪除所有賓客資料嗎？這將無法復原。",
-    genDummySeat: "生成 100 筆測試座位", clearSeats: "清空座位表", confirmClearSeats: "確定要清空所有座位表嗎？",
+    genDummy: "生成 320 筆測試資料", clearGuests: "清空所有賓客", confirmClearGuests: "確定要刪除所有賓客資料嗎？這將無法復原。",
+    genDummySeat: "生成 320 筆測試座位", clearSeats: "清空座位表", confirmClearSeats: "確定要清空所有座位表嗎？",
     checkSeat: "查詢座位", inputHint: "輸入電話或 Email 查詢", backToReg: "返回登記",
     seatResult: "查詢結果", status: "狀態", notCheckedIn: "未簽到", registered: "已登記", notRegistered: "未登記",
     youWon: "恭喜獲得", nextRound: "已自動存檔・按 ENTER 繼續",
@@ -109,8 +108,8 @@ const translations = {
     searchList: "Search Name/Phone/Email...", seatTBD: "TBD", wonPrize: "Prize",
     addGuest: "Add Guest", clearAll: "Clear All Winners",
     drawn: "Drawn", winnerIs: "Winner", noPhoto: "No Photo",
-    genDummy: "Gen 100 Dummy", clearGuests: "Clear All Guests", confirmClearGuests: "Are you sure to delete ALL guests? This cannot be undone.",
-    genDummySeat: "Gen 100 Dummy Seats", clearSeats: "Clear Seats", confirmClearSeats: "Delete ALL seating plan?",
+    genDummy: "Gen 320 Dummy", clearGuests: "Clear All Guests", confirmClearGuests: "Are you sure to delete ALL guests? This cannot be undone.",
+    genDummySeat: "Gen 320 Dummy Seats", clearSeats: "Clear Seats", confirmClearSeats: "Delete ALL seating plan?",
     checkSeat: "Check Seat", inputHint: "Enter Phone or Email", backToReg: "Back to Register",
     seatResult: "Result", status: "Status", notCheckedIn: "Not In", registered: "Registered", notRegistered: "Not Reg",
     youWon: "Congratulations!", nextRound: "AUTO SAVED • PRESS ENTER >>> NEXT",
@@ -311,7 +310,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             if (container.clientWidth === 0 || container.clientHeight === 0) return;
             canvas.width = container.clientWidth; 
             canvas.height = container.clientHeight; 
-            // 🔥 V209: Ensure fonts are ready before initializing
+            // 🔥 V209: Ensure fonts are ready before initializing to prevent wrong text measurements
             document.fonts.ready.then(() => {
                 initParticles();
             });
@@ -322,8 +321,8 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             const h = canvas.height;
             if (w === 0 || h === 0) return; 
 
-            // 🔥 V205: Reduced minParticles to 300 to match guest count (300-370)
-            const minParticles = 300; 
+            // 🔥 V234: Adjusted minParticles to 320 to match 320 guests exactly.
+            const minParticles = 320; 
             const targetCount = list.length > 0 ? list.length : 100;
             const totalParticles = Math.max(targetCount, minParticles);
             
@@ -343,6 +342,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.font = `900 ${forcedFontSize}px 'Impact', 'Arial Black', 'Arial', sans-serif`;
             
             // Measure Width
+            // 🔥 V247: Changed text from "TESLA 2026" to "TESLA" only.
             const textMetrics = offCtx.measureText("TESLA");
             const textRealWidth = textMetrics.width;
             
@@ -356,6 +356,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.scale(scaleX, 1);        
             offCtx.textAlign = 'center';
             offCtx.textBaseline = 'middle'; 
+            // 🔥 V247: Changed text from "TESLA 2026" to "TESLA" only.
             offCtx.fillText("TESLA", 0, h * 0.1); 
             offCtx.restore();
             
@@ -404,7 +405,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                     const guestIndex = i % list.length;
                     p = list[guestIndex];
                     isReal = true;
-                    // 🔥 V203: Relaxed length check to > 20 or startsWith http
+                    // 🔥 V203: Relaxed length check
                     const photoSrc = p.photo;
                     img = new window.Image();
                     if (photoSrc && (photoSrc.length > 20 || photoSrc.startsWith('http'))) { 
@@ -602,6 +603,10 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
         }
     }, [isQrLibReady, searchResult]);
 
+  const handleDownloadTicket = async () => {
+    // 🔥 V143: Removed Download Logic - Just screenshot
+  };
+
   const startCamera = async () => { setErr(''); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 640 } } }); setIsCameraOpen(true); setTimeout(() => { if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(e => console.log("Play error:", e)); } }, 100); } catch (e) { fileInputRef.current.click(); } };
   const takePhoto = async () => { if(!videoRef.current) return; const canvas = document.createElement('canvas'); const size = Math.min(videoRef.current.videoWidth, videoRef.current.videoHeight); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); const xOffset = (videoRef.current.videoWidth - size) / 2; const yOffset = (videoRef.current.videoHeight - size) / 2; ctx.drawImage(videoRef.current, xOffset, yOffset, size, size, 0, 0, size, size); const rawBase64 = canvas.toDataURL('image/jpeg'); const stream = videoRef.current.srcObject; if(stream) stream.getTracks().forEach(track => track.stop()); setIsCameraOpen(false); const compressed = await compressImage(rawBase64, false); setPhoto(compressed); };
   const handleFileChange = async (e) => { const file = e.target.files[0]; if(file) { const compressed = await compressImage(file, true); setPhoto(compressed); setErr(''); } };
@@ -677,12 +682,13 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                 <div className="space-y-6 animate-in fade-in zoom-in duration-300">
                     <h3 className="text-2xl font-bold text-center mb-4 text-yellow-500">{t.checkSeat}</h3>
                     <div className="space-y-4">
-                        <div className="relative"><Search className="absolute top-4 left-4 text-white/30" size={20}/><input autoFocus value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="w-full bg-white/5 border border-white/10 text-white p-4 pl-12 rounded-xl outline-none focus:border-yellow-500 transition-all placeholder:text-white/20 text-base" placeholder={t.inputHint} /></div>
+                        <div className="relative"><Search className="absolute top-4 left-4 text-white/30" size={20}/><input autoFocus value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} className="w-full bg-white/10 border border-white/10 text-white p-4 pl-12 rounded-xl outline-none focus:border-yellow-500 transition-all placeholder:text-white/20 text-base" placeholder={t.inputHint} /></div>
                         <button onClick={handleSeatSearch} className="w-full bg-yellow-600 hover:bg-yellow-500 text-white p-4 rounded-xl font-bold shadow-lg transition-all text-lg">{t.searchList}</button>
                     </div>
                     {err && <div className="text-red-400 text-center text-sm bg-red-500/10 p-3 rounded-lg border border-red-500/20">{err}</div>}
                     {searchResult && (
                         <div className="mt-6 p-6 bg-white/10 rounded-2xl border border-yellow-500/50 text-center shadow-xl">
+                            {/* 🔥 V192: Added Check-in Status to Search Result */}
                             <div className="flex justify-between items-start mb-4 border-b border-white/10 pb-2">
                                 <span className="text-sm text-yellow-500 font-bold uppercase tracking-wider mt-1">{t.seatResult}</span>
                                 <div className="flex flex-col gap-1 items-end">
@@ -711,14 +717,14 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                           {isCameraOpen ? (
                               <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-black border-4 border-red-500 shadow-2xl"><video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" /><button type="button" onClick={takePhoto} className="absolute bottom-6 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full bg-white border-4 border-gray-300 hover:scale-110 transition-transform shadow-xl"><Camera className="w-full h-full p-4 text-black"/></button></div>
                           ) : (
-                              <div className="flex flex-col items-center gap-4 w-full"><div onClick={startCamera} className={`w-40 h-40 rounded-full border-4 border-dashed flex items-center justify-center overflow-hidden relative shadow-2xl cursor-pointer hover:bg-white/5 transition-colors ${photo ? 'border-red-500' : 'border-white/30'}`}>{photo ? <img src={photo} alt="Selfie" className="w-full h-full object-cover" /> : <Camera size={64} className="text-white/20"/>}</div><div className="flex gap-3"><button type="button" onClick={startCamera} className="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg"><Camera size={18}/> {t.photoBtn || "Take Photo"}</button><button type="button" onClick={()=>fileInputRef.current.click()} className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg"><Upload size={18}/> {t.uploadBtn || "Upload"}</button></div></div>
+                              <div className="flex flex-col items-center gap-4 w-full"><div onClick={startCamera} className={`w-40 h-40 rounded-full border-4 border-dashed flex items-center justify-center overflow-hidden relative shadow-2xl cursor-pointer hover:bg-white/5 transition-colors ${photo ? 'border-red-500' : 'border-white/30'}`}>{photo ? <img src={photo} alt="Selfie" className="w-full h-full object-cover" /> : <Camera size={64} className="text-white/20"/>}</div><div className="flex gap-3"><button type="button" onClick={startCamera} className="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg"><Camera size={18}/> {t.photoBtn || "Take Photo"}</button><button type="button" onClick={()=>fileInputRef.current.click()} className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 transition-colors shadow-lg"><Plus size={18}/> {t.uploadBtn || "Upload"}</button></div></div>
                           )}
                           <input type="file" accept="image/*" capture="user" ref={fileInputRef} className="hidden" onChange={handleFileChange}/>
                       </div>
                       {!isCameraOpen && (
                           <div className="space-y-4">
-                            {['phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-4 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'phone' ? <Phone size={20}/> : <Mail size={20}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-4 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20 text-base" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
-                            <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-5 rounded-xl font-bold shadow-xl transition-all active:scale-95 mt-4 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-lg">{loading ? <span className="animate-pulse mr-2">...</span> : null}{t.generateBtn}</button>
+                            {['phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-4 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'phone' ? <User size={20}/> : <User size={20}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-4 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20 text-base" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
+                            <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-5 rounded-xl font-bold shadow-xl transition-all active:scale-95 mt-4 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-lg">{loading ? <div className="animate-spin w-4 h-4 border-2 border-black border-t-transparent rounded-full mr-2"></div> : null}{t.generateBtn}</button>
                             <div className="pt-6 mt-6 border-t border-white/10 text-center"><button type="button" onClick={()=>setIsSearchMode(true)} className="text-yellow-500 text-base hover:text-yellow-400 flex items-center justify-center gap-2 mx-auto transition-colors font-bold"><Search size={18}/> {t.checkSeat}</button></div>
                           </div>
                       )}
@@ -736,7 +742,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                                 <div ref={qrContainerRef} className="w-40 h-40 flex items-center justify-center bg-white"></div>
                            </div>
                            <div className="text-yellow-400 text-2xl font-black mb-3 flex justify-center items-center gap-2">
-                                <MapPin size={24}/> <span>Table {matchedSeat?.table || '-'}</span>
+                                <Search size={24}/> <span>Table {matchedSeat?.table || '-'}</span>
                            </div>
                            <div className="text-left text-sm text-white/70 space-y-2 border-t border-white/10 pt-3">
                                <div className="flex justify-between items-center"><span className="text-white/40 text-xs">{t.name}:</span><span className="font-bold text-white text-sm">{guestInfo?.name}</span></div>
@@ -776,6 +782,10 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
         return a;
     });
 
+    // 🔥 V202: Strict Eligibility Check
+    // 1. Registration: Guaranteed as we are iterating over 'attendees' (Firestore collection)
+    // 2. Check-in: Must strictly be true (p.checkedIn === true) to show photo and draw
+    // 3. Not a Winner: Must not be in drawHistory
     const eligible = enrichedAttendees.filter(p => p.checkedIn === true && !drawHistory.some(h => h.attendeeId === p.id));
     
     let currentPrizeWinner = drawHistory.find(h => h.prize === currentPrize);
@@ -858,7 +868,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                                 </div>
                                 <div className="w-0.5 h-10 bg-white/20 rounded-full"></div>
                                 {/* 🔥 V178: Fix undefined Armchair -> MapPin */}
-                                <div className="flex items-center gap-2 text-xl font-bold text-yellow-400"><MapPin size={24} className="text-white/60"/> <span>Table {winner.table || '-'}</span></div>
+                                <div className="flex items-center gap-2 text-xl font-bold text-yellow-400"><Search size={24} className="text-white/60"/> <span>Table {winner.table || '-'}</span></div>
                             </div>
                             <div className="text-white/60 font-mono text-sm tracking-[0.2em] bg-black/80 px-5 py-0.5 rounded-full border border-white/10 shadow-lg">{winner.phone}</div>
                         </div>
@@ -884,7 +894,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                 ) : eligible.length > 0 ? (
                     <GalaxyCanvas list={eligible} t={t} onDrawEnd={handleDrawEnd} disabled={!!winner} />
                 ) : (
-                    <div className="text-center text-white/30"><Trophy size={100} className="mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p></div>
+                    <div className="text-center text-white/30"><User size={100} className="mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p></div>
                 )}
             </div>
             {/* 🔥 V195: Footer Height Reduced to 10vh (Kept as requested) */}
@@ -892,7 +902,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                 {eligible.length > 0 && !winner && !currentPrizeWinner && (
                     <div className="">
                         {/* 🔥 V178: Fix undefined MonitorPlay -> Tv -> Monitor (V188) */}
-                        <button onClick={triggerDraw} className="bg-red-600 text-white px-10 py-3 rounded-full font-bold text-xl shadow-2xl border-4 border-black uppercase tracking-widest hover:scale-105 transition-transform animate-pulse flex items-center gap-2"><Play size={24} fill="currentColor"/> {t.drawBtn}</button>
+                        <button onClick={triggerDraw} className="bg-red-600 text-white px-10 py-3 rounded-full font-bold text-xl shadow-2xl border-4 border-black uppercase tracking-widest hover:scale-105 transition-transform animate-pulse flex items-center gap-2"><Camera size={24} fill="currentColor"/> {t.drawBtn}</button>
                     </div>
                 )}
             </div>
@@ -955,14 +965,14 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   const toggleCancelCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: false, checkInTime: null }); };
   const deletePerson = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "attendees", id)); };
   const downloadTemplate = () => { const content = "\uFEFFName,Phone,Email,Dept,Table,Seat\nElon Musk,0912345678,elon@tesla.com,Engineering,1,A"; const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "seating_template.csv"; link.click(); };
-  const handleGenerateDummy = async () => { if (!confirm("確定要生成 100 筆測試資料嗎？")) return; const existingIds = attendees.map(a => { const match = a.name.match(/^Guest (\d+)$/); return match ? parseInt(match[1]) : 0; }); const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0; const start = maxId + 1; const end = maxId + 100; const batch = writeBatch(db); for (let i = start; i <= end; i++) { const ref = doc(db, "attendees", `guest_${i}`); batch.set(ref, { name: `Guest ${i}`, phone: `9000${String(i).padStart(4, '0')}`, email: `guest${i}@test.com`, dept: `Dept ${String.fromCharCode(65 + (i % 5))}`, table: `${Math.ceil(i / 10)}`, seat: String.fromCharCode(65 + ((i - 1) % 10)), photo: `https://i.pravatar.cc/300?u=guest_${i}`, checkedIn: true, checkInTime: new Date().toISOString(), createdAt: new Date().toISOString() }); } await batch.commit(); alert(`已生成 Guest ${start} - Guest ${end}`); };
+  const handleGenerateDummy = async () => { if (!confirm("確定要生成 320 筆測試資料嗎？")) return; const existingIds = attendees.map(a => { const match = a.name.match(/^Guest (\d+)$/); return match ? parseInt(match[1]) : 0; }); const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0; const start = maxId + 1; const end = maxId + 320; const batch = writeBatch(db); for (let i = start; i <= end; i++) { const ref = doc(db, "attendees", `guest_${i}`); batch.set(ref, { name: `Guest ${i}`, phone: `9000${String(i).padStart(4, '0')}`, email: `guest${i}@test.com`, dept: `Dept ${String.fromCharCode(65 + (i % 5))}`, table: `${Math.ceil(i / 10)}`, seat: String.fromCharCode(65 + ((i - 1) % 10)), photo: `https://i.pravatar.cc/300?u=guest_${i}`, checkedIn: true, checkInTime: new Date().toISOString(), createdAt: new Date().toISOString() }); } await batch.commit(); alert(`已生成 Guest ${start} - Guest ${end}`); };
   const handleClearAllGuests = async () => { if (!confirm(t.confirmClearGuests)) return; const batch = writeBatch(db); attendees.forEach(p => { const ref = doc(db, "attendees", p.id); batch.delete(ref); }); await batch.commit(); alert("已清空所有賓客！"); };
   const handleGenerateDummySeating = async () => { if (!confirm("確定要生成 100 筆新的座位資料嗎？")) return; const existingIds = seatingPlan.map(s => { const match = s.name.match(/^Guest (\d+)$/); return match ? parseInt(match[1]) : 0; }); const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0; const start = maxId + 1; const end = maxId + 100; const batch = writeBatch(db); for (let i = start; i <= end; i++) { const ref = doc(collection(db, "seating_plan")); batch.set(ref, { name: `Guest ${i}`, phone: `9000${String(i).padStart(4, '0')}`, email: `guest${i}@test.com`, dept: `Dept ${String.fromCharCode(65 + (i % 5))}`, table: `${Math.ceil(i / 10)}`, seat: String.fromCharCode(65 + ((i - 1) % 10)) }); } await batch.commit(); alert(`已生成座位資料 Guest ${start} - Guest ${end}`); };
   const handleClearSeating = async () => { if(!confirm(t.confirmClearSeats)) return; const batch = writeBatch(db); seatingPlan.forEach(s => batch.delete(doc(db, "seating_plan", s.id))); await batch.commit(); alert("座位表已清空"); };
 
   return (
     <div className="min-h-[100dvh] bg-neutral-950 text-white flex flex-col">
-       <header className="p-4 border-b border-white/10 flex justify-between items-center bg-neutral-900"><div className="font-bold text-lg flex gap-2"><QrCode/> Reception</div><button onClick={onLogout}><LogOut size={18}/></button></header>
+       <header className="p-4 border-b border-white/10 flex justify-between items-center bg-neutral-900"><div className="font-bold text-lg flex gap-2"><Search/> Reception</div><button onClick={onLogout}><X size={18}/></button></header>
        <main className="flex-1 p-4 flex flex-col items-center w-full max-w-7xl mx-auto">
           <div className="flex gap-2 mb-6 bg-white/5 p-1 rounded-xl">
               {['scan','list','seating'].map(k=><button key={k} onClick={()=>{setTab(k);setIsScan(false)}} className={`px-4 py-2 rounded-lg text-sm ${tab===k?'bg-blue-600':'text-white/50'}`}>{t[k]}</button>)}
@@ -974,9 +984,9 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                   <div className="p-4 bg-white/5 rounded-t-xl border-b border-white/10">
                       <div className="mb-4 flex gap-2 items-center">
                           <div className="relative flex-1"><Search className="absolute top-2.5 left-3 text-white/30" size={16}/><input placeholder={t.searchList} value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-white/10 rounded-lg pl-9 pr-4 py-2 text-sm outline-none"/></div>
-                          {selectedGuestIds.size > 0 && <button onClick={handleDeleteSelectedGuests} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><Trash2 size={14}/> {t.deleteSelected} ({selectedGuestIds.size})</button>}
-                          <button onClick={handleGenerateDummy} className="bg-yellow-600/20 text-yellow-400 border border-yellow-600/50 px-3 py-2 rounded-lg text-xs hover:bg-yellow-600 hover:text-white transition-colors flex items-center gap-1"><Database size={14}/> {t.genDummy}</button>
-                          <button onClick={handleClearAllGuests} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1"><Trash2 size={14}/> {t.clearGuests}</button>
+                          {selectedGuestIds.size > 0 && <button onClick={handleDeleteSelectedGuests} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><X size={14}/> {t.deleteSelected} ({selectedGuestIds.size})</button>}
+                          <button onClick={handleGenerateDummy} className="bg-yellow-600/20 text-yellow-400 border border-yellow-600/50 px-3 py-2 rounded-lg text-xs hover:bg-yellow-600 hover:text-white transition-colors flex items-center gap-1"><Search size={14}/> {t.genDummy}</button>
+                          <button onClick={handleClearAllGuests} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1"><X size={14}/> {t.clearGuests}</button>
                       </div>
                       <form onSubmit={handleAddGuest} className="flex gap-2 flex-wrap mb-4 bg-white/5 p-2 rounded-lg">
                           <div className="w-full text-xs text-white/40 mb-1">{t.addGuest}</div>
@@ -993,7 +1003,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       <table className="w-full text-left border-collapse min-w-[800px]">
                           <thead className="text-xs text-white/40 uppercase border-b border-white/10">
                               <tr>
-                                  <th className="p-3 w-10 text-center"><button onClick={toggleAllSeats} className="hover:text-white transition-colors">{filteredList.length > 0 && filteredList.every(p => selectedGuestIds.has(p.id)) ? <CheckCircle size={16}/> : <Circle size={16}/>}</button></th>
+                                  <th className="p-3 w-10 text-center"><button onClick={toggleAllGuests} className="hover:text-white transition-colors">{filteredList.length > 0 && filteredList.every(p => selectedGuestIds.has(p.id)) ? <Check size={16}/> : <User size={16}/>}</button></th>
                                   <th className="p-3 text-left">Name</th><th className="p-3 text-left">Phone</th><th className="p-3 text-left">Email</th><th className="p-3 text-left">Dept</th><th className="p-3 text-center">Table</th><th className="p-3 text-left text-yellow-500">{t.wonPrize}</th><th className="p-3 text-center">Status</th><th className="p-3 text-center">Del</th>
                               </tr>
                           </thead>
@@ -1008,13 +1018,59 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                   const isSelected = selectedGuestIds.has(p.id);
                                   return (
                                       <tr key={p.id} className={`hover:bg-white/5 text-sm transition-colors ${isSelected ? 'bg-white/10' : ''}`}>
-                                          <td className="p-3 text-center"><button onClick={() => toggleGuestSelection(p.id)} className={`transition-colors ${isSelected ? 'text-blue-400' : 'text-white/20 hover:text-white/50'}`}>{isSelected ? <CheckCircle size={16}/> : <Circle size={16}/>}</button></td>
+                                          <td className="p-3 text-center"><button onClick={() => toggleGuestSelection(p.id)} className={`transition-colors ${isSelected ? 'text-blue-400' : 'text-white/20 hover:text-white/50'}`}>{isSelected ? <Check size={16}/> : <User size={16}/>}</button></td>
                                           <td className="p-3"><div className="flex items-center gap-3 font-bold">{p.photo ? <img src={p.photo} className="w-8 h-8 rounded-full object-cover"/> : <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><User size={14}/></div>}{displayName}</div></td>
                                           <td className="p-3 text-white/60 text-left">{p.phone}</td><td className="p-3 text-white/60 text-left max-w-[150px] truncate" title={p.email}>{p.email}</td><td className="p-3 text-white/60 text-left">{p.dept}</td>
                                           <td className={`p-3 font-mono text-center text-lg ${!displayTable ? 'text-blue-300 italic' : 'text-blue-400'}`}>{displayTable || '-'}</td>
                                           <td className="p-3 text-yellow-400 font-bold text-left">{winnerRec ? winnerRec.prize : '-'}</td>
                                           <td className="p-3 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-1 rounded text-xs hover:bg-red-600 hover:text-white transition-colors">{t.pendingCheckin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-green-600/20 text-green-400 border border-green-600/50 px-3 py-1 rounded text-xs hover:bg-red-900/50 hover:text-red-300 transition-colors">{t.checkedInStatus}</button>}</td>
-                                          <td className="p-3 text-center"><button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10 transition-colors"><Trash2 size={16}/></button></td>
+                                          <td className="p-3 text-center"><button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10 transition-colors"><X size={16}/></button></td>
+                                      </tr>
+                                  );
+                              })}
+                          </tbody>
+                      </table>
+                  </div>
+              </div>
+          )}
+          {tab==='seating' && (
+              <div className="w-full flex-1 flex flex-col gap-4">
+                  <div className="flex gap-2">
+                      <input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none text-sm"/>
+                      {selectedSeatIds.size > 0 && <button onClick={handleDeleteSelectedSeats} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><X size={14}/> {t.deleteSelected} ({selectedSeatIds.size})</button>}
+                      <label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Plus size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label>
+                      <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><Search size={16}/></button>
+                      <button onClick={handleGenerateDummySeating} className="bg-purple-600/20 text-purple-400 border border-purple-600/50 px-3 py-2 rounded-lg text-xs hover:bg-purple-600 hover:text-white transition-colors flex items-center gap-1"><Search size={14}/> {t.genDummySeat}</button>
+                      <button onClick={handleClearSeating} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><X size={14}/> {t.clearSeats}</button>
+                  </div>
+                  <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2">
+                      <div className="w-full text-xs text-white/40 mb-1">{t.addSeat}</div>
+                      <input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" />
+                      <input placeholder={t.phone} value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none" />
+                      <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
+                      <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
+                      <input placeholder={t.table} value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
+                      <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto overflow-x-auto bg-white/5 rounded-xl p-2">
+                      <table className="w-full text-left border-collapse min-w-[800px]">
+                          <thead className="text-xs text-white/40 uppercase border-b border-white/10">
+                              <tr>
+                                  <th className="p-3 w-10 text-center"><button onClick={toggleAllSeats} className="hover:text-white transition-colors">{filteredSeat.length > 0 && filteredSeat.every(s => selectedSeatIds.has(s.id)) ? <Check size={16}/> : <User size={16}/>}</button></th>
+                                  <th className="p-3 text-left">Name</th><th className="p-3 text-left">Phone</th><th className="p-3 text-left">Email</th><th className="p-3 text-left">Dept</th><th className="p-3 text-center">Table</th><th className="p-3 text-center">Status</th><th className="p-3 text-center">Del</th>
+                              </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                              {filteredSeat.map(s=>{
+                                  const match = attendees.find(a => (s.phone && normalizePhone(a.phone) === normalizePhone(s.phone)) || (s.email && normalizeEmail(a.email) === normalizeEmail(s.email)));
+                                  const isCheckedIn = match?.checkedIn;
+                                  const isSelected = selectedSeatIds.has(s.id);
+                                  return (
+                                      <tr key={s.id} className={`hover:bg-white/5 text-sm transition-colors ${isSelected ? 'bg-white/10' : ''}`}>
+                                          <td className="p-3 text-center"><button onClick={() => toggleSeatSelection(s.id)} className={`transition-colors ${isSelected ? 'text-blue-400' : 'text-white/20 hover:text-white/50'}`}>{isSelected ? <Check size={16}/> : <User size={16}/>}</button></td>
+                                          <td className="p-3 font-bold text-left">{s.name}</td><td className="p-3 text-xs text-white/60 text-left">{s.phone}</td><td className="p-3 text-xs text-white/60 text-left">{s.email}</td><td className="p-3 text-xs text-white/60 text-left">{s.dept}</td><td className="p-3 font-mono text-blue-400 text-center text-lg">{s.table}</td>
+                                          <td className="p-3 text-center">{isCheckedIn ? <span className="text-green-400 bg-green-400/20 px-2 py-1 rounded text-xs border border-green-400/50">已到場</span> : <span className="text-white/30 text-xs border border-white/10 px-2 py-1 rounded">未簽到</span>}</td>
+                                          <td className="p-3 text-center"><button onClick={()=>handleDeleteSeating(s.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10"><X size={16}/></button></td>
                                       </tr>
                                   );
                               })}
@@ -1045,22 +1101,22 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
   return (
     <div className="min-h-[100dvh] bg-neutral-950 flex flex-col font-sans text-white">
       <header className="bg-neutral-900/80 backdrop-blur-md border-b border-white/10 px-6 py-4 flex justify-between items-center sticky top-0 z-50">
-        <div className="flex items-center gap-3 font-bold text-xl"><div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center text-white"><Trophy size={18}/></div> {t.prizeMode}</div>
-        <button onClick={onLogout} className="text-white/50 hover:text-red-500 text-sm flex items-center gap-2 transition-colors"><LogOut size={16}/> {t.logout}</button>
+        <div className="flex items-center gap-3 font-bold text-xl"><div className="w-8 h-8 bg-red-600 rounded flex items-center justify-center text-white"><User size={18}/></div> {t.prizeMode}</div>
+        <button onClick={onLogout} className="text-white/50 hover:text-red-500 text-sm flex items-center gap-2 transition-colors"><X size={16}/> {t.logout}</button>
       </header>
       <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full flex flex-col items-center">
         <div className="w-full grid md:grid-cols-2 gap-8 h-full">
             <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex flex-col h-[700px]">
-                <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><Gift size={20} className="text-red-500"/> {t.prizeList}</h3>
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><User size={20} className="text-red-500"/> {t.prizeList}</h3>
                 <form onSubmit={handleAddPrize} className="flex gap-2 mb-4"><input value={newPrizeName} onChange={e=>setNewPrizeName(e.target.value)} placeholder={t.prizePlace} className="flex-[2] bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-sm text-white focus:border-red-500 outline-none"/><input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} className="w-16 bg-black/50 border border-white/20 rounded-xl px-2 py-3 text-sm text-center text-white focus:border-red-500 outline-none"/><button className="bg-white/10 hover:bg-white/20 px-4 py-3 rounded-xl transition-colors"><Plus size={20}/></button></form>
-                <div className="flex gap-2 mb-4 relative"><Search className="absolute top-3 left-3 text-white/30" size={16}/><input value={prizeSearch} onChange={e=>setPrizeSearch(e.target.value)} placeholder="Search Prize..." className="w-full bg-black/30 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none"/><label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Upload size={12}/> CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label></div>
+                <div className="flex gap-2 mb-4 relative"><Search className="absolute top-3 left-3 text-white/30" size={16}/><input value={prizeSearch} onChange={e=>setPrizeSearch(e.target.value)} placeholder="Search Prize..." className="w-full bg-black/30 border border-white/10 pl-10 pr-4 py-2 rounded-lg text-sm outline-none"/><label className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-center cursor-pointer transition-colors flex items-center justify-center gap-1"><Plus size={12}/> CSV <input type="file" accept=".csv" className="hidden" onChange={handleImportPrizes}/></label></div>
                 <div className="flex-1 overflow-y-auto pr-2 custom-scroll flex flex-col gap-2">
-                    {filteredPrizes.map(p=>{ const winnerRecord = drawHistory.find(h => h.prize === p.name); return ( <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${currentPrize===p.name?'bg-red-600/20 border-red-600':'bg-white/5 border-white/10'} ${winnerRecord ? 'opacity-70 bg-black/40' : ''}`}> <div className="flex flex-col"><span className={`font-bold ${currentPrize===p.name?'text-white':'text-white/70'}`}>{p.name}</span>{winnerRecord && <span className="text-xs text-yellow-400 flex items-center gap-1 mt-1 font-bold">🏆 {winnerRecord.name}</span>}</div><div className="flex gap-2">{currentPrize!==p.name && !winnerRecord && <button onClick={()=>handleSelectPrize(p.name)} className="px-3 py-1.5 bg-white/10 hover:bg-green-600 rounded-lg text-xs transition-colors">{t.select}</button>}{currentPrize===p.name && <span className="px-3 py-1.5 bg-red-600 rounded-lg text-xs font-bold">{t.active}</span>}{winnerRecord ? <button onClick={()=>toggleWinnerStatus(winnerRecord)} className="p-2 bg-white/10 hover:bg-yellow-600 rounded-lg transition-colors" title={t.resetWinner}><RefreshCw size={14}/></button> : <button onClick={()=>handleDeletePrize(p.id)} className="p-2 bg-white/10 hover:bg-red-600 rounded-lg transition-colors"><Trash2 size={14}/></button>}</div></div> ); })}
+                    {filteredPrizes.map(p=>{ const winnerRecord = drawHistory.find(h => h.prize === p.name); return ( <div key={p.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${currentPrize===p.name?'bg-red-600/20 border-red-600':'bg-white/5 border-white/10'} ${winnerRecord ? 'opacity-70 bg-black/40' : ''}`}> <div className="flex flex-col"><span className={`font-bold ${currentPrize===p.name?'text-white':'text-white/70'}`}>{p.name}</span>{winnerRecord && <span className="text-xs text-yellow-400 flex items-center gap-1 mt-1 font-bold">🏆 {winnerRecord.name}</span>}</div><div className="flex gap-2">{currentPrize!==p.name && !winnerRecord && <button onClick={()=>handleSelectPrize(p.name)} className="px-3 py-1.5 bg-white/10 hover:bg-green-600 rounded-lg text-xs transition-colors">{t.select}</button>}{currentPrize===p.name && <span className="px-3 py-1.5 bg-red-600 rounded-lg text-xs font-bold">{t.active}</span>}{winnerRecord ? <button onClick={()=>toggleWinnerStatus(winnerRecord)} className="p-2 bg-white/10 hover:bg-yellow-600 rounded-lg transition-colors" title={t.resetWinner}><X size={14}/></button> : <button onClick={()=>handleDeletePrize(p.id)} className="p-2 bg-white/10 hover:bg-red-600 rounded-lg transition-colors"><X size={14}/></button>}</div></div> ); })}
                 </div>
             </div>
             <div className="flex flex-col gap-6">
                 <div className="bg-gradient-to-br from-neutral-800 to-black border border-white/20 p-8 rounded-3xl text-center shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-3 opacity-30"><Tv size={100} className="text-white"/></div>
+                    <div className="absolute top-0 right-0 p-3 opacity-30"><Camera size={100} className="text-white"/></div>
                     <p className="text-white/50 text-sm uppercase tracking-widest mb-2">{t.currentPrize}</p>
                     <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter drop-shadow-lg mb-6">{currentPrize || "---"}</h1>
                     <div className="flex justify-center gap-4">
@@ -1071,8 +1127,8 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
                 </div>
                 <div className="bg-white/5 border border-white/10 p-6 rounded-3xl flex-1 h-[350px] overflow-hidden flex flex-col">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold flex items-center gap-2"><Trophy size={20} className="text-yellow-500"/> {t.winnersList}</h3>
-                        {drawHistory.length > 0 && (<button onClick={handleResetAllWinners} className="text-xs bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1.5 rounded-lg hover:bg-red-600 hover:text-white transition-colors"><Trash2 size={12} className="inline mr-1"/> {t.clearAll}</button>)}
+                        <h3 className="text-lg font-bold flex items-center gap-2"><User size={20} className="text-yellow-500"/> {t.winnersList}</h3>
+                        {drawHistory.length > 0 && (<button onClick={handleResetAllWinners} className="text-xs bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1.5 rounded-lg hover:bg-red-600 hover:text-white transition-colors"><X size={12} className="inline mr-1"/> {t.clearAll}</button>)}
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scroll flex flex-col gap-2">
                         {drawHistory.map(h => (
@@ -1091,85 +1147,50 @@ const PrizeDashboard = ({ t, onLogout, attendees, drawHistory, currentPrize, set
       </main>
     </div>
   );
-};
-
-// ==========================================
-// 6. Root App Component
-// ==========================================
+}
 export default function App() {
-  const [view, setView] = useState('landing'); // landing, login, guest, admin, projector, prize
-  const [lang, setLang] = useState('en');
-  const [attendees, setAttendees] = useState([]);
-  const [seatingPlan, setSeatingPlan] = useState([]);
-  const [drawHistory, setDrawHistory] = useState([]);
-  const [prizes, setPrizes] = useState([]);
-  const [currentPrize, setCurrentPrize] = useState("");
-  const [targetAdminMode, setTargetAdminMode] = useState(''); // 'admin', 'prize', 'projector'
-
-  const t = translations[lang];
-
-  // Firebase Sync
-  useEffect(() => {
-    if (!db) return;
-    const u1 = onSnapshot(collection(db, "attendees"), (s) => setAttendees(s.docs.map(d => ({id:d.id, ...d.data()}))));
-    const u2 = onSnapshot(collection(db, "seating_plan"), (s) => setSeatingPlan(s.docs.map(d => ({id:d.id, ...d.data()}))));
-    const u3 = onSnapshot(collection(db, "winners"), (s) => setDrawHistory(s.docs.map(d => ({id:d.id, ...d.data()}))));
-    const u4 = onSnapshot(doc(db, "config", "settings"), (d) => { if(d.exists()) setCurrentPrize(d.data().currentPrize || ""); });
-    const u5 = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (s) => setPrizes(s.docs.map(d => ({ id: d.id, ...d.data() }))));
-
-    return () => { u1(); u2(); u3(); u4(); u5(); };
-  }, []);
-
-  // Navigation Handlers
-  const goLogin = (target) => { setTargetAdminMode(target); setView('login'); };
-  const handleLoginSuccess = () => { setView(targetAdminMode); };
-  
-  return (
-    <>
-      <StyleInjector />
-      {view === 'landing' && (
-         <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-4 relative overflow-hidden">
-            <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1538099130811-745e64318258?q=80&w=2648&auto=format&fit=crop')] bg-cover bg-center opacity-20"></div>
-            <div className="z-10 bg-neutral-900/80 p-8 md:p-12 rounded-3xl border border-white/10 backdrop-blur-xl shadow-2xl max-w-4xl w-full text-center">
-               <h1 className="text-5xl md:text-7xl font-bold mb-4 tracking-tighter bg-gradient-to-r from-red-600 to-red-400 bg-clip-text text-transparent">{t.title}</h1>
-               <p className="text-xl text-white/50 mb-12 tracking-[0.5em] uppercase">{t.sub}</p>
-               
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-                  <button onClick={()=>setView('guest')} className="group relative overflow-hidden bg-white text-black p-8 rounded-2xl hover:bg-gray-200 transition-all text-left">
-                      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><User size={100}/></div>
-                      <h3 className="text-2xl font-bold mb-2">{t.guestMode}</h3>
-                      <p className="text-sm opacity-60">Register, Check Seat, Get Ticket</p>
-                      <ArrowRight className="mt-4 opacity-0 group-hover:opacity-100 transition-opacity transform translate-x-[-10px] group-hover:translate-x-0"/>
-                  </button>
-                  <div className="grid grid-cols-1 gap-3">
-                      <button onClick={()=>goLogin('admin')} className="bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-xl flex items-center justify-between group transition-all"><span className="font-bold flex items-center gap-3"><QrCode size={20}/> {t.adminMode}</span> <ChevronRight size={16} className="opacity-0 group-hover:opacity-100"/></button>
-                      <button onClick={()=>goLogin('prize')} className="bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-xl flex items-center justify-between group transition-all"><span className="font-bold flex items-center gap-3"><Trophy size={20}/> {t.prizeMode}</span> <ChevronRight size={16} className="opacity-0 group-hover:opacity-100"/></button>
-                      <button onClick={()=>goLogin('projector')} className="bg-white/5 hover:bg-white/10 border border-white/10 p-4 rounded-xl flex items-center justify-between group transition-all"><span className="font-bold flex items-center gap-3"><Tv size={20}/> {t.projectorMode}</span> <ChevronRight size={16} className="opacity-0 group-hover:opacity-100"/></button>
-                  </div>
-               </div>
-
-               <div className="flex justify-center gap-4">
-                  <button onClick={()=>setLang('zh')} className={`px-4 py-1 rounded-full text-xs font-bold transition-colors ${lang==='zh'?'bg-red-600 text-white':'bg-white/10 text-white/50 hover:bg-white/20'}`}>中文</button>
-                  <button onClick={()=>setLang('en')} className={`px-4 py-1 rounded-full text-xs font-bold transition-colors ${lang==='en'?'bg-red-600 text-white':'bg-white/10 text-white/50 hover:bg-white/20'}`}>EN</button>
-               </div>
-            </div>
-         </div>
-      )}
-
-      {view === 'login' && <LoginView t={t} onLogin={handleLoginSuccess} onBack={()=>setView('landing')} />}
-      
-      {view === 'guest' && <GuestView t={t} onBack={()=>setView('landing')} checkDuplicate={(p, e) => {
-          if (attendees.some(a => normalizePhone(a.phone) === p)) return 'phone';
-          if (attendees.some(a => normalizeEmail(a.email) === e)) return 'email';
-          return false;
-      }} seatingPlan={seatingPlan} attendees={attendees} />}
-
-      {view === 'admin' && <ReceptionDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} setAttendees={setAttendees} seatingPlan={seatingPlan} drawHistory={drawHistory} />}
-      
-      {view === 'prize' && <PrizeDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} setCurrentPrize={setCurrentPrize} />}
-      
-      {view === 'projector' && <ProjectorView t={t} onBack={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} prizes={prizes} seatingPlan={seatingPlan} />}
-
-    </>
-  );
+  const [lang, setLang] = useState('en'); const t = translations[lang];
+  const [view, setView] = useState('landing');
+  const [attendees, setAttendees] = useState([]);
+  const [drawHistory, setDrawHistory] = useState([]);
+  const [currentPrize, setCurrentPrize] = useState("");
+  const [seatingPlan, setSeatingPlan] = useState([]);
+  const [prizes, setPrizes] = useState([]);
+  useEffect(() => {
+    if (!db) return;
+    const unsubAttendees = onSnapshot(query(collection(db, "attendees"), orderBy("createdAt", "desc")), (snapshot) => { setAttendees(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
+    const unsubWinners = onSnapshot(collection(db, "winners"), (snapshot) => { setDrawHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
+    const unsubConfig = onSnapshot(doc(db, "config", "settings"), (doc) => { if (doc.exists()) setCurrentPrize(doc.data().currentPrize); });
+    const unsubSeating = onSnapshot(collection(db, "seating_plan"), (snapshot) => { setSeatingPlan(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
+    const unsubPrizes = onSnapshot(query(collection(db, "prizes"), orderBy("createdAt", "asc")), (snapshot) => { setPrizes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))); });
+    return () => { unsubAttendees(); unsubWinners(); unsubConfig(); unsubSeating(); unsubPrizes(); };
+  }, []);
+  const checkDuplicate = (p, e) => { if(attendees.some(x => normalizePhone(x.phone) === normalizePhone(p))) return 'phone'; if(attendees.some(x => normalizeEmail(x.email) === normalizeEmail(e))) return 'email'; return null; };
+  const handleLoginSuccess = (targetView) => setView(targetView);
+  if(view === 'landing') return (
+    <div className="min-h-[100dvh] bg-neutral-950 flex flex-col items-center justify-center p-6 relative overflow-hidden text-white">
+      <StyleInjector/>
+      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-800 via-neutral-950 to-neutral-950 pointer-events-none"></div>
+      <button onClick={()=>setLang(l=>l==='zh'?'en':'zh')} className="absolute top-6 right-6 text-white/50 hover:text-white flex items-center gap-2 border border-white/10 px-4 py-2 rounded-full transition-all z-10 text-xs font-mono"><Search size={14}/> {lang.toUpperCase()}</button>
+      <div className="z-10 text-center mb-16 flex flex-col items-center">
+        <div className="w-24 h-24 bg-gradient-to-br from-red-600 to-red-800 rounded-3xl flex items-center justify-center shadow-[0_0_60px_rgba(220,38,38,0.4)] mb-8 animate-in zoom-in duration-700"><User size={48} className="text-white"/></div>
+        <h1 className="text-5xl md:text-8xl font-black text-white mb-4 tracking-tighter drop-shadow-2xl">{t.title}</h1>
+        <p className="text-white/40 text-xl font-light tracking-[0.3em] uppercase">{t.sub}</p>
+      </div>
+      <div className="grid md:grid-cols-4 gap-4 w-full max-w-7xl z-10 px-4">
+        <button onClick={()=>setView('guest')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><User size={60} className="text-white"/></div><h3 className="text-xl font-bold text-white mb-1">{t.guestMode}</h3><p className="text-white/50 text-xs">Register, Check Seat, Get Ticket</p><div className="mt-8 flex items-center text-black font-bold text-sm group-hover:translate-x-2 transition-transform bg-white w-fit px-4 py-2 rounded-full">{t.enter} <ChevronRight size={16} className="ml-2"/></div></button>
+        <button onClick={()=>setView('login_admin')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><Search size={60} className="text-white"/></div><h3 className="text-xl font-bold text-white mb-1">{t.adminMode}</h3><p className="text-white/50 text-xs">Check-in, Manage Guests</p><div className="mt-8 flex items-center text-white font-bold text-sm group-hover:translate-x-2 transition-transform bg-red-600 w-fit px-4 py-2 rounded-full">{t.enter} <ChevronRight size={16} className="ml-2"/></div></button>
+        <button onClick={()=>setView('login_prize')} className="group relative overflow-hidden bg-white/5 hover:bg-white/10 border border-white/10 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><User size={60} className="text-white"/></div><h3 className="text-xl font-bold text-white mb-1">{t.prizeMode}</h3><p className="text-white/50 text-xs">Manage Prizes, Reset Winners</p><div className="mt-8 flex items-center text-white font-bold text-sm group-hover:translate-x-2 transition-transform bg-indigo-600 w-fit px-4 py-2 rounded-full">{t.enter} <ChevronRight size={16} className="ml-2"/></div></button>
+        <button onClick={()=>setView('login_projector')} className="group relative overflow-hidden bg-gradient-to-br from-neutral-800 to-black hover:from-neutral-700 border border-white/20 p-6 rounded-[2rem] text-left transition-all hover:scale-[1.02] shadow-2xl backdrop-blur-sm"><div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-30 transition-opacity"><Camera size={60} className="text-yellow-500"/></div><h3 className="text-xl font-bold text-yellow-500 mb-1">{t.projectorMode}</h3><p className="text-white/50 text-xs">Big Screen, Lottery Animation</p><div className="mt-8 flex items-center text-black font-bold text-sm group-hover:translate-x-2 transition-transform bg-yellow-500 w-fit px-4 py-2 rounded-full">{t.enter} <ChevronRight size={16} className="ml-2"/></div></button>
+      </div>
+    </div>
+  );
+  if(view === 'guest') return <><StyleInjector/><GuestView t={t} onBack={()=>setView('landing')} checkDuplicate={checkDuplicate} seatingPlan={seatingPlan} attendees={attendees} /></>;
+  if(view === 'login_admin') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('admin')} onBack={()=>setView('landing')} /></>;
+  if(view === 'login_prize') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('prize')} onBack={()=>setView('landing')} /></>;
+  if(view === 'login_projector') return <><StyleInjector/><LoginView t={t} onLogin={()=>handleLoginSuccess('projector')} onBack={()=>setView('landing')} /></>;
+  
+  if(view === 'admin') return <><StyleInjector/><ReceptionDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} setAttendees={setAttendees} seatingPlan={seatingPlan} drawHistory={drawHistory} /></>;
+  if(view === 'prize') return <><StyleInjector/><PrizeDashboard t={t} onLogout={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} setCurrentPrize={setCurrentPrize} prizes={prizes} /></>;
+  if(view === 'projector') return <><StyleInjector/><ProjectorView t={t} onBack={()=>setView('landing')} attendees={attendees} drawHistory={drawHistory} currentPrize={currentPrize} prizes={prizes} seatingPlan={seatingPlan} /></>;
 }
