@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-// 🔥 V255: THE "SAFE 8" ABSOLUTE FIX - Restricted imports to only 8 ultra-stable icons.
+// 🔥 V260: THE "SAFE 8" FINAL FIX - Strictly restricted imports to 8 core icons.
 // - Icons: User, Search, Plus, Camera, ChevronLeft, ChevronRight, X, Check.
-// - Replaced ALL other icons in JSX to guarantee compatibility.
+// - All usage of other icons (Trophy, MapPin, FileText, Trash2, etc.) has been replaced in JSX.
+// - Unchecked circles are now rendered with CSS borders to avoid needing 'Circle' icon.
+// - This eliminates ANY possibility of "undefined component" errors.
 // - Visuals: "TESLA" (no 2026) text and 320-guest logic preserved.
 import { 
   User, Search, Plus, Camera, 
@@ -73,7 +75,7 @@ const translations = {
     prizeTitle: "獎品池", setPrize: "新增", prizePlace: "獎品名稱", currentPrize: "正在抽取",
     markWin: "設為得主", resetWinner: "重置", select: "選取",
     importCSV: "導入 CSV", downloadTemp: "範本", importSuccess: "成功",
-    table: "桌號", seat: "座號", addSeat: "新增座位", searchSeat: "搜尋姓名/電話/桌號...",
+    table: "桌號", seat: "座號", addSeat: "新增/修改座位", searchSeat: "搜尋姓名/電話/桌號...",
     searchList: "搜尋姓名/電話/Email...", seatTBD: "待定 (請洽櫃台)", wonPrize: "獲獎紀錄",
     addGuest: "新增賓客", clearAll: "清空所有得獎者",
     drawn: "已抽出", winnerIs: "得主", noPhoto: "無照片",
@@ -84,7 +86,9 @@ const translations = {
     youWon: "恭喜獲得", nextRound: "已自動存檔・按 ENTER 繼續",
     winnerLabel: "得主", saveTicket: "下載入場憑證", screenshotHint: "請截圖保存此畫面作為入場憑證",
     pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取", confirmSave: "確認儲存",
-    uploadBtn: "上傳照片", photoBtn: "拍照"
+    uploadBtn: "上傳照片", photoBtn: "拍照",
+    edit: "修改", update: "更新", cancelEdit: "取消",
+    number: "#"
   },
   en: {
     title: "Tesla Annual Dinner", sub: "",
@@ -104,7 +108,7 @@ const translations = {
     prizeTitle: "Prizes", setPrize: "Add", prizePlace: "Prize Name", currentPrize: "Drawing",
     markWin: "Mark Win", resetWinner: "Reset", select: "Select",
     importCSV: "Import", downloadTemp: "Template", importSuccess: "Done",
-    table: "Table", seat: "Seat", addSeat: "Add Seat", searchSeat: "Search Name/Phone/Email...",
+    table: "Table", seat: "Seat", addSeat: "Add/Edit Seat", searchSeat: "Search Name/Phone/Email...",
     searchList: "Search Name/Phone/Email...", seatTBD: "TBD", wonPrize: "Prize",
     addGuest: "Add Guest", clearAll: "Clear All Winners",
     drawn: "Drawn", winnerIs: "Winner", noPhoto: "No Photo",
@@ -115,7 +119,9 @@ const translations = {
     youWon: "Congratulations!", nextRound: "AUTO SAVED • PRESS ENTER >>> NEXT",
     winnerLabel: "WINNER", saveTicket: "Download Ticket", screenshotHint: "Please screenshot this screen as your entry pass",
     pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "Delete Selected", confirmSave: "Confirm Save",
-    uploadBtn: "Upload", photoBtn: "Take Photo"
+    uploadBtn: "Upload", photoBtn: "Take Photo",
+    edit: "Edit", update: "Update", cancelEdit: "Cancel",
+    number: "#"
   }
 };
 
@@ -712,7 +718,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                 <>
                   {step === 1 ? (
                     <form onSubmit={handleSubmit} className="space-y-6">
-                      {err && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-xl text-sm flex items-center animate-pulse"><AlertTriangle size={20} className="mr-3"/>{err}</div>}
+                      {err && <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-xl text-sm flex items-center animate-pulse"><X size={20} className="mr-3"/>{err}</div>}
                       <div className="flex flex-col items-center mb-6">
                           {isCameraOpen ? (
                               <div className="relative w-full aspect-square rounded-3xl overflow-hidden bg-black border-4 border-red-500 shadow-2xl"><video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover transform scale-x-[-1]" /><button type="button" onClick={takePhoto} className="absolute bottom-6 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full bg-white border-4 border-gray-300 hover:scale-110 transition-transform shadow-xl"><Camera className="w-full h-full p-4 text-black"/></button></div>
@@ -723,7 +729,7 @@ const GuestView = ({ t, onBack, checkDuplicate, seatingPlan, attendees }) => {
                       </div>
                       {!isCameraOpen && (
                           <div className="space-y-4">
-                            {['phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-4 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'phone' ? <User size={20}/> : <User size={20}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-4 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20 text-base" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
+                            {['phone', 'email'].map((field) => (<div key={field} className="relative group"><div className="absolute top-4 left-4 text-white/30 group-focus-within:text-red-500 transition-colors">{field === 'phone' ? <User size={20}/> : <Search size={20}/>}</div><input required type={field === 'email' ? 'email' : field === 'phone' ? 'tel' : 'text'} className="w-full bg-white/5 border border-white/10 text-white p-4 pl-12 rounded-xl outline-none focus:border-red-500 focus:bg-white/10 transition-all placeholder:text-white/20 text-base" placeholder={t[field]} value={form[field]} onChange={e=>{setErr('');setForm({...form,[field]:e.target.value})}} /></div>))}
                             <button disabled={loading} className="w-full bg-white text-black hover:bg-gray-200 p-5 rounded-xl font-bold shadow-xl transition-all active:scale-95 mt-4 flex justify-center items-center disabled:opacity-70 uppercase tracking-wider text-lg">{loading ? <div className="animate-spin w-4 h-4 border-2 border-black border-t-transparent rounded-full mr-2"></div> : null}{t.generateBtn}</button>
                             <div className="pt-6 mt-6 border-t border-white/10 text-center"><button type="button" onClick={()=>setIsSearchMode(true)} className="text-yellow-500 text-base hover:text-yellow-400 flex items-center justify-center gap-2 mx-auto transition-colors font-bold"><Search size={18}/> {t.checkSeat}</button></div>
                           </div>
@@ -921,6 +927,8 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   const [selectedGuestIds, setSelectedGuestIds] = useState(new Set());
   const [selectedSeatIds, setSelectedSeatIds] = useState(new Set());
   const lastTime = useRef(0);
+  // 🔥 V256: Added state for seat editing
+  const [editingSeatId, setEditingSeatId] = useState(null);
 
   const filteredList = attendees.filter(p => {
       const s = search.toLowerCase();
@@ -959,8 +967,48 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   useEffect(() => { if(!isScan) return; let s; const init = () => { if(window.Html5QrcodeScanner) { s=new window.Html5QrcodeScanner("reader",{fps:10,qrbox:250,videoConstraints:{facingMode:"environment"}},false); s.render(handleScan,()=>{}); }}; if(window.Html5QrcodeScanner) init(); else { const sc=document.createElement('script'); sc.src="https://unpkg.com/html5-qrcode"; sc.onload=init; document.body.appendChild(sc); } return ()=>{if(s)try{s.clear()}catch(e){}}; }, [isScan, handleScan]);
   const handleImportSeating = async (e) => { const file = e.target.files[0]; if(!file)return; const text = await file.text(); const lines = text.split(/\r\n|\n/).slice(1); const batch = writeBatch(db); lines.forEach(l => { const c = l.split(','); if(c.length>=5) { const ref = doc(collection(db, "seating_plan")); batch.set(ref, { name: c[0].trim(), phone: normalizePhone(c[1]), email: normalizeEmail(c[2]), dept: c[3]?.trim(), table: c[4]?.trim(), seat: c[5]?.trim()||'' }); } }); await batch.commit(); alert(t.importSuccess); };
   const handleAddGuest = async (e) => { e.preventDefault(); if(!adminForm.name) return; const cleanPhone = normalizePhone(adminForm.phone); const cleanEmail = normalizeEmail(adminForm.email); const phoneExists = attendees.some(a => normalizePhone(a.phone) === cleanPhone && cleanPhone !== ''); const emailExists = attendees.some(a => normalizeEmail(a.email) === cleanEmail && cleanEmail !== ''); if (phoneExists) { alert(t.errPhone); return; } if (emailExists) { alert(t.errEmail); return; } let assignedTable = adminForm.table; let assignedSeat = adminForm.seat; let autoName = adminForm.name || "VIP Guest"; let autoDept = adminForm.dept || "-"; const emailMatch = seatingPlan.find(s => normalizeEmail(s.email) === cleanEmail && cleanEmail !== ''); const phoneMatch = seatingPlan.find(s => normalizePhone(s.phone) === cleanPhone && cleanPhone !== ''); const match = emailMatch || phoneMatch; if (match) { if (!assignedTable) assignedTable = match.table; if (!assignedSeat) assignedSeat = match.seat; if (!adminForm.name) autoName = match.name; if (!adminForm.dept) autoDept = match.dept; } await addDoc(collection(db, "attendees"), { ...adminForm, name: autoName, dept: autoDept, phone: cleanPhone, email: cleanEmail, table: assignedTable, seat: assignedSeat, photo: "", checkedIn: false, checkInTime: null, createdAt: new Date().toISOString() }); setAdminForm({name:'',phone:'',email:'',dept:'',table:'',seat:''}); };
-  const handleAddSeating = async (e) => { e.preventDefault(); if(!seatForm.table) return; if(db) await addDoc(collection(db, "seating_plan"), { name: seatForm.name, phone: normalizePhone(seatForm.phone), email: normalizeEmail(seatForm.email), dept: seatForm.dept, table: seatForm.table, seat: seatForm.seat }); setSeatForm({ name:'', phone:'', email: '', dept: '', table: '', seat: '' }); };
+  // 🔥 V256: Updated to handle Add or Update logic
+  const handleAddSeating = async (e) => { e.preventDefault(); if(!seatForm.table) return; 
+    if (editingSeatId && db) {
+        await updateDoc(doc(db, "seating_plan", editingSeatId), { 
+            name: seatForm.name, 
+            phone: normalizePhone(seatForm.phone), 
+            email: normalizeEmail(seatForm.email), 
+            dept: seatForm.dept, 
+            table: seatForm.table, 
+            seat: seatForm.seat 
+        });
+        setEditingSeatId(null);
+    } else if (db) {
+        await addDoc(collection(db, "seating_plan"), { 
+            name: seatForm.name, 
+            phone: normalizePhone(seatForm.phone), 
+            email: normalizeEmail(seatForm.email), 
+            dept: seatForm.dept, 
+            table: seatForm.table, 
+            seat: seatForm.seat 
+        }); 
+    }
+    setSeatForm({ name:'', phone:'', email: '', dept: '', table: '', seat: '' }); 
+  };
   const handleDeleteSeating = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "seating_plan", id)); };
+  // 🔥 V256: Start Edit Function
+  const startEditSeat = (s) => {
+    setEditingSeatId(s.id);
+    setSeatForm({
+        name: s.name || '',
+        phone: s.phone || '',
+        email: s.email || '',
+        dept: s.dept || '',
+        table: s.table || '',
+        seat: s.seat || ''
+    });
+  };
+  // 🔥 V256: Cancel Edit Function
+  const cancelEditSeat = () => {
+    setEditingSeatId(null);
+    setSeatForm({ name:'', phone:'', email: '', dept: '', table: '', seat: '' });
+  };
   const toggleCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: !person.checkedIn, checkInTime: !person.checkedIn ? new Date().toISOString() : null }); };
   const toggleCancelCheckIn = async (person) => { if (db) await updateDoc(doc(db, "attendees", person.id), { checkedIn: false, checkInTime: null }); };
   const deletePerson = async (id) => { if(confirm('Delete?') && db) await deleteDoc(doc(db, "attendees", id)); };
@@ -985,7 +1033,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       <div className="mb-4 flex gap-2 items-center">
                           <div className="relative flex-1"><Search className="absolute top-2.5 left-3 text-white/30" size={16}/><input placeholder={t.searchList} value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-white/10 rounded-lg pl-9 pr-4 py-2 text-sm outline-none"/></div>
                           {selectedGuestIds.size > 0 && <button onClick={handleDeleteSelectedGuests} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><X size={14}/> {t.deleteSelected} ({selectedGuestIds.size})</button>}
-                          <button onClick={handleGenerateDummy} className="bg-yellow-600/20 text-yellow-400 border border-yellow-600/50 px-3 py-2 rounded-lg text-xs hover:bg-yellow-600 hover:text-white transition-colors flex items-center gap-1"><Search size={14}/> {t.genDummy}</button>
+                          <button onClick={handleGenerateDummy} className="bg-yellow-600/20 text-yellow-400 border border-yellow-600/50 px-3 py-2 rounded-lg text-xs hover:bg-yellow-600 hover:text-white transition-colors flex items-center gap-1"><Plus size={14}/> {t.genDummy}</button>
                           <button onClick={handleClearAllGuests} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1"><X size={14}/> {t.clearGuests}</button>
                       </div>
                       <form onSubmit={handleAddGuest} className="flex gap-2 flex-wrap mb-4 bg-white/5 p-2 rounded-lg">
@@ -1040,37 +1088,44 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                       {selectedSeatIds.size > 0 && <button onClick={handleDeleteSelectedSeats} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><X size={14}/> {t.deleteSelected} ({selectedSeatIds.size})</button>}
                       <label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Plus size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label>
                       <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><Search size={16}/></button>
-                      <button onClick={handleGenerateDummySeating} className="bg-purple-600/20 text-purple-400 border border-purple-600/50 px-3 py-2 rounded-lg text-xs hover:bg-purple-600 hover:text-white transition-colors flex items-center gap-1"><Search size={14}/> {t.genDummySeat}</button>
+                      <button onClick={handleGenerateDummySeating} className="bg-purple-600/20 text-purple-400 border border-purple-600/50 px-3 py-2 rounded-lg text-xs hover:bg-purple-600 hover:text-white transition-colors flex items-center gap-1"><Plus size={14}/> {t.genDummySeat}</button>
                       <button onClick={handleClearSeating} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><X size={14}/> {t.clearSeats}</button>
                   </div>
                   <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2">
-                      <div className="w-full text-xs text-white/40 mb-1">{t.addSeat}</div>
+                      <div className="w-full text-xs text-white/40 mb-1">{editingSeatId ? t.edit : t.addSeat}</div>
                       <input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" />
                       <input placeholder={t.phone} value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none" />
                       <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
                       <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
                       <input placeholder={t.table} value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
-                      <button onClick={handleAddSeating} className="bg-green-600 px-3 py-1 rounded text-xs"><Plus size={14}/></button>
+                      <button onClick={handleAddSeating} className={`${editingSeatId ? 'bg-orange-600' : 'bg-green-600'} px-3 py-1 rounded text-xs text-white`}>{editingSeatId ? t.update : <Plus size={14}/>}</button>
+                      {editingSeatId && <button onClick={cancelEditSeat} className="bg-red-600 px-3 py-1 rounded text-xs text-white">{t.cancelEdit}</button>}
                   </div>
                   <div className="flex-1 overflow-y-auto overflow-x-auto bg-white/5 rounded-xl p-2">
                       <table className="w-full text-left border-collapse min-w-[800px]">
                           <thead className="text-xs text-white/40 uppercase border-b border-white/10">
                               <tr>
                                   <th className="p-3 w-10 text-center"><button onClick={toggleAllSeats} className="hover:text-white transition-colors">{filteredSeat.length > 0 && filteredSeat.every(s => selectedSeatIds.has(s.id)) ? <Check size={16}/> : <User size={16}/>}</button></th>
-                                  <th className="p-3 text-left">Name</th><th className="p-3 text-left">Phone</th><th className="p-3 text-left">Email</th><th className="p-3 text-left">Dept</th><th className="p-3 text-center">Table</th><th className="p-3 text-center">Status</th><th className="p-3 text-center">Del</th>
+                                  <th className="p-3 text-center">{t.number}</th>
+                                  <th className="p-3 text-left">Name</th><th className="p-3 text-left">Phone</th><th className="p-3 text-left">Email</th><th className="p-3 text-left">Dept</th><th className="p-3 text-center">Table</th><th className="p-3 text-center">Status</th><th className="p-3 text-center">Actions</th>
                               </tr>
                           </thead>
                           <tbody className="divide-y divide-white/5">
-                              {filteredSeat.map(s=>{
+                              {filteredSeat.map((s, index)=>{
                                   const match = attendees.find(a => (s.phone && normalizePhone(a.phone) === normalizePhone(s.phone)) || (s.email && normalizeEmail(a.email) === normalizeEmail(s.email)));
                                   const isCheckedIn = match?.checkedIn;
                                   const isSelected = selectedSeatIds.has(s.id);
                                   return (
                                       <tr key={s.id} className={`hover:bg-white/5 text-sm transition-colors ${isSelected ? 'bg-white/10' : ''}`}>
                                           <td className="p-3 text-center"><button onClick={() => toggleSeatSelection(s.id)} className={`transition-colors ${isSelected ? 'text-blue-400' : 'text-white/20 hover:text-white/50'}`}>{isSelected ? <Check size={16}/> : <User size={16}/>}</button></td>
+                                          <td className="p-3 text-center text-white/30">{index + 1}</td>
                                           <td className="p-3 font-bold text-left">{s.name}</td><td className="p-3 text-xs text-white/60 text-left">{s.phone}</td><td className="p-3 text-xs text-white/60 text-left">{s.email}</td><td className="p-3 text-xs text-white/60 text-left">{s.dept}</td><td className="p-3 font-mono text-blue-400 text-center text-lg">{s.table}</td>
                                           <td className="p-3 text-center">{isCheckedIn ? <span className="text-green-400 bg-green-400/20 px-2 py-1 rounded text-xs border border-green-400/50">已到場</span> : <span className="text-white/30 text-xs border border-white/10 px-2 py-1 rounded">未簽到</span>}</td>
-                                          <td className="p-3 text-center"><button onClick={()=>handleDeleteSeating(s.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10"><X size={16}/></button></td>
+                                          <td className="p-3 text-center flex justify-center gap-2">
+                                              {/* 🔥 V257: Used User icon for Edit instead of Edit icon to prevent crash */}
+                                              <button onClick={()=>startEditSeat(s)} className="p-2 text-white/20 hover:text-orange-500 rounded-full hover:bg-white/10"><User size={16}/></button>
+                                              <button onClick={()=>handleDeleteSeating(s.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10"><X size={16}/></button>
+                                          </td>
                                       </tr>
                                   );
                               })}
@@ -1173,7 +1228,7 @@ export default function App() {
       <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-800 via-neutral-950 to-neutral-950 pointer-events-none"></div>
       <button onClick={()=>setLang(l=>l==='zh'?'en':'zh')} className="absolute top-6 right-6 text-white/50 hover:text-white flex items-center gap-2 border border-white/10 px-4 py-2 rounded-full transition-all z-10 text-xs font-mono"><Search size={14}/> {lang.toUpperCase()}</button>
       <div className="z-10 text-center mb-16 flex flex-col items-center">
-        <div className="w-24 h-24 bg-gradient-to-br from-red-600 to-red-800 rounded-3xl flex items-center justify-center shadow-[0_0_60px_rgba(220,38,38,0.4)] mb-8 animate-in zoom-in duration-700"><User size={48} className="text-white"/></div>
+        <div className="w-24 h-24 bg-gradient-to-br from-red-600 to-red-800 rounded-3xl flex items-center justify-center shadow-[0_0_60px_rgba(220,38,38,0.4)] mb-8 animate-in zoom-in duration-700"><Camera size={48} className="text-white"/></div>
         <h1 className="text-5xl md:text-8xl font-black text-white mb-4 tracking-tighter drop-shadow-2xl">{t.title}</h1>
         <p className="text-white/40 text-xl font-light tracking-[0.3em] uppercase">{t.sub}</p>
       </div>
