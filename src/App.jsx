@@ -321,8 +321,8 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
         const resize = () => { 
             if (container.clientWidth === 0 || container.clientHeight === 0) return;
             
-            // 🔥 V266: DPI Scaling for sharp rendering
-            const dpr = window.devicePixelRatio || 1;
+            // 🔥 V268: DPI Scaling (Capped at 2x) for sharp rendering without lag
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
             canvas.width = container.clientWidth * dpr;
             canvas.height = container.clientHeight * dpr;
             canvas.style.width = `${container.clientWidth}px`;
@@ -340,13 +340,14 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
         
         const initParticles = (w, h) => {
             if (!w || !h) {
-                 w = canvas.width / (window.devicePixelRatio || 1);
-                 h = canvas.height / (window.devicePixelRatio || 1);
+                 const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                 w = canvas.width / dpr;
+                 h = canvas.height / dpr;
             }
             if (w === 0 || h === 0) return; 
 
-            // 🔥 V266: Increased minParticles to 800 for solid, clear text formation
-            const minParticles = 800; 
+            // 🔥 V268: Optimized minParticles to 600 (Clear TESLA, smooth animation)
+            const minParticles = 600; 
             const targetCount = list.length > 0 ? list.length : 100;
             const totalParticles = Math.max(targetCount, minParticles);
             
@@ -366,7 +367,9 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             offCtx.font = `900 ${forcedFontSize}px 'Impact', 'Arial Black', 'Arial', sans-serif`;
             
             // 🔥 V266: Add letter spacing to separate letters (approx 20% height)
-            offCtx.letterSpacing = `${Math.floor(h * 0.2)}px`;
+            if (offCtx.letterSpacing !== undefined) {
+                 offCtx.letterSpacing = `${Math.floor(h * 0.2)}px`;
+            }
 
             // Measure Width
             // 🔥 V247: Changed text from "TESLA 2026" to "TESLA" only.
@@ -474,9 +477,10 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
         window.addEventListener('resize', resize);
 
         const render = () => {
-            // 🔥 V265: Use logical width/height for clearRect
-            const width = canvas.width / (window.devicePixelRatio || 1);
-            const height = canvas.height / (window.devicePixelRatio || 1);
+            // 🔥 V268: Use logical width/height for clearRect
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const width = canvas.width / dpr;
+            const height = canvas.height / dpr;
             
             ctx.clearRect(0, 0, width, height);
             
@@ -535,13 +539,17 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
     const start = () => {
         // 🔥 Reverted rule: Strictly requires at least 2 people to start
         if(list.length < 2) return;
+        
+        // 🔥 V268: Audio Sync - Play sound FIRST, then visual
+        SoundController.startSuspense(); 
+        
         setIsRunning(true);
         mode.current = 'galaxy';
         particles.current.forEach(p => { 
             p.vx = (Math.random() - 0.5) * 50; 
             p.vy = (Math.random() - 0.5) * 50; 
         });
-        SoundController.startSuspense();
+        
         setTimeout(stop, 5000); 
     };
 
