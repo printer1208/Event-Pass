@@ -211,7 +211,8 @@ const SoundController = {
       this.oscList.forEach(o => o.stop());
       this.oscList = [];
 
-      let beatDuration = 0.15; 
+      // 🔥 V273: Slowed down start tempo to last for 7 seconds smoothly
+      let beatDuration = 0.22; // Started at 0.15, now 0.22 (slower start)
       let nextTime = this.ctx.currentTime;
       
       const scheduleBeats = () => {
@@ -233,7 +234,8 @@ const SoundController = {
           osc.stop(nextTime + 0.1);
           
           nextTime += beatDuration;
-          beatDuration = Math.max(0.05, beatDuration * 0.95);
+          // 🔥 V273: Slower decay (0.97) so it doesn't get too fast too soon
+          beatDuration = Math.max(0.05, beatDuration * 0.97); 
           
           setTimeout(scheduleBeats, beatDuration * 1000);
       };
@@ -516,6 +518,11 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
         // 🔥 Reverted rule: Strictly requires at least 2 people to start
         if(list.length < 2) return;
         
+        // 🔥 V273: Resume AudioContext context on user gesture to prevent browser blocking
+        if (SoundController.ctx && SoundController.ctx.state === 'suspended') {
+            SoundController.ctx.resume();
+        }
+
         // 🔥 V268: Audio Sync - Play sound FIRST, then visual
         SoundController.startSuspense(); 
         
@@ -526,7 +533,8 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             p.vy = (Math.random() - 0.5) * 50; 
         });
         
-        setTimeout(stop, 5000); 
+        // 🔥 V273: Changed to 7000ms (7 seconds)
+        setTimeout(stop, 7000); 
     };
 
     const stop = () => {
@@ -879,7 +887,10 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     useEffect(() => {
         const handleKey = async (e) => { 
             if (winner && e.key === 'Enter') {
-                // 🔥 V261: Advance prize BEFORE closing the view
+                // 🔥 V272: Logic Update
+                // 1. First, check if there are prizes to advance to.
+                // 2. Advance prize.
+                // 3. Close the winner view.
                 await advancePrize();
                 setWinner(null);
             }
@@ -900,6 +911,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
             <div className="flex-none h-[15vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-b border-white/10 flex items-center justify-between px-4 md:px-8 relative shadow-xl w-full">
                  <button onClick={onBack} className="text-white/30 hover:text-white transition-colors mr-4 md:mr-6 flex items-center justify-center"><ChevronLeft size={32}/></button>
                  <div className="flex-1 flex flex-row items-center justify-center gap-2 md:gap-6 w-full overflow-hidden">
+                    {/* 🔥 V272: Only show THE END if all prizes drawn AND no current winner on screen */}
                     {allPrizesDrawn && !winner ? (
                         <h1 className="text-3xl md:text-5xl font-black text-green-400 tracking-widest uppercase animate-pulse">THE END</h1>
                     ) : (
