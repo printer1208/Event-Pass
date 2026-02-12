@@ -203,7 +203,18 @@ const SoundController = {
           this.bgm.loop = true;
           this.bgm.volume = 1.0;
           this.bgm.preload = 'auto'; // Force buffer
-          this.bgm.load(); 
+          
+          // 🔥 Fix: Handle loading errors gracefully to prevent console spam
+          this.bgm.onerror = () => {
+              this.bgm = null; // Disable failed audio
+          };
+          
+          // Wrap load in try-catch
+          try {
+             this.bgm.load(); 
+          } catch(e) {
+             console.log("Audio load error (expected in sandbox):", e);
+          }
       }
   },
   startSuspense: function() {
@@ -211,17 +222,22 @@ const SoundController = {
       if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
       this.stopAll();
       
-      // 🔥 V264: Use pre-loaded BGM instance
-      if (!this.bgm) this.init();
-      
-      this.bgm.currentTime = 0;
-      const playPromise = this.bgm.play();
-      
-      if (playPromise !== undefined) {
-          playPromise.catch((e) => {
-              console.log("Audio play blocked/failed:", e);
-              this.playTenseSynth(); // Fallback if blocked
-          });
+      // 🔥 Fix: Check if BGM exists and is valid
+      if (this.bgm && !this.bgm.error) {
+          this.bgm.currentTime = 0;
+          const playPromise = this.bgm.play();
+          
+          if (playPromise !== undefined) {
+              playPromise.catch((e) => {
+                  // Only log if it's not a standard "no source" error which we expect in dev
+                  if (e.name !== "NotSupportedError") {
+                      // console.log("Audio play blocked:", e);
+                  }
+                  this.playTenseSynth(); 
+              });
+          }
+      } else {
+          this.playTenseSynth();
       }
   },
   playTenseSynth: function() {
