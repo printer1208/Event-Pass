@@ -192,53 +192,18 @@ const Confetti = () => {
 };
 
 const SoundController = {
-  ctx: null, oscList: [], bgm: null,
-  playlist: ['/draw_music.m4a'], 
+  ctx: null, oscList: [], 
   init: function() { 
       const AC = window.AudioContext || window.webkitAudioContext; 
       if (AC) this.ctx = new AC(); 
-      // 🔥 V264: Preload Audio Object to reduce latency
-      if (!this.bgm && typeof Audio !== "undefined") {
-          this.bgm = new Audio(this.playlist[0]);
-          this.bgm.loop = true;
-          this.bgm.volume = 1.0;
-          this.bgm.preload = 'auto'; // Force buffer
-          
-          // 🔥 Fix: Handle loading errors gracefully to prevent console spam
-          this.bgm.onerror = () => {
-              this.bgm = null; // Disable failed audio
-          };
-          
-          // Wrap load in try-catch
-          try {
-             this.bgm.load(); 
-          } catch(e) {
-             console.log("Audio load error (expected in sandbox):", e);
-          }
-      }
   },
   startSuspense: function() {
       if (!this.ctx) this.init(); 
       if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
       this.stopAll();
       
-      // 🔥 Fix: Check if BGM exists and is valid
-      if (this.bgm && !this.bgm.error) {
-          this.bgm.currentTime = 0;
-          const playPromise = this.bgm.play();
-          
-          if (playPromise !== undefined) {
-              playPromise.catch((e) => {
-                  // Only log if it's not a standard "no source" error which we expect in dev
-                  if (e.name !== "NotSupportedError") {
-                      // console.log("Audio play blocked:", e);
-                  }
-                  this.playTenseSynth(); 
-              });
-          }
-      } else {
-          this.playTenseSynth();
-      }
+      // 🔥 V270: Removed file dependency, use synth exclusively
+      this.playTenseSynth();
   },
   playTenseSynth: function() {
       if (!this.ctx) return;
@@ -279,11 +244,6 @@ const SoundController = {
   stopAll: function() { 
       this.oscList.forEach(o => o.stop()); 
       this.oscList = []; 
-      
-      if (this.bgm) { 
-          this.bgm.pause(); 
-          this.bgm.currentTime = 0; 
-      }
   },
   playWin: function() {
       this.stopAll(); 
@@ -981,6 +941,19 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                              <p className="text-white/30 text-sm font-mono animate-pulse uppercase tracking-[0.2em]">{t.nextRound}</p>
                         </div>
                     </div>
+                ) : allPrizesDrawn ? (
+                     // 🔥 V269: All Prizes Drawn Screen
+                     <div className="flex flex-col items-center justify-center h-full z-50 text-center animate-in zoom-in duration-500 p-8">
+                        <div className="mb-6 animate-bounce">
+                            <Check size={80} className="text-green-500" />
+                        </div>
+                        <h1 className="text-5xl md:text-7xl font-black text-yellow-400 mb-6 drop-shadow-2xl">
+                            抽完啦, 冇晒獎品啦
+                        </h1>
+                        <p className="text-2xl md:text-4xl text-white font-bold tracking-widest bg-white/10 px-8 py-4 rounded-full backdrop-blur-sm border border-white/20">
+                            多謝大家參與
+                        </p>
+                    </div>
                 ) : currentPrizeWinner ? (
                      <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500 z-20">
                         <div className="text-2xl text-white/50 font-bold mb-0 uppercase tracking-[0.3em] relative z-20 top-4 bg-black/30 px-4 rounded-full backdrop-blur-sm">{t.drawn}</div>
@@ -994,19 +967,6 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                         {/* 🔥 V197: Name pulled up (-mt-10) */}
                         <h1 className="text-7xl font-black text-white mt-0 relative z-20 -mt-10 drop-shadow-2xl">{currentPrizeWinner.name}</h1>
                         <div className="text-white/30 mt-2 text-xl font-bold">{t.winnerIs}</div>
-                    </div>
-                ) : allPrizesDrawn ? (
-                     // 🔥 V269: All Prizes Drawn Screen
-                     <div className="flex flex-col items-center justify-center h-full z-50 text-center animate-in zoom-in duration-500 p-8">
-                        <div className="mb-6 animate-bounce">
-                            <Check size={80} className="text-green-500" />
-                        </div>
-                        <h1 className="text-5xl md:text-7xl font-black text-yellow-400 mb-6 drop-shadow-2xl">
-                            抽完啦, 冇獎品啦
-                        </h1>
-                        <p className="text-2xl md:text-4xl text-white font-bold tracking-widest bg-white/10 px-8 py-4 rounded-full backdrop-blur-sm border border-white/20">
-                            多謝各位參與抽獎
-                        </p>
                     </div>
                 ) : eligible.length > 0 ? (
                     <GalaxyCanvas list={eligible} t={t} onDrawEnd={handleDrawEnd} disabled={!!winner} />
