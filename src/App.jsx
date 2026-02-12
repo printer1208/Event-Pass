@@ -202,7 +202,7 @@ const SoundController = {
       if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
       this.stopAll();
       
-      // 🔥 V270: Removed file dependency, use synth exclusively
+      // 🔥 V271: Use Tense Synth exclusively (No external files)
       this.playTenseSynth();
   },
   playTenseSynth: function() {
@@ -900,7 +900,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
             <div className="flex-none h-[15vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-b border-white/10 flex items-center justify-between px-4 md:px-8 relative shadow-xl w-full">
                  <button onClick={onBack} className="text-white/30 hover:text-white transition-colors mr-4 md:mr-6 flex items-center justify-center"><ChevronLeft size={32}/></button>
                  <div className="flex-1 flex flex-row items-center justify-center gap-2 md:gap-6 w-full overflow-hidden">
-                    {allPrizesDrawn ? (
+                    {allPrizesDrawn && !winner ? (
                         <h1 className="text-3xl md:text-5xl font-black text-green-400 tracking-widest uppercase animate-pulse">THE END</h1>
                     ) : (
                         <>
