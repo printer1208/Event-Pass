@@ -860,6 +860,9 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     
     let currentPrizeWinner = drawHistory.find(h => h.prize === currentPrize);
     
+    // 🔥 V269: Check if all prizes are drawn
+    const allPrizesDrawn = prizes.length > 0 && prizes.every(p => drawHistory.some(h => h.prize === p.name));
+    
     const triggerDraw = () => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' , code: 'Enter'})); };
 
     // 🔥 V170: Auto-Save logic
@@ -921,8 +924,14 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
             <div className="flex-none h-[15vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-b border-white/10 flex items-center justify-between px-4 md:px-8 relative shadow-xl w-full">
                  <button onClick={onBack} className="text-white/30 hover:text-white transition-colors mr-4 md:mr-6 flex items-center justify-center"><ChevronLeft size={32}/></button>
                  <div className="flex-1 flex flex-row items-center justify-center gap-2 md:gap-6 w-full overflow-hidden">
-                    <span className="text-yellow-500 font-bold tracking-widest uppercase text-xl md:text-3xl lg:text-4xl whitespace-nowrap flex-shrink-0">{winner ? t.winnerLabel : t.currentPrize}:</span>
-                    <h1 className="text-2xl md:text-3xl lg:text-5xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] leading-tight text-left whitespace-normal break-words pb-1">{currentPrize || "WAITING..."}</h1>
+                    {allPrizesDrawn ? (
+                        <h1 className="text-3xl md:text-5xl font-black text-green-400 tracking-widest uppercase animate-pulse">THE END</h1>
+                    ) : (
+                        <>
+                            <span className="text-yellow-500 font-bold tracking-widest uppercase text-xl md:text-3xl lg:text-4xl whitespace-nowrap flex-shrink-0">{winner ? t.winnerLabel : t.currentPrize}:</span>
+                            <h1 className="text-2xl md:text-3xl lg:text-5xl font-black text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)] leading-tight text-left whitespace-normal break-words pb-1">{currentPrize || "WAITING..."}</h1>
+                        </>
+                    )}
                  </div>
                  <div className="w-14"></div>
             </div>
@@ -970,6 +979,19 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                         <h1 className="text-7xl font-black text-white mt-0 relative z-20 -mt-10 drop-shadow-2xl">{currentPrizeWinner.name}</h1>
                         <div className="text-white/30 mt-2 text-xl font-bold">{t.winnerIs}</div>
                     </div>
+                ) : allPrizesDrawn ? (
+                     // 🔥 V269: All Prizes Drawn Screen
+                     <div className="flex flex-col items-center justify-center h-full z-50 text-center animate-in zoom-in duration-500 p-8">
+                        <div className="mb-6 animate-bounce">
+                            <Check size={80} className="text-green-500" />
+                        </div>
+                        <h1 className="text-5xl md:text-7xl font-black text-yellow-400 mb-6 drop-shadow-2xl">
+                            抽完啦, 冇獎品啦
+                        </h1>
+                        <p className="text-2xl md:text-4xl text-white font-bold tracking-widest bg-white/10 px-8 py-4 rounded-full backdrop-blur-sm border border-white/20">
+                            多謝各位參與抽獎
+                        </p>
+                    </div>
                 ) : eligible.length > 0 ? (
                     <GalaxyCanvas list={eligible} t={t} onDrawEnd={handleDrawEnd} disabled={!!winner} />
                 ) : (
@@ -978,7 +1000,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
             </div>
             {/* 🔥 V195: Footer Height Reduced to 10vh (Kept as requested) */}
             <div className="flex-none h-[10vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-t border-white/10 flex flex-col items-center justify-center overflow-hidden w-full relative">
-                {eligible.length > 0 && !winner && !currentPrizeWinner && (
+                {eligible.length > 0 && !winner && !currentPrizeWinner && !allPrizesDrawn && (
                     <div className="">
                         {/* 🔥 V178: Fix undefined MonitorPlay -> Tv -> Monitor (V188) */}
                         <button onClick={triggerDraw} className="bg-red-600 text-white px-10 py-3 rounded-full font-bold text-xl shadow-2xl border-4 border-black uppercase tracking-widest hover:scale-105 transition-transform animate-pulse flex items-center gap-2"><Camera size={24} fill="currentColor"/> {t.drawBtn}</button>
