@@ -71,7 +71,7 @@ const translations = {
     success: "簽到成功", duplicate: "已入場", error: "無效代碼", regSuccess: "登記成功", notFound: "查無此人",
     errPhone: "電話已存在", errEmail: "Email已存在", errPhoto: "需照片", errIncomplete: "請填寫完整",
     drawBtn: "啟動抽獎 (ENTER)", running: "抽獎中", winner: "✨ 恭喜中獎 ✨", claim: "確認領獎 (Enter)",
-    needMore: "等待中...", export: "導出", checkin: "簽到", cancel: "取消", logout: "登出",
+    needMore: "等待中...", export: "導出資料", checkin: "簽到", cancel: "取消", logout: "登出",
     prizeTitle: "獎品池", setPrize: "新增", prizePlace: "獎品名稱", currentPrize: "正在抽取",
     markWin: "設為得主", resetWinner: "重置", select: "選取",
     importCSV: "導入 CSV", downloadTemp: "範本", importSuccess: "成功",
@@ -85,7 +85,7 @@ const translations = {
     seatResult: "查詢結果", status: "狀態", notCheckedIn: "未簽到", registered: "已登記", notRegistered: "未登記",
     youWon: "恭喜獲得", nextRound: "已自動存檔・按 ENTER 繼續",
     winnerLabel: "得主", saveTicket: "下載入場憑證", screenshotHint: "請截圖保存此畫面作為入場憑證",
-    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取", confirmSave: "確認儲存",
+    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取", checkinSelected: "簽到選取", confirmSave: "確認儲存",
     uploadBtn: "上傳照片", photoBtn: "拍照",
     edit: "修改", update: "更新", cancelEdit: "取消",
     number: "#"
@@ -104,7 +104,7 @@ const translations = {
     success: "Success", duplicate: "Duplicate", error: "Invalid", regSuccess: "Registered", notFound: "Not Found",
     errPhone: "Phone exists", errEmail: "Email exists", errPhoto: "Photo required", errIncomplete: "Fill all",
     drawBtn: "Start (ENTER)", running: "Running", winner: "WINNER", claim: "Confirm (Enter)",
-    needMore: "Waiting...", export: "Export", checkin: "Check-in", cancel: "Cancel", logout: "Logout",
+    needMore: "Waiting...", export: "Export Data", checkin: "Check-in", cancel: "Cancel", logout: "Logout",
     prizeTitle: "Prizes", setPrize: "Add", prizePlace: "Prize Name", currentPrize: "Drawing",
     markWin: "Mark Win", resetWinner: "Reset", select: "Select",
     importCSV: "Import", downloadTemp: "Template", importSuccess: "Done",
@@ -118,7 +118,7 @@ const translations = {
     seatResult: "Result", status: "Status", notCheckedIn: "Not In", registered: "Registered", notRegistered: "Not Reg",
     youWon: "Congratulations!", nextRound: "AUTO SAVED • PRESS ENTER >>> NEXT",
     winnerLabel: "WINNER", saveTicket: "Download Ticket", screenshotHint: "Please screenshot this screen as your entry pass",
-    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "Delete Selected", confirmSave: "Confirm Save",
+    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "Delete Selected", checkinSelected: "Check-in Selected", confirmSave: "Confirm Save",
     uploadBtn: "Upload", photoBtn: "Take Photo",
     edit: "Edit", update: "Update", cancelEdit: "Cancel",
     number: "#"
@@ -136,14 +136,14 @@ const compressImage = (source, isFile = true) => {
         const img = new window.Image();
         img.onload = () => {
             const canvas = document.createElement('canvas');
-            // 🔥 V201: Increased MAX_WIDTH from 300 to 800 for clearer photos on large projector screens
+            // 🔥 V261: Reverted MAX_WIDTH to 800
             const MAX_WIDTH = 800; 
             const scaleSize = MAX_WIDTH / img.width;
             canvas.width = MAX_WIDTH;
             canvas.height = img.height * scaleSize;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            // 🔥 V201: Increased quality to 0.7
+            // 🔥 V261: Reverted quality to 0.7
             resolve(canvas.toDataURL('image/jpeg', 0.7)); 
         };
         if(isFile) {
@@ -197,27 +197,32 @@ const SoundController = {
   init: function() { 
       const AC = window.AudioContext || window.webkitAudioContext; 
       if (AC) this.ctx = new AC(); 
+      // 🔥 V264: Preload Audio Object to reduce latency
+      if (!this.bgm && typeof Audio !== "undefined") {
+          this.bgm = new Audio(this.playlist[0]);
+          this.bgm.loop = true;
+          this.bgm.volume = 1.0;
+          this.bgm.preload = 'auto'; // Force buffer
+          this.bgm.load(); 
+      }
   },
   startSuspense: function() {
-      if (!this.ctx) this.init(); if (this.ctx.state === 'suspended') this.ctx.resume();
+      if (!this.ctx) this.init(); 
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
       this.stopAll();
       
-      const track = this.playlist[Math.floor(Math.random() * this.playlist.length)];
-      this.bgm = new Audio(track);
-      this.bgm.loop = true;
-      this.bgm.volume = 1.0;
-
-      const playFallback = () => {
-          console.warn("Music failed/blocked, playing tense synth fallback.");
-          this.playTenseSynth();
-      };
-
-      this.bgm.onerror = playFallback;
+      // 🔥 V264: Use pre-loaded BGM instance
+      if (!this.bgm) this.init();
       
-      this.bgm.play().catch((e) => {
-          console.log("Audio play blocked/failed:", e);
-          playFallback();
-      });
+      this.bgm.currentTime = 0;
+      const playPromise = this.bgm.play();
+      
+      if (playPromise !== undefined) {
+          playPromise.catch((e) => {
+              console.log("Audio play blocked/failed:", e);
+              this.playTenseSynth(); // Fallback if blocked
+          });
+      }
   },
   playTenseSynth: function() {
       if (!this.ctx) return;
@@ -262,7 +267,6 @@ const SoundController = {
       if (this.bgm) { 
           this.bgm.pause(); 
           this.bgm.currentTime = 0; 
-          this.bgm = null; 
       }
   },
   playWin: function() {
@@ -303,7 +307,9 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
     const [isRunning, setIsRunning] = useState(false);
     const particles = useRef([]);
     const frameId = useRef(null);
-    const mode = useRef('mosaic'); 
+    const mode = useRef('mosaic');
+    // 🔥 V265: Image Cache to prevent reloading/flicker
+    const imageCache = useRef({});
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -314,20 +320,32 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
         
         const resize = () => { 
             if (container.clientWidth === 0 || container.clientHeight === 0) return;
-            canvas.width = container.clientWidth; 
-            canvas.height = container.clientHeight; 
+            
+            // 🔥 V265: DPI Scaling for sharp rendering on projectors/retina screens
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = container.clientWidth * dpr;
+            canvas.height = container.clientHeight * dpr;
+            canvas.style.width = `${container.clientWidth}px`;
+            canvas.style.height = `${container.clientHeight}px`;
+            ctx.scale(dpr, dpr); // Normalizing coordinate system
+
             // 🔥 V209: Ensure fonts are ready before initializing to prevent wrong text measurements
+            // 🔥 V263: Auto-init failsafe
+            const timer = setTimeout(() => initParticles(container.clientWidth, container.clientHeight), 500);
             document.fonts.ready.then(() => {
-                initParticles();
+                clearTimeout(timer);
+                initParticles(container.clientWidth, container.clientHeight);
             });
         };
         
-        const initParticles = () => {
-            const w = canvas.width;
-            const h = canvas.height;
+        const initParticles = (w, h) => {
+            if (!w || !h) {
+                 w = canvas.width / (window.devicePixelRatio || 1);
+                 h = canvas.height / (window.devicePixelRatio || 1);
+            }
             if (w === 0 || h === 0) return; 
 
-            // 🔥 V234: Adjusted minParticles to 320 to match 320 guests exactly.
+            // 🔥 V261: Reverted minParticles to 320
             const minParticles = 320; 
             const targetCount = list.length > 0 ? list.length : 100;
             const totalParticles = Math.max(targetCount, minParticles);
@@ -354,7 +372,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             
             // Force Width Stretch
             const targetWidth = w * 0.95;
-            const scaleX = targetWidth / textRealWidth;
+            const scaleX = textRealWidth > 0 ? targetWidth / textRealWidth : 1;
             
             // Draw Text with Transformation
             offCtx.save();
@@ -413,11 +431,19 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
                     isReal = true;
                     // 🔥 V203: Relaxed length check
                     const photoSrc = p.photo;
-                    img = new window.Image();
-                    if (photoSrc && (photoSrc.length > 20 || photoSrc.startsWith('http'))) { 
-                        img.src = photoSrc;
+                    
+                    // 🔥 V265: Check Cache first
+                    if (imageCache.current[p.id]) {
+                        img = imageCache.current[p.id];
                     } else {
-                        img.src = DEFAULT_AVATAR;
+                        img = new window.Image();
+                        if (photoSrc && (photoSrc.length > 20 || photoSrc.startsWith('http'))) { 
+                            img.src = photoSrc;
+                        } else {
+                            img.src = DEFAULT_AVATAR;
+                        }
+                        // Cache it
+                        imageCache.current[p.id] = img;
                     }
                 } else {
                     p = { id: `dummy_${i}`, name: '?' };
@@ -445,13 +471,18 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
         window.addEventListener('resize', resize);
 
         const render = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 🔥 V265: Use logical width/height for clearRect
+            const width = canvas.width / (window.devicePixelRatio || 1);
+            const height = canvas.height / (window.devicePixelRatio || 1);
+            
+            ctx.clearRect(0, 0, width, height);
+            
             particles.current.forEach(p => {
                 if (mode.current === 'galaxy') {
                     p.x += p.vx; p.y += p.vy;
                     p.angle += 0.05;
-                    if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
-                    if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+                    if (p.x < 0 || p.x > width) p.vx *= -1;
+                    if (p.y < 0 || p.y > height) p.vy *= -1;
                 } else {
                     p.x += (p.targetX - p.x) * 0.1;
                     p.y += (p.targetY - p.y) * 0.1;
@@ -499,6 +530,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
     }, [list]);
 
     const start = () => {
+        // 🔥 Reverted rule: Strictly requires at least 2 people to start
         if(list.length < 2) return;
         setIsRunning(true);
         mode.current = 'galaxy';
@@ -889,13 +921,13 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                         <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
                         <div className="relative mb-0">
                             <div className="absolute inset-0 bg-yellow-500/30 blur-3xl rounded-full animate-pulse"></div>
-                            {/* 🔥 V197: Winner Photo Enlarged to 72vh with z-index for layering */}
+                            {/* 🔥 V261: Reverted Winner Photo to 72vh */}
                             <img 
                                 src={winner.photo && (winner.photo.length > 20 || winner.photo.startsWith('http')) ? winner.photo : DEFAULT_AVATAR} 
                                 className="relative w-[72vh] h-[72vh] rounded-full border-8 border-yellow-400 object-cover shadow-2xl bg-neutral-800 z-10"
                             />
                         </div>
-                        {/* 🔥 V197: Text container pulled up (-mt-12) to overlap image bottom */}
+                        {/* 🔥 V261: Reverted margin to -mt-12 */}
                         <div className="flex flex-col items-center gap-2 mb-2 relative z-20 -mt-12">
                             <div className="flex flex-row items-center justify-center gap-5 bg-black/60 backdrop-blur-md px-8 py-2 rounded-full border border-white/20 shadow-2xl">
                                 <div className="flex flex-col items-center md:items-end">
@@ -917,7 +949,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                      <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500 z-20">
                         <div className="text-2xl text-white/50 font-bold mb-0 uppercase tracking-[0.3em] relative z-20 top-4 bg-black/30 px-4 rounded-full backdrop-blur-sm">{t.drawn}</div>
                         <div className="relative mb-0">
-                            {/* 🔥 V197: Drawn Photo Enlarged to 68vh */}
+                            {/* 🔥 V261: Reverted Drawn Photo to 68vh */}
                             <img 
                                 src={currentPrizeWinner.photo && (currentPrizeWinner.photo.length > 20 || currentPrizeWinner.photo.startsWith('http')) ? currentPrizeWinner.photo : DEFAULT_AVATAR} 
                                 className="w-[68vh] h-[68vh] rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover bg-neutral-800 z-10 relative"
@@ -975,6 +1007,44 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
   const toggleGuestSelection = (id) => { const newSet = new Set(selectedGuestIds); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setSelectedGuestIds(newSet); };
   const toggleAllGuests = () => { if (filteredList.length === 0) return; const allSelected = filteredList.every(p => selectedGuestIds.has(p.id)); const newSet = new Set(selectedGuestIds); filteredList.forEach(p => { if (allSelected) newSet.delete(p.id); else newSet.add(p.id); }); setSelectedGuestIds(newSet); };
   const handleDeleteSelectedGuests = async () => { if (!selectedGuestIds.size) return; if (!confirm(`Are you sure you want to delete ${selectedGuestIds.size} guests?`)) return; const batch = writeBatch(db); selectedGuestIds.forEach(id => { batch.delete(doc(db, "attendees", id)); }); await batch.commit(); setSelectedGuestIds(new Set()); };
+  
+  // 🔥 New Feature: Bulk Check-in
+  const handleBulkCheckIn = async () => {
+        if (!selectedGuestIds.size) return;
+        if (!confirm(`Confirm check-in for ${selectedGuestIds.size} guests?`)) return;
+        const batch = writeBatch(db);
+        selectedGuestIds.forEach(id => {
+            const ref = doc(db, "attendees", id);
+            batch.update(ref, { checkedIn: true, checkInTime: new Date().toISOString() });
+        });
+        await batch.commit();
+        setSelectedGuestIds(new Set());
+  };
+
+  // 🔥 New Feature: Export CSV
+  const handleExportGuests = () => {
+        const headers = ["Name", "Phone", "Email", "Dept", "Table", "Seat", "CheckedIn", "Prize"];
+        const rows = attendees.map(p => {
+            const winnerRec = drawHistory.find(h => h.attendeeId === p.id);
+            return [
+                p.name,
+                p.phone,
+                p.email,
+                p.dept,
+                p.table,
+                p.seat,
+                p.checkedIn ? "Yes" : "No",
+                winnerRec ? winnerRec.prize : ""
+            ].map(f => `"${String(f || '').replace(/"/g, '""')}"`).join(",");
+        });
+        const csvContent = "\uFEFF" + [headers.join(","), ...rows].join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `guest_list_${new Date().toISOString().slice(0,10)}.csv`;
+        link.click();
+  };
+
   const toggleSeatSelection = (id) => { const newSet = new Set(selectedSeatIds); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setSelectedSeatIds(newSet); };
   const toggleAllSeats = () => { if (filteredSeat.length === 0) return; const allSelected = filteredSeat.every(s => selectedSeatIds.has(s.id)); const newSet = new Set(selectedSeatIds); filteredSeat.forEach(s => { if (allSelected) newSet.delete(s.id); else newSet.add(s.id); }); setSelectedSeatIds(newSet); };
   const handleDeleteSelectedSeats = async () => { if (!selectedSeatIds.size) return; if (!confirm(`Are you sure you want to delete ${selectedSeatIds.size} seats?`)) return; const batch = writeBatch(db); selectedSeatIds.forEach(id => { batch.delete(doc(db, "seating_plan", id)); }); await batch.commit(); setSelectedSeatIds(new Set()); };
@@ -1062,7 +1132,13 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                   <div className="p-4 bg-white/5 rounded-t-xl border-b border-white/10">
                       <div className="mb-4 flex gap-2 items-center">
                           <div className="relative flex-1"><Search className="absolute top-2.5 left-3 text-white/30" size={16}/><input placeholder={t.searchList} value={search} onChange={e=>setSearch(e.target.value)} className="w-full bg-white/10 rounded-lg pl-9 pr-4 py-2 text-sm outline-none"/></div>
-                          {selectedGuestIds.size > 0 && <button onClick={handleDeleteSelectedGuests} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><X size={14}/> {t.deleteSelected} ({selectedGuestIds.size})</button>}
+                          {selectedGuestIds.size > 0 && (
+                              <>
+                                <button onClick={handleBulkCheckIn} className="bg-green-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg"><Check size={14}/> {t.checkinSelected} ({selectedGuestIds.size})</button>
+                                <button onClick={handleDeleteSelectedGuests} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><X size={14}/> {t.deleteSelected} ({selectedGuestIds.size})</button>
+                              </>
+                          )}
+                          <button onClick={handleExportGuests} className="bg-blue-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 hover:bg-blue-500 transition-colors"><Plus size={14} className="rotate-45" /> {t.export}</button>
                           <button onClick={handleGenerateDummy} className="bg-yellow-600/20 text-yellow-400 border border-yellow-600/50 px-3 py-2 rounded-lg text-xs hover:bg-yellow-600 hover:text-white transition-colors flex items-center gap-1"><Plus size={14}/> {t.genDummy}</button>
                           <button onClick={handleClearAllGuests} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1"><X size={14}/> {t.clearGuests}</button>
                       </div>
