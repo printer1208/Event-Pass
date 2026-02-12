@@ -85,7 +85,7 @@ const translations = {
     seatResult: "查詢結果", status: "狀態", notCheckedIn: "未簽到", registered: "已登記", notRegistered: "未登記",
     youWon: "恭喜獲得", nextRound: "已自動存檔・按 ENTER 繼續",
     winnerLabel: "得主", saveTicket: "下載入場憑證", screenshotHint: "請截圖保存此畫面作為入場憑證",
-    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取", checkinSelected: "簽到選取", confirmSave: "確認儲存",
+    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "刪除選取", checkinSelected: "簽到選取", cancelCheckinSelected: "取消簽到", confirmSave: "確認儲存",
     uploadBtn: "上傳照片", photoBtn: "拍照",
     edit: "修改", update: "更新", cancelEdit: "取消",
     number: "#"
@@ -118,7 +118,7 @@ const translations = {
     seatResult: "Result", status: "Status", notCheckedIn: "Not In", registered: "Registered", notRegistered: "Not Reg",
     youWon: "Congratulations!", nextRound: "AUTO SAVED • PRESS ENTER >>> NEXT",
     winnerLabel: "WINNER", saveTicket: "Download Ticket", screenshotHint: "Please screenshot this screen as your entry pass",
-    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "Delete Selected", checkinSelected: "Check-in Selected", confirmSave: "Confirm Save",
+    pendingCheckin: "Pending Checkin", checkedInStatus: "Checked In", deleteSelected: "Delete Selected", checkinSelected: "Check-in Selected", cancelCheckinSelected: "Cancel Check-in", confirmSave: "Confirm Save",
     uploadBtn: "Upload", photoBtn: "Take Photo",
     edit: "Edit", update: "Update", cancelEdit: "Cancel",
     number: "#"
@@ -136,15 +136,15 @@ const compressImage = (source, isFile = true) => {
         const img = new window.Image();
         img.onload = () => {
             const canvas = document.createElement('canvas');
-            // 🔥 V261: Reverted MAX_WIDTH to 800
-            const MAX_WIDTH = 800; 
+            // 🔥 V266: High Res for Projector (1600px)
+            const MAX_WIDTH = 1600; 
             const scaleSize = MAX_WIDTH / img.width;
             canvas.width = MAX_WIDTH;
             canvas.height = img.height * scaleSize;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            // 🔥 V261: Reverted quality to 0.7
-            resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+            // 🔥 V266: Increased quality to 0.85
+            resolve(canvas.toDataURL('image/jpeg', 0.85)); 
         };
         if(isFile) {
             const reader = new FileReader();
@@ -321,7 +321,7 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
         const resize = () => { 
             if (container.clientWidth === 0 || container.clientHeight === 0) return;
             
-            // 🔥 V265: DPI Scaling for sharp rendering on projectors/retina screens
+            // 🔥 V266: DPI Scaling for sharp rendering
             const dpr = window.devicePixelRatio || 1;
             canvas.width = container.clientWidth * dpr;
             canvas.height = container.clientHeight * dpr;
@@ -345,8 +345,8 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             }
             if (w === 0 || h === 0) return; 
 
-            // 🔥 V261: Reverted minParticles to 320
-            const minParticles = 320; 
+            // 🔥 V266: Increased minParticles to 800 for solid, clear text formation
+            const minParticles = 800; 
             const targetCount = list.length > 0 ? list.length : 100;
             const totalParticles = Math.max(targetCount, minParticles);
             
@@ -365,6 +365,9 @@ const GalaxyCanvas = ({ list, t, onDrawEnd, disabled }) => {
             // Set Font: Use the heaviest condensed font available
             offCtx.font = `900 ${forcedFontSize}px 'Impact', 'Arial Black', 'Arial', sans-serif`;
             
+            // 🔥 V266: Add letter spacing to separate letters (approx 20% height)
+            offCtx.letterSpacing = `${Math.floor(h * 0.2)}px`;
+
             // Measure Width
             // 🔥 V247: Changed text from "TESLA 2026" to "TESLA" only.
             const textMetrics = offCtx.measureText("TESLA");
@@ -907,7 +910,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     return (
         <div className="min-h-screen bg-black text-white relative flex flex-col overflow-hidden">
             {/* 🔥 V196: Header Height Restored to 15vh (Bigger) */}
-            <div className="flex-none h-[15vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-b border-white/10 flex items-center justify-between px-4 md:px-8 relative shadow-xl w-full">
+            <div className="flex-none h-[12vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-b border-white/10 flex items-center justify-between px-4 md:px-8 relative shadow-xl w-full">
                  <button onClick={onBack} className="text-white/30 hover:text-white transition-colors mr-4 md:mr-6 flex items-center justify-center"><ChevronLeft size={32}/></button>
                  <div className="flex-1 flex flex-row items-center justify-center gap-2 md:gap-6 w-full overflow-hidden">
                     <span className="text-yellow-500 font-bold tracking-widest uppercase text-xl md:text-3xl lg:text-4xl whitespace-nowrap flex-shrink-0">{winner ? t.winnerLabel : t.currentPrize}:</span>
@@ -921,22 +924,22 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                         <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
                         <div className="relative mb-0">
                             <div className="absolute inset-0 bg-yellow-500/30 blur-3xl rounded-full animate-pulse"></div>
-                            {/* 🔥 V261: Reverted Winner Photo to 72vh */}
+                            {/* 🔥 V262: Winner Photo Enlarged to 75vh (Maximized for 75vh space) */}
                             <img 
                                 src={winner.photo && (winner.photo.length > 20 || winner.photo.startsWith('http')) ? winner.photo : DEFAULT_AVATAR} 
-                                className="relative w-[72vh] h-[72vh] rounded-full border-8 border-yellow-400 object-cover shadow-2xl bg-neutral-800 z-10"
+                                className="relative w-[75vh] h-[75vh] rounded-full border-8 border-yellow-400 object-cover shadow-2xl bg-neutral-800 z-10"
                             />
                         </div>
-                        {/* 🔥 V261: Reverted margin to -mt-12 */}
-                        <div className="flex flex-col items-center gap-2 mb-2 relative z-20 -mt-12">
+                        {/* 🔥 V197: Text container pulled up (-mt-16) to overlap image bottom */}
+                        <div className="flex flex-col items-center gap-2 mb-2 relative z-20 -mt-16">
                             <div className="flex flex-row items-center justify-center gap-5 bg-black/60 backdrop-blur-md px-8 py-2 rounded-full border border-white/20 shadow-2xl">
                                 <div className="flex flex-col items-center md:items-end">
-                                    <h1 className="text-3xl font-black text-white tracking-wide leading-none">{winner.name}</h1>
+                                    <h1 className="text-4xl font-black text-white tracking-wide leading-none">{winner.name}</h1>
                                     {winner.dept && <span className="text-xs text-yellow-500 font-bold uppercase tracking-wider mt-1">{winner.dept}</span>}
                                 </div>
                                 <div className="w-0.5 h-10 bg-white/20 rounded-full"></div>
                                 {/* 🔥 V178: Fix undefined Armchair -> MapPin */}
-                                <div className="flex items-center gap-2 text-xl font-bold text-yellow-400"><Search size={24} className="text-white/60"/> <span>Table {winner.table || '-'}</span></div>
+                                <div className="flex items-center gap-2 text-2xl font-bold text-yellow-400"><Search size={28} className="text-white/60"/> <span>Table {winner.table || '-'}</span></div>
                             </div>
                             <div className="text-white/60 font-mono text-sm tracking-[0.2em] bg-black/80 px-5 py-0.5 rounded-full border border-white/10 shadow-lg">{winner.phone}</div>
                         </div>
@@ -949,10 +952,10 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                      <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500 z-20">
                         <div className="text-2xl text-white/50 font-bold mb-0 uppercase tracking-[0.3em] relative z-20 top-4 bg-black/30 px-4 rounded-full backdrop-blur-sm">{t.drawn}</div>
                         <div className="relative mb-0">
-                            {/* 🔥 V261: Reverted Drawn Photo to 68vh */}
+                            {/* 🔥 V262: Drawn Photo Enlarged to 70vh */}
                             <img 
                                 src={currentPrizeWinner.photo && (currentPrizeWinner.photo.length > 20 || currentPrizeWinner.photo.startsWith('http')) ? currentPrizeWinner.photo : DEFAULT_AVATAR} 
-                                className="w-[68vh] h-[68vh] rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover bg-neutral-800 z-10 relative"
+                                className="w-[70vh] h-[70vh] rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover bg-neutral-800 z-10 relative"
                             />
                         </div>
                         {/* 🔥 V197: Name pulled up (-mt-10) */}
@@ -965,8 +968,8 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                     <div className="text-center text-white/30"><User size={100} className="mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p></div>
                 )}
             </div>
-            {/* 🔥 V195: Footer Height Reduced to 10vh (Kept as requested) */}
-            <div className="flex-none h-[10vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-t border-white/10 flex flex-col items-center justify-center overflow-hidden w-full relative">
+            {/* 🔥 V195: Footer Height Reduced to 8vh */}
+            <div className="flex-none h-[8vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-t border-white/10 flex flex-col items-center justify-center overflow-hidden w-full relative">
                 {eligible.length > 0 && !winner && !currentPrizeWinner && (
                     <div className="">
                         {/* 🔥 V178: Fix undefined MonitorPlay -> Tv -> Monitor (V188) */}
@@ -1016,6 +1019,19 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
         selectedGuestIds.forEach(id => {
             const ref = doc(db, "attendees", id);
             batch.update(ref, { checkedIn: true, checkInTime: new Date().toISOString() });
+        });
+        await batch.commit();
+        setSelectedGuestIds(new Set());
+  };
+
+  // 🔥 New Feature: Bulk Cancel Check-in
+  const handleBulkCancelCheckIn = async () => {
+        if (!selectedGuestIds.size) return;
+        if (!confirm(`Confirm cancel check-in for ${selectedGuestIds.size} guests?`)) return;
+        const batch = writeBatch(db);
+        selectedGuestIds.forEach(id => {
+            const ref = doc(db, "attendees", id);
+            batch.update(ref, { checkedIn: false, checkInTime: null });
         });
         await batch.commit();
         setSelectedGuestIds(new Set());
@@ -1135,6 +1151,7 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                           {selectedGuestIds.size > 0 && (
                               <>
                                 <button onClick={handleBulkCheckIn} className="bg-green-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg"><Check size={14}/> {t.checkinSelected} ({selectedGuestIds.size})</button>
+                                <button onClick={handleBulkCancelCheckIn} className="bg-orange-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg"><X size={14}/> {t.cancelCheckinSelected} ({selectedGuestIds.size})</button>
                                 <button onClick={handleDeleteSelectedGuests} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><X size={14}/> {t.deleteSelected} ({selectedGuestIds.size})</button>
                               </>
                           )}
@@ -1179,59 +1196,6 @@ const ReceptionDashboard = ({ t, onLogout, attendees, setAttendees, seatingPlan,
                                           <td className="p-3 text-yellow-400 font-bold text-left">{winnerRec ? winnerRec.prize : '-'}</td>
                                           <td className="p-3 text-center">{!p.checkedIn ? <button onClick={()=>toggleCheckIn(p)} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-1 rounded text-xs hover:bg-red-600 hover:text-white transition-colors">{t.pendingCheckin}</button> : <button onClick={()=>toggleCancelCheckIn(p)} className="bg-green-600/20 text-green-400 border border-green-600/50 px-3 py-1 rounded text-xs hover:bg-red-900/50 hover:text-red-300 transition-colors">{t.checkedInStatus}</button>}</td>
                                           <td className="p-3 text-center"><button onClick={()=>deletePerson(p.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10 transition-colors"><X size={16}/></button></td>
-                                      </tr>
-                                  );
-                              })}
-                          </tbody>
-                      </table>
-                  </div>
-              </div>
-          )}
-          {tab==='seating' && (
-              <div className="w-full flex-1 flex flex-col gap-4">
-                  <div className="flex gap-2">
-                      <input placeholder={t.searchSeat} value={search} onChange={e=>setSearch(e.target.value)} className="flex-1 bg-white/10 rounded-lg px-3 py-2 outline-none text-sm"/>
-                      {selectedSeatIds.size > 0 && <button onClick={handleDeleteSelectedSeats} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs flex items-center gap-1 animate-in fade-in zoom-in duration-200 shadow-lg shadow-red-900/40"><X size={14}/> {t.deleteSelected} ({selectedSeatIds.size})</button>}
-                      <label className="bg-blue-600 px-3 py-2 rounded-lg cursor-pointer flex items-center gap-2"><Plus size={16}/> {t.importCSV}<input type="file" hidden accept=".csv" onChange={handleImportSeating}/></label>
-                      <button onClick={downloadTemplate} className="bg-white/10 px-3 py-2 rounded-lg"><Search size={16}/></button>
-                      <button onClick={handleGenerateDummySeating} className="bg-purple-600/20 text-purple-400 border border-purple-600/50 px-3 py-2 rounded-lg text-xs hover:bg-purple-600 hover:text-white transition-colors flex items-center gap-1"><Plus size={14}/> {t.genDummySeat}</button>
-                      <button onClick={handleClearSeating} className="bg-red-600/20 text-red-400 border border-red-600/50 px-3 py-2 rounded-lg text-xs hover:bg-red-600 hover:text-white transition-colors flex items-center gap-1 whitespace-nowrap"><X size={14}/> {t.clearSeats}</button>
-                  </div>
-                  <div className="bg-white/5 p-3 rounded-lg flex flex-wrap gap-2">
-                      <div className="w-full text-xs text-white/40 mb-1">{editingSeatId ? t.edit : t.addSeat}</div>
-                      <input placeholder={t.name} value={seatForm.name} onChange={e=>setSeatForm({...seatForm,name:e.target.value})} className="bg-white/10 rounded px-2 py-1 flex-1 text-xs outline-none min-w-[80px]" />
-                      <input placeholder={t.phone} value={seatForm.phone} onChange={e=>setSeatForm({...seatForm,phone:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-20 text-xs outline-none" />
-                      <input placeholder={t.email} value={seatForm.email} onChange={e=>setSeatForm({...seatForm,email:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-24 text-xs outline-none" />
-                      <input placeholder={t.dept} value={seatForm.dept} onChange={e=>setSeatForm({...seatForm,dept:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-16 text-xs outline-none" />
-                      <input placeholder={t.table} value={seatForm.table} onChange={e=>setSeatForm({...seatForm,table:e.target.value})} className="bg-white/10 rounded px-2 py-1 w-10 text-xs outline-none text-center" />
-                      <button onClick={handleAddSeating} className={`${editingSeatId ? 'bg-orange-600' : 'bg-green-600'} px-3 py-1 rounded text-xs text-white`}>{editingSeatId ? t.update : <Plus size={14}/>}</button>
-                      {editingSeatId && <button onClick={cancelEditSeat} className="bg-red-600 px-3 py-1 rounded text-xs text-white">{t.cancelEdit}</button>}
-                  </div>
-                  <div className="flex-1 overflow-y-auto overflow-x-auto bg-white/5 rounded-xl p-2">
-                      <table className="w-full text-left border-collapse min-w-[800px]">
-                          <thead className="text-xs text-white/40 uppercase border-b border-white/10">
-                              <tr>
-                                  <th className="p-3 w-10 text-center"><button onClick={toggleAllSeats} className="hover:text-white transition-colors">{filteredSeat.length > 0 && filteredSeat.every(s => selectedSeatIds.has(s.id)) ? <Check size={16}/> : <User size={16}/>}</button></th>
-                                  <th className="p-3 text-center">{t.number}</th>
-                                  <th className="p-3 text-left">Name</th><th className="p-3 text-left">Phone</th><th className="p-3 text-left">Email</th><th className="p-3 text-left">Dept</th><th className="p-3 text-center">Table</th><th className="p-3 text-center">Status</th><th className="p-3 text-center">Actions</th>
-                              </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/5">
-                              {filteredSeat.map((s, index)=>{
-                                  const match = attendees.find(a => (s.phone && normalizePhone(a.phone) === normalizePhone(s.phone)) || (s.email && normalizeEmail(a.email) === normalizeEmail(s.email)));
-                                  const isCheckedIn = match?.checkedIn;
-                                  const isSelected = selectedSeatIds.has(s.id);
-                                  return (
-                                      <tr key={s.id} className={`hover:bg-white/5 text-sm transition-colors ${isSelected ? 'bg-white/10' : ''}`}>
-                                          <td className="p-3 text-center"><button onClick={() => toggleSeatSelection(s.id)} className={`transition-colors ${isSelected ? 'text-blue-400' : 'text-white/20 hover:text-white/50'}`}>{isSelected ? <Check size={16}/> : <User size={16}/>}</button></td>
-                                          <td className="p-3 text-center text-white/30">{index + 1}</td>
-                                          <td className="p-3 font-bold text-left">{s.name}</td><td className="p-3 text-xs text-white/60 text-left">{s.phone}</td><td className="p-3 text-xs text-white/60 text-left">{s.email}</td><td className="p-3 text-xs text-white/60 text-left">{s.dept}</td><td className="p-3 font-mono text-blue-400 text-center text-lg">{s.table}</td>
-                                          <td className="p-3 text-center">{isCheckedIn ? <span className="text-green-400 bg-green-400/20 px-2 py-1 rounded text-xs border border-green-400/50">已到場</span> : <span className="text-white/30 text-xs border border-white/10 px-2 py-1 rounded">未簽到</span>}</td>
-                                          <td className="p-3 text-center flex justify-center gap-2">
-                                              {/* 🔥 V257: Used User icon for Edit instead of Edit icon to prevent crash */}
-                                              <button onClick={()=>startEditSeat(s)} className="p-2 text-white/20 hover:text-orange-500 rounded-full hover:bg-white/10"><User size={16}/></button>
-                                              <button onClick={()=>handleDeleteSeating(s.id)} className="p-2 text-white/20 hover:text-red-500 rounded-full hover:bg-white/10"><X size={16}/></button>
-                                          </td>
                                       </tr>
                                   );
                               })}
