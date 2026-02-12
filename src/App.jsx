@@ -136,15 +136,15 @@ const compressImage = (source, isFile = true) => {
         const img = new window.Image();
         img.onload = () => {
             const canvas = document.createElement('canvas');
-            // 🔥 V266: High Res for Projector (1600px)
-            const MAX_WIDTH = 1600; 
+            // 🔥 V267: Reverted to 800px for optimal performance/compatibility
+            const MAX_WIDTH = 800; 
             const scaleSize = MAX_WIDTH / img.width;
             canvas.width = MAX_WIDTH;
             canvas.height = img.height * scaleSize;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            // 🔥 V266: Increased quality to 0.85
-            resolve(canvas.toDataURL('image/jpeg', 0.85)); 
+            // 🔥 V267: Reverted quality to 0.7
+            resolve(canvas.toDataURL('image/jpeg', 0.7)); 
         };
         if(isFile) {
             const reader = new FileReader();
@@ -910,7 +910,7 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
     return (
         <div className="min-h-screen bg-black text-white relative flex flex-col overflow-hidden">
             {/* 🔥 V196: Header Height Restored to 15vh (Bigger) */}
-            <div className="flex-none h-[12vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-b border-white/10 flex items-center justify-between px-4 md:px-8 relative shadow-xl w-full">
+            <div className="flex-none h-[15vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-b border-white/10 flex items-center justify-between px-4 md:px-8 relative shadow-xl w-full">
                  <button onClick={onBack} className="text-white/30 hover:text-white transition-colors mr-4 md:mr-6 flex items-center justify-center"><ChevronLeft size={32}/></button>
                  <div className="flex-1 flex flex-row items-center justify-center gap-2 md:gap-6 w-full overflow-hidden">
                     <span className="text-yellow-500 font-bold tracking-widest uppercase text-xl md:text-3xl lg:text-4xl whitespace-nowrap flex-shrink-0">{winner ? t.winnerLabel : t.currentPrize}:</span>
@@ -924,22 +924,22 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                         <div className="absolute inset-0 pointer-events-none"><Confetti/></div>
                         <div className="relative mb-0">
                             <div className="absolute inset-0 bg-yellow-500/30 blur-3xl rounded-full animate-pulse"></div>
-                            {/* 🔥 V262: Winner Photo Enlarged to 75vh (Maximized for 75vh space) */}
+                            {/* 🔥 V261: Reverted Winner Photo to 72vh */}
                             <img 
                                 src={winner.photo && (winner.photo.length > 20 || winner.photo.startsWith('http')) ? winner.photo : DEFAULT_AVATAR} 
-                                className="relative w-[75vh] h-[75vh] rounded-full border-8 border-yellow-400 object-cover shadow-2xl bg-neutral-800 z-10"
+                                className="relative w-[72vh] h-[72vh] rounded-full border-8 border-yellow-400 object-cover shadow-2xl bg-neutral-800 z-10"
                             />
                         </div>
-                        {/* 🔥 V197: Text container pulled up (-mt-16) to overlap image bottom */}
-                        <div className="flex flex-col items-center gap-2 mb-2 relative z-20 -mt-16">
+                        {/* 🔥 V261: Reverted margin to -mt-12 */}
+                        <div className="flex flex-col items-center gap-2 mb-2 relative z-20 -mt-12">
                             <div className="flex flex-row items-center justify-center gap-5 bg-black/60 backdrop-blur-md px-8 py-2 rounded-full border border-white/20 shadow-2xl">
                                 <div className="flex flex-col items-center md:items-end">
-                                    <h1 className="text-4xl font-black text-white tracking-wide leading-none">{winner.name}</h1>
+                                    <h1 className="text-3xl font-black text-white tracking-wide leading-none">{winner.name}</h1>
                                     {winner.dept && <span className="text-xs text-yellow-500 font-bold uppercase tracking-wider mt-1">{winner.dept}</span>}
                                 </div>
                                 <div className="w-0.5 h-10 bg-white/20 rounded-full"></div>
                                 {/* 🔥 V178: Fix undefined Armchair -> MapPin */}
-                                <div className="flex items-center gap-2 text-2xl font-bold text-yellow-400"><Search size={28} className="text-white/60"/> <span>Table {winner.table || '-'}</span></div>
+                                <div className="flex items-center gap-2 text-xl font-bold text-yellow-400"><Search size={24} className="text-white/60"/> <span>Table {winner.table || '-'}</span></div>
                             </div>
                             <div className="text-white/60 font-mono text-sm tracking-[0.2em] bg-black/80 px-5 py-0.5 rounded-full border border-white/10 shadow-lg">{winner.phone}</div>
                         </div>
@@ -952,10 +952,10 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                      <div className="flex flex-col items-center animate-in fade-in zoom-in duration-500 z-20">
                         <div className="text-2xl text-white/50 font-bold mb-0 uppercase tracking-[0.3em] relative z-20 top-4 bg-black/30 px-4 rounded-full backdrop-blur-sm">{t.drawn}</div>
                         <div className="relative mb-0">
-                            {/* 🔥 V262: Drawn Photo Enlarged to 70vh */}
+                            {/* 🔥 V261: Reverted Drawn Photo to 68vh */}
                             <img 
                                 src={currentPrizeWinner.photo && (currentPrizeWinner.photo.length > 20 || currentPrizeWinner.photo.startsWith('http')) ? currentPrizeWinner.photo : DEFAULT_AVATAR} 
-                                className="w-[70vh] h-[70vh] rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover bg-neutral-800 z-10 relative"
+                                className="w-[68vh] h-[68vh] rounded-full border-8 border-gray-600 grayscale hover:grayscale-0 transition-all object-cover bg-neutral-800 z-10 relative"
                             />
                         </div>
                         {/* 🔥 V197: Name pulled up (-mt-10) */}
@@ -968,8 +968,8 @@ const ProjectorView = ({ t, attendees, drawHistory, onBack, currentPrize, prizes
                     <div className="text-center text-white/30"><User size={100} className="mb-6 opacity-20"/><p className="text-2xl">{t.needMore}</p></div>
                 )}
             </div>
-            {/* 🔥 V195: Footer Height Reduced to 8vh */}
-            <div className="flex-none h-[8vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-t border-white/10 flex flex-col items-center justify-center overflow-hidden w-full relative">
+            {/* 🔥 V195: Footer Height Reduced to 10vh (Kept as requested) */}
+            <div className="flex-none h-[10vh] z-30 bg-neutral-900/90 backdrop-blur-sm border-t border-white/10 flex flex-col items-center justify-center overflow-hidden w-full relative">
                 {eligible.length > 0 && !winner && !currentPrizeWinner && (
                     <div className="">
                         {/* 🔥 V178: Fix undefined MonitorPlay -> Tv -> Monitor (V188) */}
